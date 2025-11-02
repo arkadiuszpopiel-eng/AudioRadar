@@ -1,0 +1,832 @@
+
+### Audio Radar Code Backup - Version v8
+
+--- audio_radar/__main__.py ---
+"""Entry point for running the Audio Radar package as a module.
+
+This file allows you to start the application by running
+
+    python -m audio_radar
+
+from the root of the unpacked archive. It simply imports and
+executes the ``main`` function from ``audio_radar.main``. See
+``README.md`` for more details.
+"""
+
+from .main import main
+
+
+if __name__ == '__main__':
+    main()
+--- audio_radar/sound_analysis.py ---
+"""Sound analysis routines for the Audio Radar project.
+
+This module contains functions that operate on chunks of audio samples to
+determine whether certain events of interest have occurred. The goal is
+to detect footsteps and gunshots in the audio stream produced by a
+game, ignoring other background noise. The implementation here uses
+simple heuristic methods based on amplitude statistics; users with
+deep learning experience may wish to replace or augment these
+functions with a machine learning model trained on representative
+audio data.
+"""
+
+from __future__ import annotations
+
+from typing import Optional
+
+try:
+    import numpy as np  # type: ignore
+except ImportError:
+    np = None  # type: ignore
+
+# Thresholds for heuristic detection. These values were chosen to work
+# reasonably across a variety of games but may need adjusting for
+# particular titles. You can experiment with these by editing
+# ``config.json`` or by tweaking them here.
+SHOT_PEAK_THRESHOLD = 0.6  # relative peak amplitude above which a block is considered a gunshot
+FOOTSTEP_STD_THRESHOLD = 0.05  # standard deviation threshold for step detection
+
+
+def detect_event(samples: np.ndarray) -> Optional[str]:
+    """Analyse a block of audio samples and detect a sound event.
+
+    Parameters
+    ----------
+    samples : ndarray
+        A 2‑D NumPy array of shape (frames, channels) containing the
+        captured audio for this block. Channels are averaged to mono
+        before analysis.
+
+    Returns
+    -------
+    str or None
+        Returns ``'shot'`` if a gunshot is detected, ``'footstep'`` if
+        a footstep is detected and ``None`` if no event is recognised.
+
+    Notes
+    -----
+    This function uses simple amplitude heuristics: it computes the
+    maximum absolute amplitude in the block to look for gunshots and
+    uses the standard deviation of the signal to detect footsteps.
+    Because games vary widely in their audio mixes and loudness
+    ranges, you may need to adjust the thresholds at the top of this
+    module.
+    """
+    if np is None:
+        return None
+    if samples.size == 0:
+        return None
+    # Convert multi‑channel audio to mono by averaging channels
+    if samples.ndim == 2 and samples.shape[1] > 1:
+        mono = samples.mean(axis=1)
+    else:
+        mono = samples.ravel()
+    # Normalise to range [-1, 1] if values are integer types
+    if np.issubdtype(mono.dtype, np.integer):
+        # 16‑bit audio: int16 ranges from -32768 to 32767
+        info = np.iinfo(mono.dtype)
+        mono = mono.astype(np.float32) / max(abs(info.min), info.max)
+    # Compute statistics
+    peak = np.max(np.abs(mono))
+    std = np.std(mono)
+    # Gunshot detection: very sharp, loud peaks
+    if peak > SHOT_PEAK_THRESHOLD:
+        return 'shot'
+    # Footstep detection: moderate variation and repetitive pattern
+    # Here we simply use standard deviation as a proxy for variation
+    if std > FOOTSTEP_STD_THRESHOLD:
+        return 'footstep'
+    return None
+--- audio_radar/__init__.py ---
+
+--- audio_radar/RUN_BUILD_ALL.cmd ---
+@echo off
+REM =============================================================================
+REM  RUN_BUILD_ALL.cmd
+REM
+REM  This batch script installs Python dependencies and launches the Audio
+REM  Radar application. Use it on Windows systems. It installs packages in
+REM  the current user's environment. If you prefer to manage dependencies
+REM  yourself you may skip running this script and install numpy,
+REM  sounddevice and pygame manually via pip.
+REM =============================================================================
+
+REM Prepare the runtime log. Write a header indicating the build start.
+echo Installing dependencies... > log.txt
+REM Install required Python libraries. Output is sent to the console so you
+REM can see progress; it is not redirected to the log file to avoid
+REM simultaneously writing to the file when Python opens it for logging.
+python -m pip install --user numpy sounddevice pygame
+if %errorlevel% neq 0 (
+    echo Failed to install dependencies. See the console output for details.
+    pause
+    goto :EOF
+)
+
+REM Note in the log that the application is starting.
+echo Starting Audio Radar... >> log.txt
+REM Launch the application by running the main script directly. The imports
+REM inside main.py handle both execution as a script and as a module.
+python main.py
+
+echo Application exited. See log.txt for details.
+pause
+--- audio_radar/visualization.py ---
+"""Graphical visualisation for the Audio Radar project.
+
+This module uses Pygame to create a simple 2D overlay that shows the
+direction of detected sound events (footsteps and gunshots). Eight
+radial bars emanate from the centre of the window, one for each
+compass direction (N, NE, E, SE, S, SW, W, NW). When an event is
+detected the corresponding bar lights up briefly with a colour
+indicating the type of sound.
+
+Users can adjust the width, height and transparency of the bars at
+runtime via keyboard controls:
+
+* ``Z/X`` – increase/decrease bar width
+* ``C/V`` – increase/decrease bar height
+* ``B/N`` – increase/decrease bar transparency
+
+These adjustments are saved between sessions if written back to
+``config.json`` by the calling code. Collision detection prevents bars
+from overlapping by clamping the width to a sensible maximum.
+
+Note that Pygame must be installed for this module to function. The
+visualisation runs in its own loop; use ``trigger_event`` to signal
+detected sounds from another thread.
+"""
+
+from __future__ import annotations
+
+try:
+    import pygame
+except ImportError:
+    pygame = None  # type: ignore
+import math
+import time
+from typing import Tuple, List
+
+
+class Bar:
+    """Represents a single radial bar on the visualisation.
+
+    Each bar knows its orientation (angle in radians), size and the
+    duration for which it should remain lit after an event. The bar is
+    drawn as a rotated rectangle anchored at the centre of the screen.
+    """
+
+    def __init__(
+        self,
+        angle_deg: float,
+        width: int,
+        height: int,
+        transparency: int,
+        colour_footstep: Tuple[int, int, int] = (0, 255, 0),
+        colour_shot: Tuple[int, int, int] = (255, 0, 0),
+    ) -> None:
+        self.angle = math.radians(angle_deg)
+        self.width = width
+        self.height = height
+        self.transparency = transparency
+        self.colour_footstep = colour_footstep
+        self.colour_shot = colour_shot
+        self.event_end_time = 0.0
+        self.event_type: str | None = None
+
+    def trigger(self, event_type: str, duration: float = 0.5) -> None:
+        """Light up this bar for a given duration.
+
+        Parameters
+        ----------
+        event_type : str
+            Either 'footstep' or 'shot'. Determines the colour used.
+        duration : float
+            Number of seconds the bar remains lit.
+        """
+        self.event_type = event_type
+        self.event_end_time = time.time() + duration
+
+    def update(self) -> None:
+        """Update bar state based on the current time."""
+        if time.time() > self.event_end_time:
+            self.event_type = None
+
+    def draw(self, surface: pygame.Surface, center: Tuple[int, int]) -> None:
+        """Draw the bar onto the given surface.
+
+        Parameters
+        ----------
+        surface : pygame.Surface
+            Surface on which to draw.
+        center : tuple
+            (x, y) coordinates of the centre of the radial diagram.
+        """
+        if self.event_type is None:
+            return
+        # Choose colour based on event type
+        colour = self.colour_shot if self.event_type == 'shot' else self.colour_footstep
+        # Create an intermediate surface with per‑pixel alpha
+        bar_surf = pygame.Surface((self.width, self.height), pygame.SRCALPHA)
+        # Fill with chosen colour and transparency
+        bar_surf.fill((*colour, self.transparency))
+        # Rotate surface around its centre
+        rotated = pygame.transform.rotate(bar_surf, -math.degrees(self.angle))
+        rect = rotated.get_rect()
+        # Position such that one end of the bar touches the centre and the bar extends outward
+        # Compute offset vector for the midpoint of the bar's bottom edge in rotated space
+        # In local coords the bar's top left is (0,0), we want to align the bottom centre (width/2, height)
+        # After rotation, we compute how far that point moves from the rotated surface's topleft
+        w_local, h_local = self.width, self.height
+        # Point to align in the unrotated bar
+        point = pygame.Vector2(w_local / 2, h_local)
+        # Rotate that point around the centre of the bar surface
+        rot_point = point.rotate(-math.degrees(self.angle))
+        # Compute top‑left position so that rot_point + top_left = centre
+        top_left_x = center[0] - rot_point.x
+        top_left_y = center[1] - rot_point.y
+        surface.blit(rotated, (top_left_x, top_left_y))
+
+
+class Visualizer:
+    """Pygame visualisation showing eight directional bars.
+
+    Use the ``trigger_event`` method to light up a bar corresponding to
+    either a footstep or a gunshot. The bars will fade after a short
+    period. Keyboard controls allow dynamic adjustment of bar width,
+    height and transparency. The ``run`` method blocks until the user
+    closes the window.
+    """
+
+    DIRECTIONS_DEG = [0, 45, 90, 135, 180, 225, 270, 315]
+    MAX_BAR_WIDTH = 120
+    MIN_BAR_WIDTH = 10
+    MAX_BAR_HEIGHT = 400
+    MIN_BAR_HEIGHT = 50
+    MAX_TRANSPARENCY = 255
+    MIN_TRANSPARENCY = 20
+
+    def __init__(self, bar_width: int = 40, bar_height: int = 200, transparency: int = 180) -> None:
+        if pygame is None:
+            raise RuntimeError("Pygame library is required for Visualizer")
+        # Initialise Pygame only once
+        pygame.init()
+        self.screen = pygame.display.set_mode((600, 600))
+        pygame.display.set_caption("Audio Radar")
+        self.clock = pygame.time.Clock()
+        # Create bars for each direction
+        self.bars: List[Bar] = [
+            Bar(angle_deg=d, width=bar_width, height=bar_height, transparency=transparency)
+            for d in self.DIRECTIONS_DEG
+        ]
+        self.bar_width = bar_width
+        self.bar_height = bar_height
+        self.transparency = transparency
+
+    def trigger_event(self, event_type: str) -> None:
+        """Light up the appropriate bar for a detected event.
+
+        Parameters
+        ----------
+        event_type : str
+            Either 'footstep' or 'shot'. Uses the event type to colour
+            the bar appropriately. The bar is chosen by mapping the
+            event type to a fixed direction: footsteps light up the
+            'front' bar (0°) and shots light up the bar behind the
+            player (180°). You can customise this mapping by editing
+            this method.
+        """
+        if not self.bars:
+            return
+        # Map event type to a bar index. Footsteps: front; shots: back.
+        index = 0 if event_type == 'footstep' else 4
+        bar = self.bars[index]
+        bar.trigger(event_type)
+
+    def _clamp_values(self) -> None:
+        """Ensure bar width/height/transparency remain within safe bounds."""
+        self.bar_width = max(self.MIN_BAR_WIDTH, min(self.bar_width, self.MAX_BAR_WIDTH))
+        self.bar_height = max(self.MIN_BAR_HEIGHT, min(self.bar_height, self.MAX_BAR_HEIGHT))
+        self.transparency = max(self.MIN_TRANSPARENCY, min(self.transparency, self.MAX_TRANSPARENCY))
+        # Update bars with new sizes
+        for b in self.bars:
+            b.width = self.bar_width
+            b.height = self.bar_height
+            b.transparency = self.transparency
+
+    def run(self) -> None:
+        """Enter the main Pygame loop.
+
+        This loop updates the display at ~60 Hz. It listens for
+        keyboard events to adjust bar properties and handles window
+        close events. Bars automatically fade when their event
+        duration expires.
+        """
+        running = True
+        while running:
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    running = False
+                elif event.type == pygame.KEYDOWN:
+                    if event.key == pygame.K_z:
+                        self.bar_width += 2
+                    elif event.key == pygame.K_x:
+                        self.bar_width -= 2
+                    elif event.key == pygame.K_c:
+                        self.bar_height += 10
+                    elif event.key == pygame.K_v:
+                        self.bar_height -= 10
+                    elif event.key == pygame.K_b:
+                        self.transparency += 10
+                    elif event.key == pygame.K_n:
+                        self.transparency -= 10
+                    # Clamp after adjustments
+                    self._clamp_values()
+
+            # Clear screen
+            self.screen.fill((0, 0, 0))
+            # Update and draw bars
+            center = (self.screen.get_width() // 2, self.screen.get_height() // 2)
+            for bar in self.bars:
+                bar.update()
+                bar.draw(self.screen, center)
+            pygame.display.flip()
+            self.clock.tick(60)
+
+        pygame.quit()
+--- audio_radar/audio_capture.py ---
+"""Audio capture utilities for the Audio Radar project.
+
+This module wraps the ``sounddevice`` library to provide a simple
+interface for listing audio devices and capturing audio in real time.
+It exposes two helper functions to list input and output devices and
+an ``AudioStream`` class that simplifies opening an input stream and
+delivering blocks of audio samples via a callback. The class is
+designed to work with NumPy arrays and uses a blocking or callback
+style depending on configuration.
+
+The module does not itself perform any analysis; callers should
+subclass ``AudioStream`` or assign to its ``on_data`` attribute a
+function that accepts a NumPy array of shape (frames, channels).
+
+Note that this file does not depend on Pygame and can be used in
+headless contexts. The user must install the ``sounddevice`` package
+for this to function. On Windows you may need to install the
+appropriate PortAudio binaries or use a wheel that bundles them.
+"""
+
+from __future__ import annotations
+
+try:
+    import sounddevice as sd
+except ImportError:
+    sd = None  # type: ignore
+
+import numpy as np  # type: ignore
+
+from typing import Callable, Iterable, List, Tuple, Optional
+
+
+def list_audio_input_devices() -> List[Tuple[int, str]]:
+    """Return a list of available audio input devices.
+
+    Each entry in the returned list is a tuple of the device index and
+    the human‑readable name. If ``sounddevice`` is not available an
+    empty list is returned.
+    """
+    if sd is None:
+        return []
+    devices = sd.query_devices()
+    results: List[Tuple[int, str]] = []
+    for idx, dev in enumerate(devices):
+        if dev.get("max_input_channels", 0) > 0:
+            results.append((idx, dev.get("name", f"Device {idx}")))
+    return results
+
+
+def list_audio_output_devices() -> List[Tuple[int, str]]:
+    """Return a list of available audio output devices.
+
+    Each entry in the returned list is a tuple of the device index and
+    the human‑readable name. If ``sounddevice`` is not available an
+    empty list is returned.
+    """
+    if sd is None:
+        return []
+    devices = sd.query_devices()
+    results: List[Tuple[int, str]] = []
+    for idx, dev in enumerate(devices):
+        if dev.get("max_output_channels", 0) > 0:
+            results.append((idx, dev.get("name", f"Device {idx}")))
+    return results
+
+
+class AudioStream:
+    """Capture audio from a specified input device and deliver blocks to a callback.
+
+    Parameters
+    ----------
+    input_device : Optional[int]
+        The index of the input device to use. If ``None`` the system
+        default input is used.
+    samplerate : int
+        The sampling rate in samples per second. 44100 Hz is a good
+        default for most PC sound cards and matches the typical output
+        of games on Windows.
+    blocksize : int
+        The number of frames delivered to the callback at a time. A
+        lower block size decreases latency but increases CPU usage.
+
+    Notes
+    -----
+    The ``on_data`` attribute is a callback which is invoked with a
+    NumPy array of shape ``(frames, channels)``. Assign a function to
+    ``on_data`` to perform analysis on each block of samples. The
+    callback should not block for long periods as it is executed in
+    the PortAudio callback thread.
+    """
+
+    def __init__(self, input_device: Optional[int] = None, samplerate: int = 44100, blocksize: int = 1024) -> None:
+        if sd is None:
+            raise RuntimeError("sounddevice library is required for AudioStream")
+        self.input_device = input_device
+        self.samplerate = samplerate
+        self.blocksize = blocksize
+        self.stream: Optional[sd.InputStream] = None
+        self.on_data: Callable[[np.ndarray], None] = lambda data: None
+
+    def start(self) -> None:
+        """Open the stream and begin capturing audio.
+
+        Audio blocks will be delivered to the ``on_data`` callback
+        attribute. This call returns immediately – the stream runs in
+        a separate thread managed by PortAudio. Use ``stop`` to close
+        the stream when finished.
+        """
+        def callback(indata: np.ndarray, frames: int, time, status) -> None:
+            # Convert input to a contiguous NumPy array and invoke callback
+            if frames > 0:
+                self.on_data(indata.copy())
+        self.stream = sd.InputStream(
+            device=self.input_device,
+            channels=sd.query_devices(self.input_device, 'input')['max_input_channels'] if self.input_device is not None else 2,
+            samplerate=self.samplerate,
+            blocksize=self.blocksize,
+            callback=callback,
+        )
+        self.stream.start()
+
+    def stop(self) -> None:
+        """Stop capturing audio and close the stream."""
+        if self.stream is not None:
+            self.stream.stop()
+            self.stream.close()
+            self.stream = None
+--- audio_radar/config.json ---
+{
+  "input_device": null,
+  "output_device": null,
+  "bar_width": 40,
+  "bar_height": 200,
+  "transparency": 180
+}
+--- audio_radar/README.md ---
+# Audio Radar
+
+Audio Radar is a proof‑of‑concept Python application that monitors audio
+from your PC in real time, detects specific sound events (footsteps and
+gunshots) and displays a directional overlay to help you locate the
+source of these sounds. It is primarily designed for players with
+hearing impairments or anyone who wants an additional visual cue while
+gaming.
+
+## Features
+
+* **Real‑time audio capture** using the `sounddevice` library and your
+  sound card’s loopback interface (e.g. “Stereo Mix” on Sound Blaster
+  cards).
+* **Sound event detection** via simple amplitude heuristics – you can
+  customise thresholds in `sound_analysis.py` to suit your game.
+* **Visual overlay** with eight radial bars drawn using `pygame` that
+  light up when a footstep or shot is detected. Bars fade after half a
+  second and are colour‑coded (green for steps, red for shots).
+* **Configurable bar sizes and transparency** via keyboard controls
+  (Z/X to change width, C/V to change height, B/N to change opacity).
+* **Custom audio device selection** through `config.json`; run
+  `python main.py --list-devices` to discover available devices.
+* **Logging** to `log.txt` so you can troubleshoot audio problems or
+  unexpected behaviour.
+
+## Prerequisites
+
+This project targets Windows 11 but should work on other platforms with
+minor adjustments. You will need:
+
+* Python 3.8 or newer
+* `sounddevice` for audio capture
+* `pygame` for the graphical interface
+* `numpy` for basic signal processing
+
+Because the container environment used to generate this archive cannot
+install packages, please install the required libraries yourself. You
+can use the included batch script `RUN_BUILD_ALL.cmd` to install
+dependencies on Windows using `pip`.
+
+## Installation and Usage
+
+1. **Extract** the archive to a convenient folder.
+2. Open a **PowerShell or Command Prompt** in that folder.
+3. Uruchom `RUN_BUILD_ALL.cmd`. Skrypt ten zainstaluje brakujące
+   biblioteki i uruchomi aplikację. Na początku tworzy plik `log.txt`
+   i zapisuje nagłówek „Installing dependencies…”. Następnie pip
+   instaluje wymagane pakiety (zapis trafia do konsoli, nie do logu) i
+   aplikacja jest uruchamiana. Logi aplikacji (zdefiniowane w kodzie
+   Python) trafiają do `audio_radar/log.txt` i zaczynają się od
+   informacji o konfiguracji.
+4. Możesz uruchomić program również ręcznie: wejdź do folderu
+   `audio_radar` i wywołaj:
+
+   ```
+   python main.py
+   ```
+
+5. Gdy pojawi się okno programu, zobaczysz pusty radar. Włącz
+   your favourite game and ensure its audio is routed to a loopback
+   device (e.g. enable “Stereo Mix” on your Sound Blaster Z SE and set
+   it as the default recording device in Windows). Footsteps should
+   trigger a green bar at the top of the radar and gunshots should
+   trigger a red bar at the bottom.
+6. Adjust the bar sizes and transparency with the keyboard controls:
+   * Z/X – decrease/increase bar width
+   * C/V – decrease/increase bar height
+   * N/B – decrease/increase transparency
+7. To select a specific audio device open `config.json` in a text
+   editor and set `input_device` to the index of your loopback device.
+   You can obtain the index by running `python main.py --list-devices`.
+
+## Limitations
+
+* The detection algorithms are simple heuristics and may produce
+  false positives or miss events in noisy games. Feel free to
+  experiment with the thresholds defined in `sound_analysis.py`.
+* Bars are mapped to two directions only (front for footsteps,
+  back for shots). You can map different events to different
+  directions by editing `Visualizer.trigger_event`.
+* The program currently does not support audio output; it
+  consumes input only. The `output_device` field in the configuration
+  file is reserved for future use.
+
+## Troubleshooting
+
+If you encounter issues:
+
+* Ensure that `sounddevice`, `pygame` and `numpy` are installed and that
+  your audio loopback device is enabled. You can verify installation
+  by running `python -c "import sounddevice, pygame, numpy"`.
+* Po uruchomieniu program wypisuje w konsoli ścieżkę, do której zapisywany jest plik `log.txt` (domyślnie w folderze `audio_radar`). Jeśli szukasz logu w niewłaściwym miejscu, może wydawać się, że się nie tworzy. Sprawdź lokalizację podaną w komunikacie `[AudioRadar] Logging to …`.
+* Use `--list-devices` to confirm that your loopback device is
+  recognised by the program.
+
+## Credits
+
+This project was generated by OpenAI’s ChatGPT based on user
+requirements for a simple yet extensible audio radar. Feel free to
+modify and expand it to suit your needs.
+--- audio_radar/main.py ---
+"""Main entry point for the Audio Radar program.
+
+This script wires together the audio capture, sound analysis and visualisation
+modules. It reads configuration from ``config.json`` if present and writes
+to ``log.txt`` to record important runtime events. When run on a system with
+the appropriate dependencies installed (numpy, sounddevice and pygame) it
+captures audio from the specified input device, analyses the stream to
+determine whether footsteps or gunshots have occurred and then lights up
+visual indicators on the screen accordingly.
+
+Configuration
+-------------
+The configuration file is a JSON object with the following keys:
+
+``input_device``
+    Index of the audio input device to use. If ``null`` (or not present) the
+    system default input device will be used. You can find available devices
+    by running ``python main.py --list-devices`` on a system with
+    ``sounddevice`` installed.
+
+``output_device``
+    Index of the audio output device. This setting is currently unused by
+    this script but is provided for completeness should you wish to route
+    audio to a specific output device. Leave as ``null`` to use the system
+    default.
+
+``bar_width``
+    Width in pixels of each direction bar in the visualisation. Larger
+    values result in thicker bars. The program enforces sensible limits
+    internally to avoid overlapping bars.
+
+``bar_height``
+    Height in pixels of each direction bar in the visualisation. Bars extend
+    from the centre of the window outwards, so increasing the height will
+    cause them to reach further towards the screen edges.
+
+``transparency``
+    An integer between 0 and 255 controlling the opacity of the bars when
+    activated. Lower values make the bars more transparent. Bars are not
+    drawn when no sound event has been detected.
+
+Usage
+-----
+On a Windows system with a Sound Blaster Z SE card you should first
+configure the card to expose a loopback (e.g. "Stereo Mix" or
+"What U Hear") and set that as the default recording device. Once
+dependencies are installed (see ``RUN_BUILD_ALL.cmd``) you can run this
+script directly with:
+
+    python main.py
+
+To list available input and output devices run:
+
+    python main.py --list-devices
+
+This will print a numbered list of devices which you can then copy into
+``config.json``. Changes to the configuration are detected on restart.
+"""
+
+import argparse
+import json
+import logging
+import threading
+from pathlib import Path
+
+try:
+    import sounddevice as sd
+except ImportError:
+    sd = None  # sounddevice is not available in this environment
+
+try:
+    import numpy as np
+except ImportError:
+    np = None
+
+# Make sibling modules importable both when running as part of the audio_radar
+# package (e.g. ``python -m audio_radar.main``) and when executing this file
+# directly as a script (``python main.py``). When run as a script the
+# ``audio_radar`` package name will not be in ``sys.modules``, so importing
+# submodules via ``audio_radar.*`` will fail. To handle both cases we
+# conditionally import from ``audio_radar`` and fall back to importing from
+# the current directory after adding it to ``sys.path``.
+import os
+import sys
+sys.path.append(os.path.dirname(__file__))
+try:
+    # Attempt to import via the package name when running as module
+    from audio_radar.audio_capture import list_audio_input_devices, list_audio_output_devices, AudioStream
+    from audio_radar.sound_analysis import detect_event
+    from audio_radar.visualization import Visualizer
+except ImportError:
+    # Fallback to local imports when running as a script
+    from audio_capture import list_audio_input_devices, list_audio_output_devices, AudioStream  # type: ignore
+    from sound_analysis import detect_event  # type: ignore
+    from visualization import Visualizer  # type: ignore
+
+
+CONFIG_FILE = Path(__file__).parent / "config.json"
+LOG_FILE = Path(__file__).parent / "log.txt"
+
+
+def load_config() -> dict:
+    """Load configuration from CONFIG_FILE.
+
+    Returns a dictionary with defaults applied when keys are missing. If
+    the file does not exist an empty configuration is returned.
+    """
+    defaults = {
+        "input_device": None,
+        "output_device": None,
+        "bar_width": 40,
+        "bar_height": 200,
+        "transparency": 180,
+    }
+    if CONFIG_FILE.exists():
+        try:
+            with open(CONFIG_FILE, "r", encoding="utf-8") as f:
+                user_cfg = json.load(f)
+            defaults.update({k: user_cfg.get(k, v) for k, v in defaults.items()})
+        except Exception as exc:
+            logging.error("Failed to load configuration: %s", exc)
+    return defaults
+
+
+def save_config(cfg: dict) -> None:
+    """Save configuration to CONFIG_FILE."""
+    try:
+        with open(CONFIG_FILE, "w", encoding="utf-8") as f:
+            json.dump(cfg, f, indent=2)
+    except Exception as exc:
+        logging.error("Failed to save configuration: %s", exc)
+
+
+def list_devices() -> None:
+    """Print available audio input and output devices."""
+    if sd is None:
+        print("sounddevice library not available; cannot list devices.")
+        return
+    print("Audio input devices:")
+    for idx, name in list_audio_input_devices():
+        print(f"  {idx}: {name}")
+    print("\nAudio output devices:")
+    for idx, name in list_audio_output_devices():
+        print(f"  {idx}: {name}")
+
+
+def run(cfg: dict) -> None:
+    """Run the audio processing and visualisation loop.
+
+    The function creates an ``AudioStream`` using the selected input
+    device, then passes audio chunks to ``detect_event`` and forwards
+    notifications to the ``Visualizer``. A separate thread is used for
+    capturing audio so that the Pygame loop remains responsive.
+    """
+    # Configure logging to append to log file
+    # Set up logging. If the log file cannot be opened the logging
+    # module will quietly ignore it, so we also print a message to
+    # standard output with the resolved path. The log file lives in
+    # the same directory as this script (`audio_radar/log.txt`).
+    logging.basicConfig(
+        filename=str(LOG_FILE),
+        filemode="a",
+        level=logging.INFO,
+        format="%(asctime)s [%(levelname)s] %(message)s",
+    )
+    logging.info("Starting Audio Radar with configuration: %s", cfg)
+    try:
+        # Inform the user where logs are written in case they look in the wrong place
+        print(f"[AudioRadar] Logging to {LOG_FILE.resolve()}")
+    except Exception:
+        # In rare cases resolve() may fail if path does not exist yet
+        print(f"[AudioRadar] Logging to {LOG_FILE}")
+
+    # Create visualisation
+    vis = Visualizer(
+        bar_width=int(cfg.get("bar_width", 40)),
+        bar_height=int(cfg.get("bar_height", 200)),
+        transparency=int(cfg.get("transparency", 180)),
+    )
+
+    # Instantiate audio stream
+    if sd is None or np is None:
+        logging.error("Required libraries not available: sounddevice=%s, numpy=%s", sd, np)
+        print("Required libraries are missing. Please install dependencies before running.")
+        return
+
+    input_device = cfg.get("input_device")
+    stream = AudioStream(input_device=input_device, samplerate=44100, blocksize=1024)
+
+    # Define callback to handle audio blocks
+    def on_audio_data(samples):
+        event = detect_event(samples)
+        if event:
+            logging.info("Detected event: %s", event)
+            vis.trigger_event(event)
+
+    stream.on_data = on_audio_data
+
+    # Start audio stream in a background thread
+    def audio_thread():
+        try:
+            stream.start()
+        except Exception as exc:
+            logging.error("Audio stream error: %s", exc)
+            print(f"Audio stream error: {exc}")
+    t = threading.Thread(target=audio_thread, daemon=True)
+    t.start()
+
+    # Run visualisation (blocking until window closed)
+    try:
+        vis.run()
+    finally:
+        stream.stop()
+        logging.info("Audio Radar stopped.")
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(description="Audio Radar")
+    parser.add_argument(
+        "--list-devices",
+        action="store_true",
+        help="list available audio input/output devices and exit",
+    )
+    args = parser.parse_args()
+    if args.list_devices:
+        list_devices()
+        return
+
+    cfg = load_config()
+    run(cfg)
+
+
+if __name__ == "__main__":
+    main()
+--- audio_radar/log.txt ---
+

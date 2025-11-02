@@ -1,0 +1,237 @@
+AudioGames ONE — FULL TECHNICAL GUIDE PL (v9.3.26)
+=================================================
+
+Autor: Zespół AudioGames / GPT-5 Technical Engineering
+Data: 2025-10-24
+Wersja systemu: 9.3.26 (stabilna, z naprawionym systemem layoutów i pełnym loggingiem)
+
+=========================================================================
+I. CEL I CHARAKTER PROJEKTU
+---------------------------
+AudioGames ONE to zaawansowany system wizualizacji kierunku, natężenia i struktury dźwięku w czasie rzeczywistym.
+Projekt powstał z myślą o zastosowaniach w grach FPS, testach akustycznych i środowiskach immersyjnych VR/AR.
+
+System łączy analizę dźwięku (FFT, ILD, RMS) z wizualizacją w formie dynamicznego interfejsu HUD —
+zawierającego radar, beacony, paski pasm i ramkę LED rozmieszczoną wzdłuż krawędzi ekranu.
+
+AudioGames ONE jest w pełni modularny i przenośny (portable build). Jądro programu stanowi
+kombinacja PyQt5 (interfejs) i sounddevice/scipy/numpy (analiza sygnału audio).
+
+=========================================================================
+II. ARCHITEKTURA OGÓLNA I PRZEPŁYW DANYCH
+------------------------------------------
+1. Przepływ sygnału dźwiękowego:
+   - WASAPI loopback rejestruje dane z wybranego urządzenia audio.
+   - Dane trafiają do wątku `AudioEngine`, który realizuje analizę FFT i oblicza parametry akustyczne.
+   - Wyniki (kąt, poziom, pasma) przekazywane są do wątku GUI poprzez kolejkę (Queue).
+
+2. Przepływ danych sterujących (UI):
+   - Użytkownik zmienia ustawienia (gain, threshold, kolory LED, układ HUD) → zmiany zapisywane w JSON.
+   - `MainWindow` synchronizuje komponenty wizualne (`RadarWidget`, `LEDBezel`, `MiniBands`, `EdgeBeacons`)
+     w zależności od danych z silnika audio.
+   - Aktualizacje GUI realizowane są co 16 ms przez QTimer (60 FPS).
+
+3. Komunikacja między modułami:
+   - Wszystkie wątki (audio, autoprofile, GUI) są odseparowane i komunikują się przez sygnały Qt lub kolejki.
+   - System `_safe()` otacza każde wywołanie metod UI, rejestrując błędy w logach zamiast przerywać działanie.
+
+=========================================================================
+III. STRUKTURA PROJEKTU
+-----------------------
+Pakiet: `GameAudioDirectionDetector`
+
+| Moduł | Funkcja |
+|--------|----------|
+| **__main__.py** | Punkt startowy, obsługa logowania globalnego, inicjalizacja MainWindow |
+| **main_window.py** | Główna logika GUI, zakładki, panele HUD, audio, profile i logi |
+| **audio_engine.py** | Obsługa dźwięku: rejestracja, analiza FFT, ILD, RMS |
+| **hud.py** | Komponenty wizualne: radar, beacony, LED, pasma |
+| **radar_float.py** | Okno pływające radaru z geometrią i pamięcią stanu |
+| **profiles.py** | Zarządzanie profilami akustycznymi (JSON) |
+| **autoprofile.py** | Automatyczne przełączanie profili wg aktywnego procesu |
+| **codex_patch.py** | Nakładka logująca i rozszerzająca (dla wersji deweloperskich) |
+
+=========================================================================
+IV. MODUŁY I ICH ARCHITEKTURA
+------------------------------
+
+### 1. audio_engine.py
+Klasa `AudioEngine` – odpowiedzialna za akwizycję dźwięku i analizę pasm.
+
+Kluczowe elementy:
+```python
+self.stream = sd.InputStream(
+    device=target_device,
+    channels=channels,
+    samplerate=self.samplerate,
+    blocksize=self.blocksize,
+    callback=self._cb,
+    extra_settings=extra
+)
+```
+
+Funkcja `_cb()` przetwarza każdy blok dźwięku:
+- `FFT` (Fast Fourier Transform) z oknem Hann,
+- obliczenie mocy sygnału w 3 pasmach (low, mid, high),
+- wyliczenie kąta `angle = ILD * 90°`,
+- zastosowanie bramki szumu (`noise_gate`),
+- wynik w postaci obiektu `AudioMetrics(angle, level, bands)` trafia do `outq`.
+
+W przypadku błędu sterownika lub braku kanału stereo:
+- automatyczny fallback (`AUDIO_FALLBACK_LOOPBACK_TO_INPUT`),
+- wybór dostępnego wejścia mikrofonowego.
+
+### 2. hud.py
+Moduł renderujący elementy HUD:
+- `RadarWidget` – główny wskaźnik kierunku dźwięku (kąt, poziom),
+- `EdgeBeacons` – paski LED górny/dolny/lewy/prawy,
+- `MiniBands` – wizualizacja energii pasm (low/mid/high),
+- `LEDBezel` – ramka świetlna wokół ekranu.
+
+Efekty świetlne LED korzystają z funkcji Gaussa do wygładzenia intensywności:
+```python
+def gauss(d): return max(0.0, min(1.0, math.e**(-(d*d)/8.0)))
+```
+
+### 3. radar_float.py
+Pływający radar (`RadarFloat`) to osobne okno Qt:
+- niezależna przezroczystość i pozycja,
+- zapisywana geometria w `settings.json → window.radar_float`,
+- obsługuje zdarzenia myszy: przesuwanie, skalowanie (kółko), menu kontekstowe,
+- sygnał `closed` informuje MainWindow o zamknięciu.
+
+### 4. main_window.py
+Najbardziej złożony moduł – scala wszystko.
+Zawiera:
+- obsługę 6 zakładek (`HUD`, `Ustawienia HUD`, `Układ HUD`, `Audio`, `Profile`, `Logi`),
+- system `_safe()` (bezpieczne wywołania z logowaniem błędów),
+- system `_log()` (zdarzenia UI zapisane w `runtime.log`),
+- obsługę presetów layoutów (v9.3.26).
+
+=========================================================================
+V. SILNIK AUDIO — DETEKCJA I ALGORYTMY
+---------------------------------------
+1. **WASAPI Loopback** – przechwytywanie wyjścia systemowego bez utraty jakości.
+2. **FFT** – analiza widma amplitudowego w oknie 1024 próbek.
+3. **ILD (Interaural Level Difference)** – różnica RMS między kanałem L i R:
+   ```python
+   ild = (r - l) / (r + l + 1e-9)
+   angle = ild * 90.0
+   ```
+4. **Dynamiczna bramka szumu** – eliminuje niskie poziomy sygnału.
+5. **Przetwarzanie pasmowe** – trzy zakresy częstotliwości definiowane w JSON.
+6. **Filtr wygładzający (smoothing)** – ogranicza migotanie LED-ów i radaru.
+
+=========================================================================
+VI. SYSTEM HUD I UKŁAD GRAFICZNY
+--------------------------------
+HUD składa się z czterech głównych modułów:
+- RadarWidget,
+- EdgeBeacons,
+- MiniBands,
+- LEDBezel.
+
+Każdy element może być niezależnie włączany/wyłączany przez checkboxy GUI.
+
+**Presety układu (Layouts):**
+- Zapisywane w `portable/bin/layouts/*.json`,
+- Zawierają kolejność elementów HUD,
+- Wczytanie presetu ustawia priorytet i proporcje (stretch) w layoucie.
+
+Przykład pliku layoutu:
+```json
+{
+  "order": ["radar", "beacony", "pasy", "led"]
+}
+```
+
+=========================================================================
+VII. SYSTEM PROFILI I AUTOPROFILOWANIE
+--------------------------------------
+Moduł `profiles.py` ładuje profile z `portable/bin/profiles`.
+
+`autoprofile.py` (wątek daemon) monitoruje aktywne okno systemowe co 1 sekundę.
+Jeżeli wykryje proces zdefiniowany w `settings.json → autoprofile.map`, wywołuje `MainWindow._auto_profile_apply()`.
+
+=========================================================================
+VIII. LOGOWANIE I DIAGNOSTYKA
+------------------------------
+Wszystkie logi trafiają do `portable/logs/runtime.log`.
+Przykładowe wpisy:
+```
+UI_EVENT_JSON: {"ts": 1735055571431, "event": "audio_start_ok"}
+AUDIO_FALLBACK_LOOPBACK_TO_INPUT True
+UNCAUGHT_EXCEPTION_JSON: {"type": "ValueError", "message": "invalid gain"}
+```
+
+Funkcje diagnostyczne:
+- `_log(event, **kw)` — zapisuje każde działanie GUI.
+- `_safe(fn, label)` — wywołuje funkcję z try/except i zapisuje błąd w logu.
+- `_warn(text, transient)` — wyświetla komunikat w banerze GUI.
+
+=========================================================================
+IX. PROCES BUDOWY I PORTABLE
+-----------------------------
+System kompilacji oparty jest o PyInstaller i dwa skrypty:
+
+### build.spec
+- Wejście: `src/GameAudioDirectionDetector/__main__.py`
+- Dołączone dane: `portable/bin`, `assets/AudioGames.ico`
+- Wymuszone `collect_submodules('GameAudioDirectionDetector')`
+
+### RUN_BUILD_ALL.cmd
+Kolejność działań:
+1. Tworzenie `.venv` i instalacja bibliotek.
+2. Kompilacja aplikacji.
+3. Automatyczne kopiowanie `_internal` do `portable/_internal`.
+4. Generacja `START_HERE.bat` z logowaniem uruchomienia.
+
+=========================================================================
+X. ZMIANY W WERSJI v9.3.26
+---------------------------
+- Dodano brakujące metody `_reload_layout_list`, `_apply_layout_from_list`, `_save_layout_preset`, `_load_layout_preset`.
+- Poprawiono połączenia przycisków w zakładce **Układ HUD** (bez crasha przy starcie).
+- Stabilny pływający radar z pełnym logowaniem błędów.
+- Ujednolicone build.spec (pełna ikona, datas, hiddenimports).
+- Poprawiona obsługa wyjątków i logowanie `_safe()`.
+- Optymalizacja renderingu LED (mniejsze obciążenie CPU).
+- Zaktualizowana dokumentacja i konfiguracja portable.
+
+=========================================================================
+XI. PRZYKŁADY LOGÓW I STRUKTUR JSON
+------------------------------------
+
+**runtime.log:**
+```
+=== START 2025-10-24 21:55:13 ===
+AUDIO_START {"device": 3, "loopback": true}
+AUDIO_CHANNELS {"channels": 2}
+UI_EVENT_JSON: {"ts": 1735055571431, "event": "apply_layout"}
+UNCAUGHT_EXCEPTION_JSON: {"type": "KeyError", "message": "layout missing"}
+```
+
+**settings.json (fragment):**
+```json
+"hud": {
+  "show_radar": true,
+  "show_ledbezel": true,
+  "led": { "h_segments": 28, "v_segments": 18, "smoothing": 0.35 },
+  "layout": { "radar_stretch": 5 }
+}
+```
+
+=========================================================================
+XII. PODSUMOWANIE
+-----------------
+AudioGames ONE v9.3.26 stanowi kompletny, stabilny system analizy i wizualizacji audio.
+Wersja 9.3.26 eliminuje błędy startowe, wzmacnia system presetów i zapewnia spójność między GUI a silnikiem audio.
+
+System gotowy do dalszej rozbudowy o:
+- multi-monitor HUD,
+- adaptacyjną analizę kierunku (ILD + ITD),
+- detekcję ruchu źródeł dźwięku,
+- integrację z AI-analityką sygnału akustycznego.
+
+=========================================================================
+KONIEC DOKUMENTU — AudioGames ONE v9.3.26
+=================================================

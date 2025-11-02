@@ -1,0 +1,2149 @@
+
+### ./README.md
+Audio Radar — Arc Raiders Test Package (v5.17)
+=================================================
+
+Ta wersja programu **Audio Radar** rozszerza funkcjonalność poprzednich wydań
+i wprowadza kilka istotnych usprawnień, które mają ułatwić pracę z
+urządzeniami loopback oraz dopasować wygląd interfejsu do współczesnych
+standardów.  Główne zmiany względem wydania 5.16 to:
+
+* **Wybór urządzenia bezpośrednio w interfejsie** – w panelu sterowania
+  po prawej stronie okna znajduje się selector „Urządzenie”, pozwalający
+  przełączać się między dostępnymi źródłami dźwięku.  Program sam
+  wykrywa wszystkie urządzenia obsługujące żądaną liczbę kanałów i
+  wyświetla ich nazwy; zmiana urządzenia powoduje natychmiastowe
+  przestawienie przechwytywania bez konieczności ponownego
+  uruchamiania programu.
+* **Skanowanie urządzeń w interfejsie** – oprócz parametru `--scan_devices` 
+  z wiersza poleceń dostępny jest teraz przycisk **Skanuj** w panelu 
+  sterowania. Naciśnięcie tego przycisku powoduje, że aplikacja 
+  automatycznie testuje każde urządzenie z listy i wybiera to, na którym 
+  RMS jest najwyższy.  Funkcja ta pomaga szybko znaleźć właściwe źródło 
+  sygnału w przypadku braku dźwięku.
+* **Interaktywne powiększanie okna** – okno Pygame jest teraz w pełni
+  skalowalne (można je rozciągać myszką); dodatkowo można podać
+  parametry `--width`, `--height` oraz `--controls_width`, aby
+  zdefiniować szerokość, wysokość i szerokość bocznego panelu sterowania.
+  Panel sterowania został przeniesiony na prawą stronę okna i
+  rozciąga się w pionie, zapewniając więcej miejsca na suwaki i
+  przełączniki.
+  Interfejs zachowuje spójność przy zmianie rozmiaru.
+* **Nowy, bardziej nowoczesny interfejs** – zwiększono domyślny
+  rozmiar czcionki i kontrast kolorów, co ułatwia odczyt danych na
+  ekranie.  Przyciski i suwaki są większe, a panel sterowania
+  otrzymał przejrzysty układ.  Dostępne są przełączniki dla „Auto
+  próg”, „Ramka”, „Inne dźwięki” oraz nowe pole wyboru urządzenia.
+* **Zakładki w panelu sterowania** – aby uniknąć nachodzenia na siebie
+  elementów, panel sterowania został podzielony na zakładki: „Detektor”
+  (suwaki i ustawienia detektora), „Widok” (ustawienia wyświetlania
+  takie jak ramka) oraz „Urządzenie” (wybór źródła i przycisk *Skanuj*).
+  Tabulator wyświetla nazwy zakładek w górnej części panelu; kliknięcie
+  w nazwę powoduje przełączenie wyświetlanych elementów, dzięki czemu
+  interfejs nie jest przeładowany nawet przy mniejszych rozdzielczościach.
+
+Zachowano wszystkie funkcje wprowadzone w poprzednich wersjach:
+
+* **Obsługa dźwięku 24‑bit** – program automatycznie wybiera najlepszy
+  dostępny format (16‑bit, 24‑bit, 32‑bit float) i konwertuje go
+  na 16‑bit dla modułu DSP.  Umożliwia to przechwytywanie sygnału z
+  kart dźwiękowych takich jak Sound Blaster Z SE, które pracują w
+  trybie 24‑bit.  PyAudioWPatch obsługuje format `paInt24`, więc
+  nagrywanie w 24‑bit jest możliwehttps://stackoverflow.com/questions/25741655/python-how-to-record-24-bit-audio-with-pyaudio#:~:text=PyAudio%20is%20able%20in%20record,in%20your%20formant%20type.
+* **Dynamiczny próg RMS** – adaptacyjny mechanizm
+  (`--auto_threshold`) dostosowuje próg wykrywania do bieżącego poziomu
+  tła, dzięki czemu detektor reaguje zarówno na głośne, jak i ciche
+  sygnały.  Parametry `--dyn_strength` i `--dyn_smoothing` pozwalają
+  regulować siłę i szybkość adaptacji.
+* **Możliwość wykrywania innych dźwięków** – opcja `--other`
+  włącza trzecią klasę zdarzeń („inne”), wyzwalaną przy amplitudach
+  poniżej progu kroków i strzałów.  Parametr `--other_factor` określa,
+  o ile niższy powinien być próg dla tych dźwięków.
+* **Tester źródła (`--test_source`)** – jednosekundowy odczyt RMS
+  pozwala sprawdzić, czy wybrane urządzenie rzeczywiście przekazuje
+  dźwięk do programu.  Wynik jest wyświetlany w konsoli i logu.
+* **Skanowanie urządzeń (`--scan_devices`)** – automatyczna selekcja
+  urządzenia o największym sygnale przy starcie programu.  Funkcja ta
+  jest pomocna, gdy domyślne urządzenie nie jest poprawne.
+
+### Uruchomienie
+
+1. **Instalacja** – do działania programu wymagany jest Python 3.11,
+   biblioteka `pyaudiowpatch` oraz `pygame`.  Wszystkie zależności
+   instalowane są automatycznie przez skrypt `RUN_BUILD_ALL.cmd`.
+2. **Wykrycie urządzeń** – przed uruchomieniem interfejsu można
+   sprawdzić dostępne urządzenia komendą:
+
+   ```cmd
+   RUN_BUILD_ALL.cmd --list_devices
+   ```
+
+3. **Uruchomienie z UI** – przykładowo, dla 6‑kanałowego strumienia
+   (tryb 5.1) przy częstotliwości 48 kHz:
+
+   ```cmd
+   RUN_BUILD_ALL.cmd --channels 6 --rate 48000 --auto_threshold
+   ```
+
+   Program otworzy okno z radarem i panel sterowania.  W polu
+   „Urządzenie” można wybrać źródło dźwięku (np. „What U Hear” albo
+   „Stereo Mix”) – zmiana jest natychmiastowa.  Parametry
+   „Próg”, „Siła” i „Wygładzenie” sterują detektorem, zaś
+   przełączniki pozwalają włączać adaptacyjny próg, wyświetlanie
+   ramki radarowej oraz wykrywanie cichych dźwięków.
+
+4. **Tryb testowy** – aby zweryfikować sygnał z konkretnego
+   urządzenia, użyj opcji:
+
+   ```cmd
+   RUN_BUILD_ALL.cmd --device_index 3 --channels 6 --rate 48000 --test_source
+   ```
+
+   Wynik średniego RMS z jednosekundowej próbki zostanie wypisany w logu
+   i na konsoli.  Jeśli RMS jest bardzo niski, dźwięk z urządzenia
+   prawdopodobnie nie jest przechwytywany (np. mikser jest wyciszony).
+
+5. **Zmiana wielkości okna** – użyj `--width` i `--height`, aby
+   zainicjować program w żądanym rozmiarze, lub po prostu przeciągnij
+   rogi okna.  Szerokość panelu sterowania można powiększyć parametrem
+   `--controls_width` (domyślnie 240 px) — większa wartość pozostawi
+   więcej miejsca na suwaki, przełączniki i selektor urządzeń.
+
+### Obsługa
+
+Wszystkie opcje wiersza poleceń są szczegółowo opisane w pliku
+`main.py` (funkcja `parse_args`).  Dziennik zdarzeń zapisywany jest
+do pliku `logs/log.txt`.  W przypadku problemów z przechwytywaniem
+dźwięku uruchom program z `--debug_rms` oraz `--test_source`, by
+zebrać dodatkowe informacje diagnostyczne.
+
+
+
+### ./RUN_BUILD_ALL.cmd
+@echo off
+setlocal ENABLEDELAYEDEXPANSION
+rem Audio Radar — RUN_BUILD_ALL.cmd (v5.17, improved)
+
+set "SCRIPT_DIR=%~dp0"
+pushd "%SCRIPT_DIR%"
+
+if not exist "logs" mkdir logs
+if not exist "data" mkdir data
+if not exist "cache" mkdir cache
+
+set "LOG=logs\log.txt"
+if not exist "%LOG%" type nul > "%LOG%"
+
+echo [%date% %time%] RUN_BUILD_ALL v5.17: init >> "%LOG%"
+
+where py >nul 2>nul
+if %errorlevel%==0 ( set PY_CMD=py ) else ( set PY_CMD=python )
+
+if not exist ".venv" (
+  echo [%date% %time%] Tworzenie .venv... >> "%LOG%"
+  %PY_CMD% -m venv .venv >> "%LOG%" 2>&1
+  if errorlevel 1 (
+    echo [%date% %time%] [ERROR] Nie można utworzyć venv >> "%LOG%"
+    exit /b 1
+  )
+)
+call .venv\Scripts\activate.bat >> "%LOG%" 2>&1
+if errorlevel 1 (
+  echo [%date% %time%] [ERROR] Nie można aktywować venv >> "%LOG%"
+  exit /b 1
+)
+
+echo [%date% %time%] Aktualizacja pip... >> "%LOG%"
+python -m pip install --upgrade pip >> "%LOG%" 2>&1
+
+echo [%date% %time%] Instalacja zaleznosci... >> "%LOG%"
+pip install -r requirements.txt >> "%LOG%" 2>&1
+if errorlevel 1 (
+  echo [%date% %time%] [ERROR] Instalacja paczek nie powiodla sie >> "%LOG%"
+  exit /b 1
+)
+
+echo [%date% %time%] Uruchamianie aplikacji... >> "%LOG%"
+python src\main.py %*
+
+set RC=%ERRORLEVEL%
+echo [%date% %time%] Aplikacja zakonczona RC=%RC% >> "%LOG%"
+exit /b %RC%
+
+popd
+endlocal
+
+
+
+### ./logs/log.txt
+2025-10-30T19:42:41.915172Z | INIT | unified log created
+2025-10-30 19:57:08,976 | INFO     | Logger initialized | log_path=logs/log.txt | debug=True
+2025-10-30 19:57:08,976 | INFO     | === Audio Radar START (v5.6) === cfg: rate=48000 ch=2 buf=50ms thr=0.100 device_index=None calibrate=False headless=True
+2025-10-30 19:57:08,976 | WARNING  | PyAudioWPatch nie jest zainstalowany — brak przechwytywania audio.
+2025-10-30 19:57:08,976 | INFO     | Tryb: HEADLESS (bez okna). Zdarzenia beda logowane do pliku.
+
+
+
+### ./requirements.txt
+numpy==2.1.3
+pygame==2.6.1
+pyaudiowpatch>=0.2.12.3,<0.3
+
+
+
+### ./src/audio_loopback.py
+import json, numpy as np, threading, logging, time
+from typing import Any, Optional, Tuple, List
+from pathlib import Path
+try:
+    import pyaudiowpatch as pyaudio
+except Exception:
+    pyaudio = None
+CACHE_FILE = Path("cache/last_device.json")
+def _normalize_index(candidate: Any) -> Optional[int]:
+    try:
+        if candidate is None: return None
+        if isinstance(candidate, int): return int(candidate)
+        if isinstance(candidate, float): return int(candidate)
+        if isinstance(candidate, str): return int(candidate.strip())
+        if isinstance(candidate, (tuple, list)) and candidate: return _normalize_index(candidate[0])
+        if isinstance(candidate, dict):
+            for k in ("index","device_index","id"):
+                if k in candidate: return _normalize_index(candidate[k])
+        return int(candidate)
+    except Exception: return None
+def _load_cache():
+    try:
+        with open(CACHE_FILE,"r",encoding="utf-8") as f: return json.load(f)
+    except Exception: return {}
+def _save_cache(data: dict):
+    try:
+        CACHE_FILE.parent.mkdir(parents=True, exist_ok=True)
+        with open(CACHE_FILE,"w",encoding="utf-8") as f: json.dump(data,f,ensure_ascii=False,indent=2)
+    except Exception: pass
+class AudioCapturer:
+    def __init__(self, rate:int, channels:int, buffer_ms:int, logger:logging.Logger, device_index:int|None=None):
+        self.req_rate=rate; self.req_channels=channels; self.buffer_ms=max(10, buffer_ms); self.logger=logger
+        self._running=False; self._thread=None; self._pa=None; self._stream=None; self._device_override=device_index
+        self.rate=rate; self.channels=channels; self._format="paInt16"
+    def _list_devices(self, pa):
+        rows=[]; 
+        for i in range(pa.get_device_count()):
+            info=pa.get_device_info_by_index(i)
+            rows.append((i, info.get("name",""), info.get("hostApi"), info.get("maxInputChannels")))
+        return rows
+    def _find_device(self, pa):
+        cache=_load_cache()
+        if self._device_override is not None: return _normalize_index(self._device_override)
+        last=_normalize_index(cache.get("device_index"))
+        if last is not None: return last
+        idx=None
+        try: idx=_normalize_index(pa.get_default_wasapi_loopback())
+        except Exception as e: self.logger.debug("get_default_wasapi_loopback failed: %s", e)
+        if idx is not None: return idx
+        for i in range(pa.get_device_count()):
+            info=pa.get_device_info_by_index(i); name=(info.get("name","") or "").lower()
+            if "loopback" in name or "stereo mix" in name or "what u hear" in name: return i
+        return None
+    def _probe_formats(self, pa, device_index:int)->Tuple[int,int,list]:
+        candidates_rate=[]; 
+        if self.req_rate not in (None,0): candidates_rate.append(int(self.req_rate))
+        for r in (48000,44100,96000,192000):
+            if r not in candidates_rate: candidates_rate.append(r)
+        chan_candidates=[]; 
+        if self.req_channels not in (None,0): chan_candidates.append(int(self.req_channels))
+        if 2 not in chan_candidates: chan_candidates.append(2)
+        formats=[("paInt16", pyaudio.paInt16), ("paFloat32", pyaudio.paFloat32)]
+        # If the underlying PyAudio/PortAudio supports 24‑bit input, include it in the
+        # list of candidate formats.  Many soundcards (like the Sound Blaster Z SE)
+        # expose a 24‑bit mode when loopback recording is enabled.  We only append
+        # ``paInt24`` if it exists on the pyaudio module.  Note that 24‑bit samples
+        # require custom unpacking (handled when reading frames in `_run`).
+        if hasattr(pyaudio, 'paInt24'):
+            formats.append(("paInt24", pyaudio.paInt24))
+        diags=[]; chosen_rate=None; chosen_ch=None; chosen_fmt="paInt16"; chosen_fmt_val=pyaudio.paInt16
+        for ch in chan_candidates:
+            for rate in candidates_rate:
+                for fmt_name, fmt_val in formats:
+                    ok=False
+                    try:
+                        ok=pa.is_format_supported(rate, input_device=device_index, input_channels=ch, input_format=fmt_val)
+                    except Exception: ok=False
+                    diags.append((rate,ch,fmt_name,bool(ok)))
+                    if ok and chosen_rate is None:
+                        chosen_rate, chosen_ch, chosen_fmt, chosen_fmt_val = rate, ch, fmt_name, fmt_val
+            if chosen_rate is not None: break
+        if chosen_rate is None:
+            chosen_rate=self.req_rate; chosen_ch=self.req_channels; chosen_fmt="paInt16"; chosen_fmt_val=pyaudio.paInt16
+        self._format=chosen_fmt
+        return chosen_rate, chosen_ch, diags, chosen_fmt_val
+    def _attempt_open(self, idx, rate, ch, fmt_val, frames):
+        return self._pa.open(format=fmt_val, channels=ch, rate=rate, input=True, frames_per_buffer=frames, input_device_index=idx)
+    def start(self, callback):
+        if self._running: return
+        if pyaudio is None: self.logger.warning("PyAudioWPatch nie jest zainstalowany — brak przechwytywania audio."); return
+        self._pa=pyaudio.PyAudio()
+        devs=self._list_devices(self._pa); self.logger.info("Lista urzadzen audio: %s", devs)
+        idx=self._find_device(self._pa)
+        if idx is None: self.logger.error("Nie znaleziono urzadzenia loopback (Stereo Mix/What U Hear)."); return
+        try:
+            info=self._pa.get_device_info_by_index(idx); self.logger.info("Wybrano device_index=%s name=%s", idx, info.get("name","?"))
+        except Exception: self.logger.info("Wybrano device_index=%s (nazwa nieznana)", idx)
+        rate,ch,diags,fmt_val=self._probe_formats(self._pa, idx); self.logger.info("Probe results: %s", diags)
+        if rate is None or ch is None: self.logger.error("Zaden testowany format nie jest wspierany."); return
+        # Domyślnie 50 ms bufor (stabilniej), ale nie mniej niż 10 ms
+        frames=max(64, int(rate*max(10, self.buffer_ms)/1000))
+        # Próba otwarcia + runtime fallback przy błędzie
+        for mult in (1.0, 1.5, 2.0):
+            try:
+                frames_try = max(64, int(frames*mult))
+                self._stream=self._attempt_open(idx, rate, ch, fmt_val, frames_try)
+                self.rate=int(rate); self.channels=int(ch)
+                self.logger.info("Uzywam rate=%s Hz, channels=%s, frames_per_buffer=%s, format=%s", self.rate, self.channels, frames_try, self._format)
+                _save_cache({"device_index": idx, "rate": self.rate, "channels": self.channels, "format": self._format})
+                break
+            except Exception as e:
+                self.logger.warning("Open failed (buf=%s): %s", int(frames*mult), e)
+                self._stream=None
+        if self._stream is None:
+            # Drugi rzut: spróbuj zmienić format (float<->int16) i/lub rate 48000
+            # Try a variety of formats when the initial open fails.  We prefer
+            # float32, fall back to 24‑bit if available, and finally to 16‑bit.
+            alt = []
+            try:
+                alt.append((pyaudio.paFloat32, "paFloat32"))
+            except Exception:
+                pass
+            # Append 24‑bit format if supported by PyAudio
+            if hasattr(pyaudio, 'paInt24'):
+                alt.append((pyaudio.paInt24, "paInt24"))
+            # Always include 16‑bit as a last resort
+            alt.append((pyaudio.paInt16, "paInt16"))
+            rates = [rate, 48000, 44100, 96000]
+            tried=[]
+            for fmt_v, fmt_n in alt:
+                for r in rates:
+                    for mult in (1.5, 2.0):
+                        try:
+                            frames_try=max(64, int(r*max(10, self.buffer_ms)/1000*mult))
+                            st=self._attempt_open(idx, r, ch, fmt_v, frames_try)
+                            self._stream=st; self.rate=int(r); self.channels=int(ch); self._format=fmt_n
+                            self.logger.info("Fallback OK: rate=%s ch=%s buf=%s fmt=%s", r, ch, frames_try, fmt_n)
+                            _save_cache({"device_index": idx, "rate": self.rate, "channels": self.channels, "format": self._format})
+                            break
+                        except Exception as e:
+                            tried.append((fmt_n, r, mult, str(e)))
+                    if self._stream: break
+                if self._stream: break
+            if self._stream is None:
+                self.logger.error("Nie udalo sie otworzyc streamu. Proby: %s", tried)
+                try: self._pa.terminate()
+                except Exception: pass
+                return
+        self._running=True
+        def _run():
+            self.logger.info("Loopback START idx=%s rate=%s ch=%s fmt=%s", idx, self.rate, self.channels, self._format)
+            first_reads=0
+            while self._running:
+                try:
+                    data=self._stream.read(self._stream._frames_per_buffer, exception_on_overflow=False)
+                    # Convert the raw byte data into an int16 matrix based on the
+                    # negotiated sample format.  We convert all supported input
+                    # formats to a uniform int16 representation before passing
+                    # frames downstream to the DSP.  ``paInt16`` is trivial, but
+                    # ``paFloat32`` and ``paInt24`` require scaling and/or
+                    # bit‑packing to map into the int16 range.
+                    if self._format == 'paInt16':
+                        frame = np.frombuffer(data, dtype=np.int16).reshape(-1, self.channels)
+                    elif self._format == 'paFloat32':
+                        # Input samples are 32‑bit floats in range [-1.0, 1.0]; scale to int16.
+                        f32 = np.frombuffer(data, dtype=np.float32)
+                        frame = (np.clip(f32, -1.0, 1.0) * 32767.0).astype(np.int16).reshape(-1, self.channels)
+                    elif self._format == 'paInt24':
+                        # Each sample consists of 3 little‑endian bytes.  First reshape
+                        # the flat uint8 buffer into (samples, channels, 3) and then
+                        # reconstruct signed 24‑bit integers.  We then downshift
+                        # to 16‑bit for compatibility with the DSP pipeline.
+                        buf = np.frombuffer(data, dtype=np.uint8)
+                        try:
+                            samples = buf.reshape(-1, self.channels, 3)
+                        except Exception:
+                            # Fallback: if reshape fails, skip this frame
+                            continue
+                        # Combine bytes into 24‑bit integer (little‑endian).  Note: the
+                        # bitwise OR operations promote to int32 implicitly.
+                        vals = (samples[:, :, 0].astype(np.int32) |
+                                (samples[:, :, 1].astype(np.int32) << 8) |
+                                (samples[:, :, 2].astype(np.int32) << 16))
+                        # Sign‑extend the 24‑bit value to 32‑bit.  If the highest bit
+                        # (bit 23) is set, fill the upper bits with ones; otherwise
+                        # leave as is.  Equivalent to casting a 24‑bit signed int.
+                        vals = np.where(vals & 0x800000, vals | (~0xFFFFFF), vals)
+                        # Downshift from 24‑bit to 16‑bit by discarding the least
+                        # significant 8 bits.  This preserves the approximate
+                        # dynamic range while fitting into int16.
+                        int16_vals = (vals >> 8).astype(np.int16)
+                        frame = int16_vals
+                    else:
+                        # Unknown format; attempt to interpret as int16 fallback
+                        frame = np.frombuffer(data, dtype=np.int16).reshape(-1, self.channels)
+                    callback(frame)
+                    first_reads+=1
+                except Exception as e:
+                    self.logger.warning("read() error: %s", e)
+                    time.sleep(0.01)
+                    if first_reads < 3:
+                        self.logger.info("Wczesny blad odczytu — zwiekszam bufor i probuje ponownie.")
+                        try:
+                            self._stream.stop_stream(); self._stream.close()
+                        except Exception: pass
+                        try:
+                            frames_new = int(self._stream._frames_per_buffer * 1.5)
+                        except Exception:
+                            frames_new = int(self.rate * max(10, self.buffer_ms)/1000 * 2.0)
+                        try:
+                            self._stream=self._attempt_open(idx, self.rate, self.channels,
+                                                            pyaudio.paFloat32 if self._format=='paFloat32' else pyaudio.paInt16,
+                                                            frames_new)
+                            self.logger.info("Restart stream z frames_per_buffer=%s OK.", frames_new)
+                            continue
+                        except Exception as e2:
+                            self.logger.warning("Restart nie powiodl sie: %s", e2)
+                            break
+            self.logger.info("Loopback STOP")
+        import threading; self._thread=threading.Thread(target=_run, daemon=True); self._thread.start()
+    def stop(self):
+        self._running=False
+        try:
+            if self._thread: self._thread.join(timeout=1.0)
+        except Exception: pass
+        try:
+            if self._stream: self._stream.stop_stream(); self._stream.close()
+        except Exception: pass
+        try:
+            if self._pa: self._pa.terminate()
+        except Exception: pass
+
+
+
+### ./src/calibrate.py
+import numpy as np, time, logging
+try:
+    import pyaudiowpatch as pyaudio
+except Exception:
+    pyaudio = None
+def _tone(freq, duration, rate):
+    t = np.linspace(0, duration, int(rate*duration), endpoint=False, dtype=np.float32)
+    return (0.2*np.sin(2*np.pi*freq*t)).astype(np.float32)
+def run_calibration(logger: logging.Logger, rate_hint=48000, channels=2, duration=0.25):
+    if pyaudio is None:
+        logger.error("Kalibracja niedostepna: brak pyaudiowpatch (output)."); return 1
+    pa = pyaudio.PyAudio(); tried=[]
+    for rate in (rate_hint, 48000, 44100, 96000):
+        try:
+            stream = pa.open(format=pyaudio.paFloat32, channels=channels, rate=rate, output=True)
+            logger.info("Kalibracja: otwarto wyjscie rate=%s ch=%s", rate, channels)
+            names = {2:["FL","FR"], 6:["FL","FR","C","LFE","SL/RL","SR/RR"], 8:["FL","FR","C","LFE","SL","SR","RL","RR"]}.get(channels, [f"CH{i}" for i in range(channels)])
+            for ch_idx, name in enumerate(names):
+                sig = _tone(800 if ch_idx%2==0 else 1200, duration, rate)
+                frame = np.zeros((sig.shape[0], channels), dtype=np.float32)
+                frame[:, ch_idx % channels] = sig
+                logger.info("Ping kanalu %s (idx=%s)...", name, ch_idx)
+                stream.write(frame.tobytes()); time.sleep(0.15)
+            stream.stop_stream(); stream.close(); pa.terminate(); logger.info("Kalibracja: zakonczona."); return 0
+        except Exception as e:
+            tried.append((rate, str(e))); continue
+    logger.error("Kalibracja: nie udalo sie otworzyc zadnego wyjscia. Proby: %s", tried)
+    try: pa.terminate()
+    except Exception: pass
+    return 2
+
+
+
+### ./src/direction.py
+import numpy as np
+CHANNEL_ANGLES = {2:{0:-45.0,1:45.0}, 6:{0:-30.0,1:30.0,2:0.0,4:-120.0,5:120.0}, 8:{0:-30.0,1:30.0,2:0.0,4:-90.0,5:90.0,6:-150.0,7:150.0}}
+IGNORE = {6:(3,), 8:(3,)}
+def estimate_angle(frame: np.ndarray) -> float:
+    if frame.ndim!=2: return 0.0
+    ch = frame.shape[1]
+    mapping = CHANNEL_ANGLES.get(ch, CHANNEL_ANGLES[2])
+    ignore = set(IGNORE.get(ch, ()))
+    e = np.sqrt(np.mean(frame.astype(np.float32)**2, axis=0))
+    s = float(np.sum(e)); 
+    if s==0: return 0.0
+    w = e/s
+    ang = 0.0; ws=0.0
+    for idx,a in mapping.items():
+        if idx in ignore or idx>=len(w): continue
+        ang += a*float(w[idx]); ws += float(w[idx])
+    return ang/ws if ws>0 else 0.0
+
+
+
+### ./src/dsp.py
+import time, numpy as np, math, logging
+def _amp_to_visual_scale(rms: float) -> float:
+    x = max(1e-6, min(1.0, rms))
+    return math.log10(1 + 9*x)
+class EventDetector:
+    """
+    Detects transient audio events based on the root‑mean‑square (RMS) amplitude of
+    incoming frames.  A cooldown period prevents repeated detection of the same
+    sound.  Optionally, the detector can adapt its threshold dynamically to the
+    noise floor of the environment, making it more sensitive in quiet scenes and
+    less prone to false positives in noisy ones.
+
+    Parameters
+    ----------
+    threshold : float
+        Base RMS threshold (0..1) for detecting events.  When ``dynamic`` is
+        enabled, this serves as a lower bound for the adaptive threshold.
+    cooldown : float, optional
+        Minimum time (seconds) between detections.  Helps prevent repeated
+        detections of the same event.
+    dynamic : bool, optional
+        Enable automatic adjustment of the threshold based on a running
+        estimate of ambient RMS noise.  Defaults to ``False``.
+    strength : float, optional
+        Multiplier applied to the ambient RMS when computing the adaptive
+        threshold.  A higher value makes the detector less sensitive.
+    smoothing : float, optional
+        Smoothing factor (0..1) for the exponential moving average used to
+        estimate the ambient RMS.  Smaller values produce a slower adaption.
+    """
+
+    def __init__(self, threshold: float, cooldown: float = 0.2,
+                 dynamic: bool = False, strength: float = 5.0, smoothing: float = 0.05,
+                 *, enable_other: bool = False, other_factor: float = 2.0,
+                 logger: 'logging.Logger|None' = None, debug_rms: bool = False) -> None:
+        """
+        Create a new EventDetector.
+
+        Parameters
+        ----------
+        threshold : float
+            Base RMS threshold (0..1) for detecting events.  When ``dynamic`` is
+            enabled, this serves as a lower bound for the adaptive threshold.
+        cooldown : float, optional
+            Minimum time (seconds) between detections.  Helps prevent repeated
+            detections of the same event.
+        dynamic : bool, optional
+            Enable automatic adjustment of the threshold based on a running
+            estimate of ambient RMS noise.  Defaults to ``False``.
+        strength : float, optional
+            Multiplier applied to the ambient RMS when computing the adaptive
+            threshold.  A higher value makes the detector less sensitive.
+        smoothing : float, optional
+            Smoothing factor (0..1) for the exponential moving average used to
+            estimate the ambient RMS.  Smaller values produce a slower adaption.
+        enable_other : bool, optional
+            When ``True``, the detector will also report "other" events for
+            sounds whose RMS exceeds ``threshold / other_factor`` but does not
+            reach the main threshold.  If ``False``, these softer sounds are
+            ignored and only ``shot`` and ``step`` events are produced.
+        other_factor : float, optional
+            Divisor applied to the effective threshold to compute the minimum
+            RMS required to classify an event as "other".  Must be >= 1.0.  A
+            smaller value yields more "other" events, while a larger value
+            reduces sensitivity.  Only used when ``enable_other`` is True.
+        logger : logging.Logger or None, optional
+            Logger used for debug messages when ``debug_rms`` is True.
+        debug_rms : bool, optional
+            If True, log the raw RMS, baseline and effective threshold values
+            for each processed frame.
+        """
+        self.threshold = threshold
+        self.cooldown = cooldown
+        self.dynamic = dynamic
+        self.strength = max(1.0, strength)
+        self.smoothing = max(0.001, min(1.0, smoothing))
+        # Additional parameters controlling classification of "other" events
+        self.enable_other: bool = bool(enable_other)
+        self.other_factor: float = max(1.0, float(other_factor))
+        # Timestamp of the last detection
+        self._last = 0.0
+        # Running estimate of the background noise floor when adaptive
+        self._baseline = 0.0
+        # Optional logging of RMS and thresholds for calibration
+        self._logger = logger
+        self._debug_rms = bool(debug_rms)
+        # Initialize last processed RMS and thresholds used for the most recent frame.
+        # These values are updated on each call to ``process`` and may be used by
+        # the UI (e.g. level meter) to display current signal strength and thresholds.
+        self.last_rms: float = 0.0
+        self.last_effective_thr: float = self.threshold
+        # Precompute other threshold based on the initial effective threshold; this
+        # value will be updated in process().
+        self.last_other_thr: float = max(1e-6, self.threshold / self.other_factor)
+        self.last_baseline: float = 0.0
+
+    def process(self, frame: np.ndarray):
+        """Process a frame of audio samples and return an event tuple if detected.
+
+        Parameters
+        ----------
+        frame : np.ndarray
+            A 2D array of shape (n_samples, n_channels) containing int16 audio.
+
+        Returns
+        -------
+        tuple or None
+            ``(kind, visual_amp)`` where ``kind`` is either ``"shot"`` or
+            ``"step"``, and ``visual_amp`` is a scaled amplitude for
+            visualization.  Returns ``None`` if no event is detected.
+        """
+        # Flatten all channels to compute a global RMS in the range [0,1]
+        x = frame.astype(np.float32).reshape(-1)
+        rms: float = float(np.sqrt(np.mean(x * x))) / 32768.0
+        now = time.monotonic()
+        # Update baseline noise estimate if dynamic threshold is enabled
+        if self.dynamic:
+            if self._baseline <= 0.0:
+                # Initialize baseline with the first RMS value
+                self._baseline = rms
+            else:
+                # Exponential moving average; recent samples count more
+                self._baseline = (1.0 - self.smoothing) * self._baseline + self.smoothing * rms
+            # Compute adaptive threshold: baseline * strength, but no lower than the fixed threshold
+            effective_threshold = max(self.threshold, self._baseline * self.strength)
+        else:
+            effective_threshold = self.threshold
+        # Compute threshold for "other" events.  A lower threshold means more
+        # sensitivity.  We divide the effective threshold by other_factor.  The
+        # result is clamped to a minimum of 1e‑6 to avoid spurious detections.
+        other_threshold = max(1e-6, effective_threshold / self.other_factor)
+        # Optionally log RMS and threshold values for calibration.  We log
+        # immediately after computing thresholds so that the baseline update
+        # above is reflected.  Logging is performed only if a logger
+        # was provided and debug_rms is True.
+        if self._debug_rms and self._logger is not None:
+            try:
+                self._logger.debug(
+                    "RMS=%.5f eff_thr=%.5f other_thr=%.5f baseline=%.5f strength=%.2f",
+                    rms, effective_threshold, other_threshold, self._baseline, self.strength
+                )
+            except Exception:
+                pass
+        # Skip events that are below the other_threshold or within the cooldown window
+        if rms < other_threshold or (now - self._last) < self.cooldown:
+            return None
+        # Update last event time to enforce cooldown for all kinds of events
+        self._last = now
+        # Persist the latest RMS and thresholds for external access (e.g., UI meters)
+        self.last_rms = rms
+        self.last_effective_thr = effective_threshold
+        self.last_other_thr = other_threshold
+        self.last_baseline = self._baseline
+        # Classify event type: very strong events are "shots"; moderate events
+        # are "steps"; softer events may be "other" if enabled.  Otherwise
+        # ignore them.
+        if rms > effective_threshold * 3.0:
+            kind = "shot"
+        elif rms > effective_threshold:
+            kind = "step"
+        elif self.enable_other:
+            kind = "other"
+        else:
+            # Event falls below the primary threshold and other events are disabled
+            return None
+        return kind, _amp_to_visual_scale(rms)
+
+
+
+### ./src/logger_setup.py
+import logging, datetime
+from logging.handlers import RotatingFileHandler
+from pathlib import Path
+
+def setup_logger(log_path: str, debug: bool=False) -> logging.Logger:
+    Path(log_path).parent.mkdir(parents=True, exist_ok=True)
+    logger = logging.getLogger("audioradar")
+    logger.setLevel(logging.DEBUG if debug else logging.INFO)
+    if logger.handlers:
+        return logger
+    fmt = logging.Formatter("%(asctime)s | %(levelname)-8s | %(message)s")
+    try:
+        fh = RotatingFileHandler(log_path, maxBytes=2_097_152, backupCount=2, encoding="utf-8")
+    except PermissionError:
+        ts = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
+        alt = Path(log_path).with_name(f"log_fallback-{ts}.txt")
+        fh = RotatingFileHandler(str(alt), maxBytes=2_097_152, backupCount=2, encoding="utf-8")
+        print(f"[WARN] Nie moge otworzyc {log_path} — uzywam {alt}")
+    fh.setFormatter(fmt); fh.setLevel(logging.DEBUG if debug else logging.INFO)
+    logger.addHandler(fh)
+    sh = logging.StreamHandler(); sh.setFormatter(fmt); sh.setLevel(logging.DEBUG if debug else logging.INFO)
+    logger.addHandler(sh)
+    logger.info("Logger initialized | log_path=%s | debug=%s", log_path, debug)
+    return logger
+
+
+
+### ./src/main.py
+import argparse
+import sys
+import queue
+import traceback
+import time
+import json  # new: for loading/saving configuration
+from logger_setup import setup_logger
+from audio_loopback import AudioCapturer
+from dsp import EventDetector
+from direction import estimate_angle
+def parse_args():
+    """Parse command‑line arguments for the Audio Radar program.
+
+    The parser accepts common options such as sampling rate, channel count,
+    buffer size, detection threshold, and whether to run calibration or headless mode.  Two new
+    options, ``--config`` and ``--save_config``, allow for loading configuration from a JSON file
+    or saving the current configuration to a file for future runs.
+    """
+    p = argparse.ArgumentParser(description="Audio Radar — visualize directional audio events")
+    p.add_argument("--rate", type=int, default=48000, help="Sampling rate for audio capture (Hz)")
+    p.add_argument("--channels", type=int, default=2, choices=[2, 6, 8], help="Number of audio channels")
+    p.add_argument("--buffer_ms", type=int, default=50, help="Buffer size in milliseconds")
+    p.add_argument("--threshold", type=float, default=0.08, help="RMS threshold for event detection [0-1] (default: 0.08)")
+    p.add_argument("--device_index", type=str, default=None,
+                   help="Force a specific loopback device index (int).  If omitted, auto‑detect.")
+    p.add_argument("--log", type=str, default="logs/log.txt", help="Path to the log file")
+    p.add_argument("--debug", action="store_true", help="Enable verbose debug logging")
+    p.add_argument("--calibrate", action="store_true",
+                   help="Run the speaker calibration routine and exit (stereo/5.1/7.1)")
+    p.add_argument("--headless", action="store_true", help="Run without opening the Pygame window; log events only")
+    # New options: config load/save
+    p.add_argument("--config", type=str, default=None, help="Load configuration from a JSON file")
+    p.add_argument("--save_config", type=str, default=None, help="Save current configuration to a JSON file")
+    # Dynamic threshold enables automatic adjustment based on ambient noise floor
+    p.add_argument("--auto_threshold", action="store_true", help="Enable adaptive RMS threshold based on ambient noise")
+    # List available audio devices and exit
+    p.add_argument("--list_devices", action="store_true", help="List available audio capture devices and exit")
+
+    # Parameters for dynamic threshold adaptation.  These control how sensitive the
+    # detector is when --auto_threshold is enabled.  A lower strength yields a
+    # lower threshold (more sensitivity), while a higher strength reduces
+    # sensitivity.  Smoothing controls the responsiveness of the baseline noise
+    # estimate; larger values react faster to changes in ambient noise.
+    p.add_argument("--dyn_strength", type=float, default=4.0,
+                   help="Multiplier for ambient RMS when computing adaptive threshold (default: 4.0)")
+    p.add_argument("--dyn_smoothing", type=float, default=0.05,
+                   help="Smoothing factor for ambient RMS estimate (0..1, default: 0.05)")
+
+    # When enabled, the RMS value, baseline estimate and effective threshold
+    # will be logged for each frame (at DEBUG level) to assist with
+    # calibrating the detection sensitivity.
+    p.add_argument("--debug_rms", action="store_true", help="Log RMS and adaptive threshold values for every frame (debug mode)")
+
+    # Enable detection of other (softer) events.  When this flag is provided,
+    # the detector will classify sounds that fall below the main threshold but
+    # above a fraction of it as "other".  This can increase the number of
+    # detected events by including quieter noises from the game.  Use
+    # --other_factor to adjust sensitivity.
+    p.add_argument("--other", dest="enable_other", action="store_true",
+                   help="Włącz wykrywanie innych cichych dźwięków (oprócz kroków i strzałów)")
+    p.add_argument("--other_factor", type=float, default=2.0,
+                   help="Dzielenie progu RMS przy wykrywaniu innych dźwięków (domyślnie 2.0). Mniejsza wartość zwiększa czułość na ciche dźwięki.")
+
+    # Show a horizontal level meter in the UI that visualizes the current RMS
+    # relative to the thresholds.  Enabled by default; use --no_meter to hide.
+    p.add_argument("--no_meter", dest="no_meter", action="store_true",
+                   help="Ukryj miernik poziomu sygnału w interfejsie (domyślnie widoczny)")
+
+    # Scan available audio devices for the highest RMS before selecting a device.  When
+    # this flag is provided, the program will briefly record from each device
+    # with sufficient input channels and choose the one with the largest
+    # average RMS amplitude.  This can help automatically detect the proper
+    # loopback source when the default device does not contain audio.
+    p.add_argument("--scan_devices", action="store_true",
+                   help="Przeskanuj urządzenia przed wyborem indeksu (wybierz to z najwyższym sygnałem)")
+
+    # Customise the window size; defaults to 600x600.  Width and height are
+    # specified separately to facilitate passing via individual options.  A
+    # larger window may improve readability of the radar and controls.
+    p.add_argument("--width", type=int, default=600,
+                   help="Szerokość okna wizualizacji (domyślnie 600)")
+    p.add_argument("--height", type=int, default=600,
+                   help="Wysokość okna wizualizacji (domyślnie 600)")
+    # Height reserved for the control panel.  Increase this value if the
+    # elementy interfejsu nachodzą na siebie.
+    p.add_argument("--controls_height", type=int, default=120,
+                   help="Wysokość obszaru kontrolnego w pikselach (domyślnie 120)")
+
+    # Width reserved for the side control panel.  When provided and ``controls``
+    # is enabled, the radar will occupy the remaining space on the left and the
+    # controls will be laid out vertically in a side bar of this width.  A
+    # larger width allows more space for sliders, toggles and device selectors.
+    p.add_argument("--controls_width", type=int, default=240,
+                   help="Szerokość bocznego panelu sterowania w pikselach (domyślnie 240)")
+
+    # Test the audio capture source.  When this flag is provided, the program
+    # records a brief sample (about one second) from the selected device
+    # (taking into account `--rate`, `--channels` and `--device_index`) and
+    # reports the average RMS amplitude across channels.  This helps verify
+    # that the loopback device is correctly configured and that audible
+    # signals are present.  After the test, the program exits without
+    # running the radar visualisation.
+    p.add_argument("--test_source", action="store_true", help="Record a short sample and report RMS to verify audio capture")
+    return p.parse_args()
+def main():
+    """Entry point for the Audio Radar application.
+
+    This function orchestrates parsing of command‑line arguments, optional loading
+    and saving of configuration to a JSON file, initialization of logging,
+    audio capture, event detection, direction estimation, and visualization.  It
+    keeps running until the user interrupts or closes the window.
+    """
+    args = parse_args()
+    # Optionally load configuration from JSON prior to initializing logger.  We print
+    # warnings to stdout because the logger may not yet be configured.  Fields in the
+    # config file override command‑line defaults but command‑line flags still take
+    # precedence.
+    if getattr(args, "config", None):
+        try:
+            with open(args.config, "r", encoding="utf-8") as f:
+                cfg = json.load(f)
+            # Define default values for keys that we allow to be overridden via config.  CLI
+            # arguments take precedence; values in the config file will only override these
+            # defaults if the current value matches the default.  This ensures that
+            # specifying a value on the command line has higher priority than the config.
+            _defaults = {
+                "rate": 48000,
+                "channels": 2,
+                "buffer_ms": 50,
+                # Align with the default threshold used by parse_args (0.08)
+                "threshold": 0.08,
+                "device_index": None,
+                "log": "logs/log.txt",
+                "debug": False,
+                "calibrate": False,
+                "headless": False
+            }
+            for key, val in cfg.items():
+                if hasattr(args, key) and key in _defaults:
+                    current = getattr(args, key)
+                    if current == _defaults[key]:
+                        setattr(args, key, val)
+        except Exception as e:
+            # Config read errors are non‑fatal; we will continue with defaults and CLI overrides
+            print(f"[WARN] Nie mogę wczytać konfiguracji {args.config}: {e}")
+    # Initialize logger using (possibly) updated args
+    logger = setup_logger(args.log, args.debug)
+    # Log the version and current configuration
+    logger.info(
+        "=== Audio Radar START (v5.17) === cfg: rate=%s ch=%s buf=%sms thr=%.3f device_index=%s calibrate=%s headless=%s auto_threshold=%s dyn_strength=%.2f dyn_smoothing=%.3f enable_other=%s other_factor=%.2f show_meter=%s",
+        args.rate, args.channels, args.buffer_ms, args.threshold, args.device_index, args.calibrate, args.headless,
+        args.auto_threshold, args.dyn_strength, args.dyn_smoothing, getattr(args, "enable_other", False), getattr(args, "other_factor", 2.0), not getattr(args, "no_meter", False))
+
+    # If device scanning is requested, measure RMS on all devices and choose the
+    # one with the highest average RMS.  This can automatically identify the
+    # correct loopback source when nothing is detected on the default device.
+    if getattr(args, "scan_devices", False):
+        try:
+            import pyaudiowpatch as pyaudio
+        except Exception:
+            logger.warning("--scan_devices: biblioteka PyAudioWPatch nie jest zainstalowana; pomijam skanowanie.")
+        else:
+            import numpy as np, time as _t
+            from audio_loopback import AudioCapturer as _Cap
+            try:
+                pa = pyaudio.PyAudio()
+            except Exception:
+                logger.warning("--scan_devices: nie udało się zainicjować PyAudio; pomijam skanowanie.")
+            else:
+                best_idx = None
+                best_rms = 0.0
+                for idx in range(pa.get_device_count()):
+                    try:
+                        info = pa.get_device_info_by_index(idx)
+                    except Exception:
+                        continue
+                    # Skip devices that cannot capture the requested number of channels
+                    if info.get("maxInputChannels", 0) < args.channels:
+                        continue
+                    # Attempt to open a short capture on this device
+                    rms_sum = 0.0
+                    frames_cnt = 0
+                    def _cb(frm: 'np.ndarray'):
+                        nonlocal rms_sum, frames_cnt
+                        flat = frm.astype(np.float32).reshape(-1)
+                        v = float(np.sqrt(np.mean(flat * flat))) / 32768.0
+                        rms_sum += v
+                        frames_cnt += 1
+                    try:
+                        cap_t = _Cap(rate=args.rate, channels=args.channels, buffer_ms=args.buffer_ms, logger=logger, device_index=idx)
+                        cap_t.start(_cb)
+                        _t.sleep(0.5)
+                        cap_t.stop()
+                    except Exception:
+                        continue
+                    if frames_cnt > 0:
+                        avg_rms = rms_sum / frames_cnt
+                        logger.debug("SCAN_DEV idx=%s avg_rms=%.5f", idx, avg_rms)
+                        if avg_rms > best_rms:
+                            best_rms = avg_rms
+                            best_idx = idx
+                try:
+                    pa.terminate()
+                except Exception:
+                    pass
+                if best_idx is not None:
+                    logger.info("Skanowanie zakończone. Wybrano urządzenie %s (avg RMS=%.5f)", best_idx, best_rms)
+                    args.device_index = str(best_idx)
+                else:
+                    logger.warning("Skanowanie nie znalazło źródła z wykrywalnym sygnałem.")
+
+    # If requested, list available audio capture devices and exit.  This is useful
+    # for determining the correct loopback device index.  We perform this check
+    # after the logger is initialized so messages are properly recorded.
+    if args.list_devices:
+        try:
+            import pyaudiowpatch as pyaudio
+        except Exception:
+            logger.error("PyAudioWPatch nie jest zainstalowany. Lista urzadzen niedostepna.")
+            return 1
+        try:
+            pa = pyaudio.PyAudio()
+            logger.info("=== Lista urzadzen WASAPI loopback ===")
+            for i in range(pa.get_device_count()):
+                info = pa.get_device_info_by_index(i)
+                name = info.get("name", "?")
+                host_api = info.get("hostApi", "?")
+                max_in = info.get("maxInputChannels", 0)
+                logger.info("[%d] name=%s | hostApi=%s | maxInputChannels=%s", i, name, host_api, max_in)
+            pa.terminate()
+            return 0
+        except Exception as e:
+            logger.exception("Nie udalo sie pobrac listy urzadzen:")
+            return 1
+
+    # Run calibration routine if requested.  This plays pings on each channel
+    # and can help verify speaker assignments.  It does not exit, so the main
+    # radar will continue to run after calibration.
+    if args.calibrate:
+        try:
+            from calibrate import run_calibration
+            rc = run_calibration(logger, rate_hint=args.rate, channels=args.channels)
+            if rc != 0:
+                logger.warning("Kalibracja kod=%s", rc)
+        except Exception:
+            logger.exception("Kalibracja nie powiodla sie:")
+    # If the user requested a simple capture test, perform it here and exit.
+    if args.test_source:
+        import numpy as np, time as _t
+        try:
+            # Initialize audio capture on the selected device using the same
+            # logic as the main capturer.  We reuse AudioCapturer internally
+            # but drive it synchronously in this test.
+            from audio_loopback import AudioCapturer as _Cap
+            cap_t = _Cap(rate=args.rate, channels=args.channels, buffer_ms=args.buffer_ms, logger=logger, device_index=args.device_index)
+            rms_sum = 0.0
+            frames_cnt = 0
+            def _on_frame_test(frm: 'np.ndarray'):
+                nonlocal rms_sum, frames_cnt
+                flat = frm.astype(np.float32).reshape(-1)
+                val = float(np.sqrt(np.mean(flat * flat))) / 32768.0
+                rms_sum += val; frames_cnt += 1
+            cap_t.start(_on_frame_test)
+            # Wait around one second to collect some frames
+            _t.sleep(1.0)
+            try:
+                cap_t.stop()
+            except Exception:
+                pass
+            if frames_cnt > 0:
+                avg_rms = rms_sum / frames_cnt
+                logger.info("TEST_SOURCE: captured %s frames, avg RMS=%.5f", frames_cnt, avg_rms)
+                print(f"[TEST_SOURCE] Zebrano {frames_cnt} ramek. Średni RMS: {avg_rms:.5f}")
+            else:
+                logger.info("TEST_SOURCE: no frames captured or zero audio")
+                print("[TEST_SOURCE] Nie udało się zebrać ramek z urządzenia. Sprawdź konfigurację loopback.")
+            return 0
+        except Exception as e:
+            logger.exception("TEST_SOURCE: nieoczekiwany błąd testu źródła:")
+            print(f"[TEST_SOURCE] Nieoczekiwany błąd: {e}")
+            return 1
+    import numpy as np, queue
+    # Initialize the event detector prior to setting up the UI.  When
+    # auto_threshold is enabled we allow automatic adaptation to the ambient noise
+    # floor.
+    det = EventDetector(
+        threshold=args.threshold,
+        cooldown=0.2,
+        dynamic=args.auto_threshold,
+        strength=args.dyn_strength,
+        smoothing=args.dyn_smoothing,
+        enable_other=getattr(args, "enable_other", False),
+        other_factor=getattr(args, "other_factor", 2.0),
+        logger=logger,
+        debug_rms=args.debug_rms or args.debug
+    )
+    # Prepare a list of audio devices for the UI.  If PyAudioWPatch is available,
+    # enumerate devices with sufficient input channels and include their indices
+    # and names.  These will be passed into the radar display for selection.
+    device_list = []
+    initial_dev_index = None
+    if not args.headless:
+        try:
+            import pyaudiowpatch as pyaudio
+            pa = pyaudio.PyAudio()
+            for i in range(pa.get_device_count()):
+                try:
+                    info = pa.get_device_info_by_index(i)
+                except Exception:
+                    continue
+                # Only include devices that support the requested number of channels
+                if info.get("maxInputChannels", 0) >= args.channels:
+                    name = info.get("name", f"Urządzenie {i}")
+                    device_list.append((i, name))
+            pa.terminate()
+            # Determine the initial device index if one was provided on the CLI
+            if args.device_index is not None:
+                try:
+                    initial_dev_index = int(args.device_index)
+                except Exception:
+                    initial_dev_index = None
+        except Exception:
+            # If enumeration fails, leave device_list empty and initial_dev_index None
+            device_list = []
+            initial_dev_index = None
+
+    # Create the radar UI unless in headless mode.  Pass the detector
+    # instance and enable interactive controls.  We use a slightly taller
+    # window to accommodate sliders and toggles (600x600 by default).
+    radar = None
+    # Holder for AudioCapturer used by the device change callback; see below.
+    cap_holder = {}
+    if not args.headless:
+        try:
+            import pygame
+            from viz import RadarDisplay
+            # Determine the window size and control panel height based on CLI
+            width = max(200, int(getattr(args, "width", 600)))
+            height = max(200, int(getattr(args, "height", 600)))
+            c_height = max(50, int(getattr(args, "controls_height", 120)))
+
+            # Context object used to share radar and capturer between callbacks
+            ui_context: dict = {}
+
+            # Callback invoked when the user selects a new audio device from the UI
+            def _ui_device_change(new_idx: int) -> None:
+                logger.info("UI: zmiana urządzenia na %s", new_idx)
+                # Stop the current capture if present
+                c = cap_holder.get("cap")
+                if c is not None:
+                    try:
+                        c.stop()
+                    except Exception:
+                        pass
+                # Update the device index in args
+                args.device_index = str(new_idx)
+                # Start a new capture on the selected device
+                try:
+                    new_cap = AudioCapturer(rate=args.rate, channels=args.channels, buffer_ms=args.buffer_ms,
+                                           logger=logger, device_index=args.device_index)
+                    cap_holder["cap"] = new_cap
+                    new_cap.start(on_frame)
+                except Exception:
+                    logger.exception("UI: błąd przy przełączaniu urządzenia")
+
+            # Callback invoked when the user presses the scan button.  This scans
+            # through available devices (device_list) and selects the one with
+            # the highest RMS, then updates the UI and restarts capture.
+            def _ui_scan_devices() -> None:
+                logger.info("UI: rozpoczynam skanowanie urządzeń")
+                try:
+                    import pyaudiowpatch as pyaudio
+                except Exception:
+                    logger.warning("UI: skanowanie wymaga PyAudioWPatch, która nie jest dostępna")
+                    return
+                try:
+                    pa = pyaudio.PyAudio()
+                except Exception:
+                    logger.warning("UI: nie mogę utworzyć instancji PyAudio do skanowania")
+                    return
+                best_idx = None
+                best_rms = 0.0
+                # Stop current capture during scanning
+                cur_cap = cap_holder.get("cap")
+                if cur_cap:
+                    try:
+                        cur_cap.stop()
+                    except Exception:
+                        pass
+                import numpy as np, time as _t
+                from audio_loopback import AudioCapturer as _Cap
+                # Iterate through the devices in the device list (unique indices)
+                for dev_idx, _name in device_list:
+                    # Only scan devices that provide enough channels
+                    try:
+                        info = pa.get_device_info_by_index(dev_idx)
+                    except Exception:
+                        continue
+                    if info.get("maxInputChannels", 0) < args.channels:
+                        continue
+                    rms_sum = 0.0
+                    frames_cnt = 0
+                    def _cb(frm: 'np.ndarray'):
+                        nonlocal rms_sum, frames_cnt
+                        flat = frm.astype(np.float32).reshape(-1)
+                        v = float(np.sqrt(np.mean(flat * flat))) / 32768.0
+                        rms_sum += v
+                        frames_cnt += 1
+                    try:
+                        cap_t = _Cap(rate=args.rate, channels=args.channels, buffer_ms=args.buffer_ms,
+                                    logger=logger, device_index=str(dev_idx))
+                        cap_t.start(_cb)
+                        _t.sleep(0.4)
+                        cap_t.stop()
+                    except Exception:
+                        continue
+                    if frames_cnt > 0:
+                        avg_rms = rms_sum / frames_cnt
+                        logger.debug("UI scan: device %s avg_rms=%.5f", dev_idx, avg_rms)
+                        if avg_rms > best_rms:
+                            best_rms = avg_rms
+                            best_idx = dev_idx
+                try:
+                    pa.terminate()
+                except Exception:
+                    pass
+                if best_idx is not None:
+                    logger.info("UI: skanowanie wybrało urządzenie %s (avg RMS=%.5f)", best_idx, best_rms)
+                    # Update selected index in UI and restart capture
+                    args.device_index = str(best_idx)
+                    # Determine the position of best_idx in device_list to update selector
+                    if ui_context.get("radar"):
+                        r = ui_context["radar"]
+                        # Update internal selected index and control config
+                        for i, (d, _n) in enumerate(device_list):
+                            if d == best_idx:
+                                r.selected_device_index = i
+                                # Update selector control index
+                                for cfg in r._controls_config:
+                                    if cfg["type"] == "selector":
+                                        cfg["index"] = i
+                                        break
+                                break
+                        # Restart capture via on_device_change callback
+                        if r.on_device_change:
+                            try:
+                                r.on_device_change(best_idx)
+                            except Exception:
+                                pass
+                else:
+                    logger.warning("UI: skanowanie nie znalazło odpowiedniego urządzenia")
+                # Restart capture if scanning didn't start one
+                # (The on_device_change call above handles restart.)
+
+            # Instantiate the radar display.  Provide device list, device change and scan callbacks
+            radar = RadarDisplay(size=(width, height), debug=args.debug, detector=det, controls=True,
+                                 show_meter=not getattr(args, "no_meter", False),
+                                 controls_height=c_height,
+                                 controls_width=getattr(args, "controls_width", 220),
+                                 device_list=device_list, initial_device_index=initial_dev_index,
+                                 on_device_change=_ui_device_change, scan_callback=_ui_scan_devices)
+            logger.info("UI: Pygame okno uruchomione.")
+            # Save radar reference for scan callback
+            ui_context["radar"] = radar
+        except Exception:
+            logger.exception("UI: inicjalizacja Pygame nie powiodla sie — przechodze w tryb headless.")
+            radar = None
+    # Prepare a queue for communicating events between the audio thread and the UI
+    q = queue.Queue()
+    def on_frame(frame: 'np.ndarray'):
+        ev = det.process(frame)
+        if ev:
+            kind, amp_scaled = ev
+            angle = estimate_angle(frame)
+            try:
+                q.put_nowait((kind, angle, amp_scaled))
+            except queue.Full:
+                pass
+            logger.debug("EVENT kind=%s amp(vis)=%.3f angle=%.1f", kind, amp_scaled, angle)
+    # Create the initial audio capturer using the selected device index.  If a
+    # device was chosen via --device_index or via scanning, its value may
+    # be a string; ensure we pass it directly to AudioCapturer.  Store the
+    # capturer in cap_holder so the UI callback can replace it later.
+    cap = AudioCapturer(rate=args.rate, channels=args.channels, buffer_ms=args.buffer_ms, logger=logger,
+                        device_index=args.device_index)
+    cap.start(on_frame)
+    # Save the initial capturer for UI callbacks
+    cap_holder["cap"] = cap
+    try:
+        if radar is None:
+            logger.info("Tryb: HEADLESS (bez okna). Zdarzenia beda logowane do pliku.")
+            while True:
+                try:
+                    while True:
+                        kind, angle, amp = q.get_nowait()
+                        logger.info("EVENT: %-5s | angle=%6.1f | amp(vis)=%.3f", kind, angle, amp)
+                except queue.Empty:
+                    pass
+                time.sleep(0.01)
+        else:
+            while True:
+                try:
+                    while True:
+                        kind, angle, amp = q.get_nowait()
+                        radar.add_marker(angle, kind, amp)
+                except queue.Empty:
+                    pass
+                if not radar.update(): break
+    except KeyboardInterrupt:
+        logger.info("Przerwano przez uzytkownika.")
+    except Exception:
+        logger.exception("Nieobsluzony blad glownej petli:")
+        return 2
+    finally:
+        # Always attempt to stop the audio capture thread and close resources
+        try:
+            cap.stop()
+        except Exception:
+            pass
+        # Shut down the Pygame window if it was created
+        if radar is not None:
+            try:
+                import pygame
+                pygame.quit()
+            except Exception:
+                pass
+        logger.info("=== Audio Radar STOP ===")
+        # If the user requested to save the current configuration, write it out as JSON.
+        # We include key runtime parameters.  Any errors during save are logged as warnings.
+        if getattr(args, "save_config", None):
+            cfg_out = {
+                "rate": cap.rate if hasattr(cap, "rate") else args.rate,
+                "channels": cap.channels if hasattr(cap, "channels") else args.channels,
+                "buffer_ms": args.buffer_ms,
+                "threshold": args.threshold,
+                "device_index": args.device_index,
+                "log": args.log,
+                "debug": args.debug,
+                "calibrate": args.calibrate,
+                "headless": args.headless,
+                # Persist new options when saving configuration
+                "enable_other": getattr(args, "enable_other", False),
+                "other_factor": getattr(args, "other_factor", 2.0),
+                "no_meter": getattr(args, "no_meter", False),
+            }
+            try:
+                import os
+                # Ensure parent directory exists
+                os.makedirs(os.path.dirname(args.save_config), exist_ok=True) if os.path.dirname(args.save_config) else None
+                with open(args.save_config, "w", encoding="utf-8") as f:
+                    json.dump(cfg_out, f, ensure_ascii=False, indent=2)
+                logger.info("Konfiguracja zapisana do %s", args.save_config)
+            except Exception as e:
+                logger.warning("Nie udało się zapisać konfiguracji do %s: %s", args.save_config, e)
+    return 0
+if __name__=="__main__":
+    raise SystemExit(main())
+
+
+
+### ./src/viz.py
+import pygame, math, time, collections
+from typing import Optional, List, Callable
+class RadarDisplay:
+    """
+    Simple radar-like visualization for audio events.  Each marker represents an audio event
+    with an associated angle, kind (e.g. ``shot`` or ``step``) and amplitude.  Markers
+    fade out over time.  Event kinds are rendered with different shapes to improve
+    readability: ``shot`` events use circular blips, whereas ``step`` events use square
+    markers.  Additional kinds fall back to circular markers.
+    """
+
+    def __init__(self, size=(600, 600), debug: bool = False, *, detector=None, controls: bool = False,
+                 show_meter: bool = True, controls_height: Optional[int] = None, controls_width: Optional[int] = None,
+                 device_list: Optional[List] = None, initial_device_index: Optional[int] = None,
+                 on_device_change: Optional[Callable[[int], None]] = None,
+                 scan_callback: Optional[Callable[[], None]] = None):
+        """Create a new radar display surface.
+
+        Parameters
+        ----------
+        size : tuple of int
+            The size of the window (width, height) in pixels.
+        debug : bool
+            If True, additional debug information may be logged or drawn.
+        detector : EventDetector or None
+            Optional reference to the event detector.  When provided and
+            ``controls`` is ``True``, GUI sliders and switches will update
+            parameters on this detector instance in real time.
+        controls : bool, optional
+            If True, allocate additional space at the bottom of the window
+            for interactive configuration sliders and toggles.  Defaults to
+            ``False``.
+        """
+        # Initialize the pygame environment and create a window
+        pygame.init()
+        self.debug = debug
+        self.detector = detector
+        self.controls = bool(controls)
+        # Determine whether to draw a level meter on the UI.  The meter shows
+        # the current RMS amplitude relative to the detector thresholds and
+        # baseline.  It can help diagnose issues with signal capture.
+        self.show_meter = bool(show_meter)
+        # In the redesigned UI we allocate a vertical side panel of fixed width for controls when ``controls`` is enabled.
+        # If ``controls_width`` is provided, use that; otherwise fall back to a reasonable default (e.g. 220 px).
+        if self.controls:
+            if controls_width is not None and controls_width > 0:
+                self.controls_width = int(controls_width)
+            else:
+                self.controls_width = 240
+        else:
+            self.controls_width = 0
+        # The height reserved for the bottom meter is independent of the controls panel.  We reserve a small
+        # height (10 px) for the RMS meter when ``show_meter`` is True, otherwise zero.
+        self._meter_height = 10 if show_meter else 0
+        # Store a copy of the initial size and device list
+        self.size = list(size)
+        self.device_list = list(device_list) if device_list else []
+        # Callback invoked when the user selects a new audio device
+        self.on_device_change = on_device_change
+        # Callback invoked when the user requests a device scan
+        self.on_scan = scan_callback
+        # Determine the currently selected device index (index into device_list)
+        self.selected_device_index = 0
+        if self.device_list:
+            # initial_device_index refers to device_list indices, not PyAudio indices.
+            if initial_device_index is not None:
+                # Find the position of this device in the list (match first element)
+                for i, (dev_idx, _name) in enumerate(self.device_list):
+                    if dev_idx == initial_device_index:
+                        self.selected_device_index = i
+                        break
+        # Compute dimensions for radar and controls.  The radar occupies the left portion
+        # of the window with width ``size[0] - controls_width`` and height ``size[1] - _meter_height``.
+        radar_width = self.size[0] - self.controls_width
+        radar_height = self.size[1] - self._meter_height
+        if radar_width < 50:
+            radar_width = max(50, self.size[0])  # fallback to whole width if panel exceeds window
+            self.controls_width = 0
+        if radar_height < 50:
+            radar_height = max(50, self.size[1])
+        # Create the display surface with the requested size and make it resizable
+        self.screen = pygame.display.set_mode(size, pygame.RESIZABLE)
+        self.clock = pygame.time.Clock()
+        # Radar radius (40% of the smaller dimension of radar area)
+        self.r = int(min(radar_width, radar_height) * 0.45)
+        # Center the radar within its area: horizontally centred in radar area, vertically centred above the meter
+        self.center = (radar_width // 2, radar_height // 2)
+        # Visual parameters (colours and speeds)
+        # Use slightly lighter colours and brighter accents for a modern look.
+        # Dark background with hints of blue; grid lines are lighter to
+        # improve contrast; the sweep line uses a brighter green.
+        self.bg_color = (10, 12, 28)         # dark background with a hint of blue
+        self.grid_color = (60, 80, 110)      # lighter grid/radar lines
+        self.sweep_color = (120, 220, 120)   # brighter sweep line colour
+        self.sweep_speed = 45.0              # degrees per second
+        # Deque to hold active markers; each marker is a dict with fields:
+        #   a: angle in degrees
+        #   k: kind of event ("shot", "step", etc.)
+        #   amp: amplitude scale (0..1)
+        #   t: timestamp when marker was added
+        #   shape: marker shape ("circle" or "square")
+        self.markers = collections.deque()
+        # Marker lifetime in seconds
+        self.life = 1.2
+        # Height of a header displayed at the top of the side panel (in pixels).
+        # When controls are enabled, we reserve this height so the controls begin below the title.
+        self._header_height = 28 if self.controls else 0
+        # Height of the tab bar below the header.  When multiple groups of controls are defined
+        # we display a bar with tab names allowing the user to switch between pages.  The
+        # tab bar occupies a small vertical space in the control panel.  It is only
+        # used when controls are enabled.
+        self._tab_bar_height = 24 if self.controls else 0
+        # Define tab labels for grouping controls.  The order of labels determines the
+        # order of tabs in the bar.  ``Detektor`` contains threshold/sliders and
+        # detection toggles; ``Widok`` contains display toggles; ``Urządzenie`` contains
+        # device selection and scanning.  Additional tabs may be added here.
+        self.tabs: List[str] = [
+            "Detektor",
+            "Widok",
+            "Urządzenie"
+        ] if self.controls else []
+        # Index of the currently active tab.  Defaults to the first tab (0) when
+        # controls are present.
+        self.current_tab: int = 0
+        # Rectangles corresponding to each tab in the tab bar.  These are computed
+        # whenever the layout is refreshed and are used to detect tab switching.
+        self._tab_rects: List[pygame.Rect] = []
+        # For interactive controls
+        # Base control definitions grouped by tab.  Each element in this list holds
+        # a list of control dictionaries for a given tab.  A control dictionary
+        # stores the label, parameter name, value and other properties but does not
+        # include geometry.  Geometry is computed when the tab is activated.
+        self.controls_by_tab: List[List[dict]] = []
+        # Visible controls with geometry for the current tab.  This list is
+        # populated by ``_layout_controls`` when the tab or window size changes.
+        self._controls_config: List[dict] = []
+        self._drag_index = None
+        # Create font for labels if controls are enabled.  Use a larger
+        # point size for improved readability in the redesigned UI.
+        if self.controls:
+            pygame.font.init()
+            try:
+                self.font = pygame.font.SysFont(None, 18)
+            except Exception:
+                self.font = pygame.font.Font(None, 18)
+            # Prepare the controls definitions based on the vertical side panel
+            panel_height = self.size[1] - self._meter_height
+            # Initialize base control definitions grouped by tab
+            self._init_controls((radar_width, self.size[1]), panel_height)
+            # Compute geometry for the initial tab
+            self._layout_controls()
+        # State for showing/hiding the radar frame (circles and crosshairs)
+        self.frame_enabled = True
+
+    def add_marker(self, angle: float, kind: str, amp: float) -> None:
+        """Add a marker representing an audio event.
+
+        Parameters
+        ----------
+        angle : float
+            Angle of the event relative to the listener (degrees).  Values are normalized
+            into the [0, 360) range.
+        kind : str
+            Type of the event.  Supported kinds include ``shot`` and ``step``.  Unknown
+            kinds will be rendered as circles.
+        amp : float
+            Scaled amplitude (0..1) representing the relative loudness of the event.  The
+            amplitude influences the size of the marker on the screen.
+        """
+        # Determine the shape based on the event kind.  Shots use circles, steps use
+        # squares.  Unknown kinds fall back to circles.
+        if kind == "shot":
+            shape = "circle"
+        elif kind == "step":
+            shape = "square"
+        else:
+            shape = "circle"
+        # Clamp amplitude into [0.02, 1.0] to avoid tiny or excessively large blips
+        amp_clamped = max(0.02, min(1.0, amp))
+        self.markers.append({
+            "a": angle % 360.0,
+            "k": kind,
+            "amp": amp_clamped,
+            "t": time.monotonic(),
+            "shape": shape
+        })
+
+    def _draw_background(self) -> None:
+        """Render the static radar background (concentric rings and crosshair)."""
+        # Fill the entire window with the background colour
+        self.screen.fill(self.bg_color)
+        # If a side panel is present, overdraw its background to mask radar lines
+        if self.controls and self.controls_width > 0:
+            panel_x0 = self.size[0] - self.controls_width
+            panel_rect = pygame.Rect(panel_x0, 0, self.controls_width, self.size[1] - self._meter_height)
+            panel_col = (15, 18, 35)
+            pygame.draw.rect(self.screen, panel_col, panel_rect)
+            # Draw header text at the top of the side panel if a header height is defined
+            if getattr(self, "_header_height", 0) and self._header_height > 0:
+                # Use the font to render the title
+                hdr_text = "Audio Radar"
+                hdr_surf = self.font.render(hdr_text, True, (180, 190, 210))
+                hx = panel_x0 + 10
+                hy = 4  # small padding from the top edge
+                self.screen.blit(hdr_surf, (hx, hy))
+        # Draw concentric rings and radial lines only within the radar area if the frame is enabled
+        if self.frame_enabled:
+            for frac in (1.0, 0.66, 0.33):
+                radius = int(self.r * frac)
+                pygame.draw.circle(self.screen, self.grid_color, self.center, radius, 1)
+            for d in range(0, 360, 45):
+                x = self.center[0] + int(self.r * math.sin(math.radians(d)))
+                y = self.center[1] - int(self.r * math.cos(math.radians(d)))
+                pygame.draw.line(self.screen, self.grid_color, self.center, (x, y), 1)
+
+    # ------------------------------------------------------------------
+    # Interactive controls setup and handling
+    def _init_controls(self, size, panel_height) -> None:
+        """
+        Initialize base control definitions grouped into tabs.
+
+        This method populates the ``controls_by_tab`` list with control dictionaries.
+        Geometry (row positions and rectangles) is not assigned here; instead, it is
+        computed on demand in ``_layout_controls`` when the tab is activated or
+        when the window is resized.
+
+        Parameters
+        ----------
+        size : tuple(int, int)
+            Tuple containing the radar area dimensions (width, total window height).  Unused.
+        panel_height : int
+            The height of the controls panel (window height minus meter height).
+        """
+        # Reset base control lists
+        self.controls_by_tab = [[] for _ in range(len(self.tabs))] if self.controls else []
+        # No controls if detector is not provided
+        if not self.detector or not self.controls:
+            return
+        # Define sliders with ranges and initial values
+        slider_defs = [
+            {
+                "type": "slider",
+                "label": "Próg",
+                "param": "threshold",
+                "min": 0.01,
+                "max": 0.2,
+                "value": float(getattr(self.detector, "threshold", 0.08)),
+            },
+            {
+                "type": "slider",
+                "label": "Siła",
+                "param": "strength",
+                "min": 1.0,
+                "max": 10.0,
+                "value": float(getattr(self.detector, "strength", 4.0)),
+            },
+            {
+                "type": "slider",
+                "label": "Wygładzenie",
+                "param": "smoothing",
+                "min": 0.005,
+                "max": 0.1,
+                "value": float(getattr(self.detector, "smoothing", 0.05)),
+            },
+        ]
+        # Define toggles
+        toggle_defs = [
+            {
+                "type": "toggle",
+                "label": "Auto próg",
+                "param": "dynamic",
+                "value": bool(getattr(self.detector, "dynamic", False)),
+            },
+            {
+                "type": "toggle",
+                "label": "Ramka",
+                "param": "frame",
+                "value": True,
+            },
+            {
+                "type": "toggle",
+                "label": "Inne dźwięki",
+                "param": "other",
+                "value": bool(getattr(self.detector, "enable_other", False)),
+            },
+        ]
+        # If we want to toggle the level meter visibility, include a toggle in the "Widok" tab
+        # You can uncomment the following lines to allow toggling the RMS meter from the GUI.
+        # toggle_defs.append({
+        #     "type": "toggle",
+        #     "label": "Miernik",
+        #     "param": "meter",
+        #     "value": bool(self.show_meter),
+        # })
+        # Selector definitions
+        selector_defs = []
+        if self.device_list:
+            selector_defs.append({
+                "type": "selector",
+                "label": "Urządzenie",
+                "param": "device",
+                "index": int(getattr(self, "selected_device_index", 0)),
+                "options": [name for (_idx, name) in self.device_list],
+            })
+        # Button definitions (e.g. scan button)
+        button_defs = []
+        if self.on_scan:
+            button_defs.append({
+                "type": "button",
+                "label": "Skanuj",
+                "param": "scan",
+            })
+        # Assign controls to tabs
+        # Tab 0 (Detektor): sliders and toggles for detection
+        for sd in slider_defs:
+            # Copy dictionary to avoid mutating the base definitions in future uses
+            cfg = dict(sd)
+            cfg["tab"] = 0
+            self.controls_by_tab[0].append(cfg)
+        for td in toggle_defs:
+            cfg = dict(td)
+            # Place the frame toggle in the Widok tab; others in Detektor
+            if cfg["param"] == "frame":
+                cfg["tab"] = 1
+                self.controls_by_tab[1].append(cfg)
+            else:
+                cfg["tab"] = 0
+                self.controls_by_tab[0].append(cfg)
+        # Tab 2 (Urządzenie): device selector and scan button
+        for sel in selector_defs:
+            cfg = dict(sel)
+            cfg["tab"] = 2
+            self.controls_by_tab[2].append(cfg)
+        for btn in button_defs:
+            cfg = dict(btn)
+            cfg["tab"] = 2
+            self.controls_by_tab[2].append(cfg)
+
+    def _layout_controls(self) -> None:
+        """
+        Compute geometry (positions and rectangles) for the controls in the active tab.
+
+        This method must be called whenever the window is resized or when the
+        current tab changes.  It clears ``self._controls_config`` and then
+        repopulates it with references to the base control dictionaries from
+        ``self.controls_by_tab``.  Geometry keys such as ``row_y``, ``track_x0``,
+        ``track_x1``, ``toggle_rect`` and ``label_x`` are added to each base
+        dictionary for the visible controls.  The method also computes
+        ``self._tab_rects`` to represent clickable areas for the tab bar.
+        """
+        # Clear visible config list
+        self._controls_config = []
+        self._tab_rects = []
+        # If no controls or no controls defined for this tab, nothing to layout
+        if not self.controls or not self.controls_by_tab:
+            return
+        # Determine panel and geometry parameters
+        panel_x0 = self.size[0] - self.controls_width
+        panel_x1 = self.size[0]
+        # Determine heights: header and tab bar
+        header_offset = self._header_height if getattr(self, "_header_height", 0) else 0
+        tab_offset = self._tab_bar_height if getattr(self, "_tab_bar_height", 0) else 0
+        # Compute total usable height for controls after header and tabs
+        panel_height = self.size[1] - self._meter_height
+        usable_height = panel_height - header_offset - tab_offset
+        # Determine row height for controls in the active tab
+        tab_controls = self.controls_by_tab[self.current_tab] if (0 <= self.current_tab < len(self.controls_by_tab)) else []
+        total_controls = len(tab_controls)
+        row_h = usable_height / total_controls if total_controls > 0 else 0
+        # Layout parameters: margins and label width
+        margin_left = 10
+        margin_right = 12
+        label_w = 90
+        track_x0 = panel_x0 + margin_left + label_w
+        track_x1 = panel_x1 - margin_right
+        # Layout each control in the active tab
+        for idx, cfg in enumerate(tab_controls):
+            y_center = int(header_offset + tab_offset + (idx + 0.5) * row_h)
+            cfg["row_y"] = y_center
+            cfg["label_x"] = panel_x0 + margin_left
+            # Slider geometry
+            if cfg["type"] == "slider":
+                cfg["track_x0"] = track_x0
+                cfg["track_x1"] = track_x1
+                cfg["value_x"] = panel_x1 - margin_right
+            elif cfg["type"] == "toggle":
+                toggle_w, toggle_h = 50, 22
+                toggle_x = panel_x0 + margin_left + label_w
+                toggle_y = int(y_center - toggle_h / 2)
+                cfg["toggle_rect"] = pygame.Rect(toggle_x, toggle_y, toggle_w, toggle_h)
+            elif cfg["type"] == "selector":
+                arrow_w, arrow_h = 14, 12
+                lrect = pygame.Rect(panel_x0 + margin_left + label_w,
+                                    y_center - arrow_h // 2,
+                                    arrow_w, arrow_h)
+                rrect = pygame.Rect(panel_x0 + margin_left + label_w + arrow_w + 5,
+                                    y_center - arrow_h // 2,
+                                    arrow_w, arrow_h)
+                cfg["left_rect"] = lrect
+                cfg["right_rect"] = rrect
+            elif cfg["type"] == "button":
+                btn_width = self.controls_width - 2 * margin_left
+                btn_height = 26
+                btn_x = panel_x0 + margin_left
+                btn_y = int(y_center - btn_height / 2)
+                cfg["rect"] = pygame.Rect(btn_x, btn_y, btn_width, btn_height)
+            # Add to visible config list
+            self._controls_config.append(cfg)
+        # Compute tab bar rectangles so that tabs can be clicked
+        # Only compute if there are tabs defined
+        if self.tabs:
+            tab_count = len(self.tabs)
+            bar_y0 = header_offset
+            bar_h = self._tab_bar_height
+            # Each tab shares the panel width equally
+            if tab_count > 0:
+                tab_w = self.controls_width // tab_count
+            else:
+                tab_w = self.controls_width
+            self._tab_rects = []
+            for i, _label in enumerate(self.tabs):
+                x0 = panel_x0 + i * tab_w
+                # Extend last tab to end of panel to compensate for integer division
+                w = tab_w if i < tab_count - 1 else (panel_x1 - x0)
+                rect = pygame.Rect(x0, bar_y0, w, bar_h)
+                self._tab_rects.append(rect)
+
+    def _draw_controls(self) -> None:
+        """Draw the interactive controls and tab bar on the screen."""
+        if not self.controls or not self._controls_config:
+            return
+        # Draw the tab bar if multiple tabs exist
+        if self.tabs and self._tab_rects:
+            for i, rect in enumerate(self._tab_rects):
+                # Determine tab background colour (selected vs unselected)
+                if i == self.current_tab:
+                    col_bg = (50, 70, 100)
+                    col_txt = (230, 230, 240)
+                else:
+                    col_bg = (30, 45, 65)
+                    col_txt = (160, 170, 190)
+                pygame.draw.rect(self.screen, col_bg, rect)
+                # Draw tab label centered
+                label = self.tabs[i]
+                txt_surf = self.font.render(label, True, col_txt)
+                tx = rect.x + (rect.width - txt_surf.get_width()) // 2
+                ty = rect.y + (rect.height - txt_surf.get_height()) // 2
+                self.screen.blit(txt_surf, (tx, ty))
+                # Draw separator lines between tabs except on the far right
+                if i < len(self._tab_rects) - 1:
+                    pygame.draw.line(self.screen, (20, 30, 45), (rect.right, rect.y), (rect.right, rect.y + rect.height), 1)
+        # Draw each visible control for the active tab
+        for cfg in self._controls_config:
+            y = cfg["row_y"]
+            panel_x0 = self.size[0] - self.controls_width
+            label_colour = (200, 200, 210)
+            arrow_col = (160, 180, 200)
+            if cfg["type"] == "slider":
+                label_surf = self.font.render(cfg["label"], True, label_colour)
+                lx = cfg.get("label_x", panel_x0 + 10)
+                self.screen.blit(label_surf, (lx, y - label_surf.get_height() // 2))
+                x0, x1 = cfg["track_x0"], cfg["track_x1"]
+                pygame.draw.line(self.screen, (70, 90, 120), (x0, y), (x1, y), 2)
+                v_norm = (cfg["value"] - cfg["min"]) / (cfg["max"] - cfg["min"])
+                knob_x = int(x0 + v_norm * (x1 - x0))
+                pygame.draw.circle(self.screen, (220, 220, 230), (knob_x, y), 8)
+                val_text = f"{cfg['value']:.3f}" if cfg["param"] != "strength" else f"{cfg['value']:.1f}"
+                val_surf = self.font.render(val_text, True, (180, 200, 220))
+                vx = cfg.get("value_x", x1 + 5)
+                self.screen.blit(val_surf, (vx, y - val_surf.get_height() // 2))
+            elif cfg["type"] == "toggle":
+                label_surf = self.font.render(cfg["label"], True, label_colour)
+                lx = cfg.get("label_x", panel_x0 + 10)
+                self.screen.blit(label_surf, (lx, y - label_surf.get_height() // 2))
+                rect = cfg["toggle_rect"]
+                pygame.draw.rect(self.screen, (70, 90, 120), rect, border_radius=9)
+                inner_rect = rect.inflate(-4, -4)
+                if cfg["value"]:
+                    pygame.draw.rect(self.screen, (100, 200, 100), inner_rect, border_radius=8)
+                    knob_center = (inner_rect.right - inner_rect.height // 2, inner_rect.centery)
+                else:
+                    pygame.draw.rect(self.screen, (40, 50, 60), inner_rect, border_radius=8)
+                    knob_center = (inner_rect.left + inner_rect.height // 2, inner_rect.centery)
+                pygame.draw.circle(self.screen, (255, 255, 255), knob_center, inner_rect.height // 2 - 1)
+                state_text = "WŁ" if cfg["value"] else "WYŁ"
+                state_colour = (100, 200, 100) if cfg["value"] else (150, 150, 150)
+                txt_surf = self.font.render(state_text, True, state_colour)
+                txt_x = rect.x + rect.width + 5
+                txt_y = rect.y + (rect.height - txt_surf.get_height()) // 2
+                self.screen.blit(txt_surf, (txt_x, txt_y))
+            elif cfg["type"] == "selector":
+                label_surf = self.font.render(cfg["label"], True, label_colour)
+                lx = cfg.get("label_x", panel_x0 + 10)
+                self.screen.blit(label_surf, (lx, y - label_surf.get_height() // 2))
+                left_rect = cfg.get("left_rect")
+                right_rect = cfg.get("right_rect")
+                if left_rect:
+                    pts_left = [
+                        (left_rect.centerx + left_rect.width // 3, left_rect.top),
+                        (left_rect.left, left_rect.centery),
+                        (left_rect.centerx + left_rect.width // 3, left_rect.bottom)
+                    ]
+                    pygame.draw.polygon(self.screen, arrow_col, pts_left)
+                if right_rect:
+                    pts_right = [
+                        (right_rect.centerx - right_rect.width // 3, right_rect.top),
+                        (right_rect.right, right_rect.centery),
+                        (right_rect.centerx - right_rect.width // 3, right_rect.bottom)
+                    ]
+                    pygame.draw.polygon(self.screen, arrow_col, pts_right)
+                idx_sel = cfg.get("index", 0)
+                opts = cfg.get("options", [])
+                name = opts[idx_sel] if 0 <= idx_sel < len(opts) else "Brak"
+                text_x = (right_rect.right + 5) if right_rect else (left_rect.right + 5 if left_rect else panel_x0 + 10)
+                max_width = panel_x0 + self.controls_width - text_x - 5
+                dev_surf = self.font.render(name, True, (200, 200, 210))
+                if dev_surf.get_width() > max_width:
+                    truncated = name
+                    while truncated and self.font.size(truncated + "...")[0] > max_width:
+                        truncated = truncated[:-1]
+                    truncated += "..."
+                    dev_surf = self.font.render(truncated, True, (200, 200, 210))
+                self.screen.blit(dev_surf, (text_x, y - dev_surf.get_height() // 2))
+            elif cfg["type"] == "button":
+                rect = cfg.get("rect")
+                if rect:
+                    bg_col = (70, 100, 140)
+                    border_col = (50, 70, 100)
+                    pygame.draw.rect(self.screen, bg_col, rect)
+                    pygame.draw.rect(self.screen, border_col, rect, 1)
+                    text_surf = self.font.render(cfg["label"], True, (230, 230, 240))
+                    tx = rect.x + (rect.width - text_surf.get_width()) // 2
+                    ty = rect.y + (rect.height - text_surf.get_height()) // 2
+                    self.screen.blit(text_surf, (tx, ty))
+
+    def _handle_mouse_down(self, pos) -> None:
+        """Handle mouse button press events for controls."""
+        if not self.controls or not self._controls_config:
+            return
+        x, y = pos
+        # Check if the click is within the tab bar; if so, switch tabs
+        if self.tabs and self._tab_rects:
+            for i, r in enumerate(self._tab_rects):
+                if r.collidepoint(pos):
+                    # Switch to the clicked tab if it's different
+                    if i != self.current_tab:
+                        self.current_tab = i
+                        # Re-layout controls for the new tab
+                        self._layout_controls()
+                    return
+        # Otherwise, iterate through visible controls
+        for idx, cfg in enumerate(self._controls_config):
+            if cfg["type"] == "slider":
+                # Check if click is within the vertical vicinity of the slider row
+                # Expand hit area to +/- 8 px vertically for easier interaction
+                if abs(y - cfg["row_y"]) <= 8 and cfg["track_x0"] <= x <= cfg["track_x1"]:
+                    # Immediately update value based on click position
+                    self._update_slider_value(idx, x)
+                    self._drag_index = idx
+                    break
+            elif cfg["type"] == "toggle":
+                if cfg["toggle_rect"].collidepoint(pos):
+                    # Toggle the value
+                    cfg["value"] = not cfg["value"]
+                    # Update detector or local property based on parameter
+                    if cfg["param"] == "dynamic":
+                        # Auto threshold toggle affects the detector
+                        if self.detector:
+                            setattr(self.detector, "dynamic", cfg["value"])
+                    elif cfg["param"] == "frame":
+                        # Frame toggle affects local frame visibility
+                        self.frame_enabled = cfg["value"]
+                    elif cfg["param"] == "other":
+                        # Toggle detection of other events on the detector
+                        if self.detector:
+                            setattr(self.detector, "enable_other", cfg["value"])
+                    break
+            elif cfg["type"] == "selector":
+                # Check if click is within the left or right arrow to change device
+                lrect = cfg.get("left_rect")
+                rrect = cfg.get("right_rect")
+                if lrect and lrect.collidepoint(pos):
+                    # Move to previous device
+                    current_idx = cfg.get("index", 0)
+                    if self.device_list:
+                        new_idx = (current_idx - 1) % len(self.device_list)
+                        cfg["index"] = new_idx
+                        # Update selected device index globally
+                        self.selected_device_index = new_idx
+                        # Invoke callback to change device if provided
+                        if self.on_device_change:
+                            new_dev_idx = self.device_list[new_idx][0]
+                            try:
+                                self.on_device_change(new_dev_idx)
+                            except Exception:
+                                pass
+                    break
+                elif rrect and rrect.collidepoint(pos):
+                    # Move to next device
+                    current_idx = cfg.get("index", 0)
+                    if self.device_list:
+                        new_idx = (current_idx + 1) % len(self.device_list)
+                        cfg["index"] = new_idx
+                        self.selected_device_index = new_idx
+                        if self.on_device_change:
+                            new_dev_idx = self.device_list[new_idx][0]
+                            try:
+                                self.on_device_change(new_dev_idx)
+                            except Exception:
+                                pass
+                    break
+
+            elif cfg["type"] == "button":
+                # Check if the button was clicked to trigger a scan
+                rect = cfg.get("rect")
+                if rect and rect.collidepoint(pos):
+                    if self.on_scan:
+                        try:
+                            self.on_scan()
+                        except Exception:
+                            pass
+                    break
+
+    def _handle_mouse_move(self, pos) -> None:
+        """Handle mouse motion events for dragging slider knobs."""
+        if self._drag_index is None:
+            return
+        idx = self._drag_index
+        cfg = self._controls_config[idx]
+        if cfg["type"] != "slider":
+            return
+        x, _ = pos
+        # Clamp x to track range
+        x_clamped = max(cfg["track_x0"], min(cfg["track_x1"], x))
+        self._update_slider_value(idx, x_clamped)
+
+    def _handle_mouse_up(self) -> None:
+        """Reset dragging state when mouse button is released."""
+        self._drag_index = None
+
+    def _update_slider_value(self, idx: int, x: int) -> None:
+        """Update the slider value and propagate it to the detector."""
+        cfg = self._controls_config[idx]
+        if cfg["type"] != "slider":
+            return
+        # Compute normalized position
+        v_norm = (x - cfg["track_x0"]) / (cfg["track_x1"] - cfg["track_x0"])
+        v_norm = max(0.0, min(1.0, v_norm))
+        # Map to value range
+        val = cfg["min"] + v_norm * (cfg["max"] - cfg["min"])
+        # Optionally round the value for readability
+        if cfg["param"] == "strength":
+            # Round to one decimal place
+            val = round(val, 1)
+        elif cfg["param"] == "threshold":
+            val = round(val, 3)
+        elif cfg["param"] == "smoothing":
+            val = round(val, 4)
+        cfg["value"] = float(val)
+        # Update detector if available
+        if self.detector:
+            setattr(self.detector, cfg["param"], val)
+
+    def _draw_marker_circle(self, x: int, y: int, size: int, color: tuple, alpha: int) -> None:
+        """Draw a circular marker with the given parameters."""
+        # Create a surface with per-pixel alpha
+        surf = pygame.Surface((size * 2, size * 2), pygame.SRCALPHA)
+        surf.fill((0, 0, 0, 0))
+        pygame.draw.circle(surf, (*color, alpha), (size, size), size)
+        self.screen.blit(surf, (x - size, y - size))
+
+    def _draw_marker_square(self, x: int, y: int, size: int, color: tuple, alpha: int) -> None:
+        """Draw a square marker with the given parameters."""
+        # Create a surface with per-pixel alpha
+        surf = pygame.Surface((size * 2, size * 2), pygame.SRCALPHA)
+        surf.fill((0, 0, 0, 0))
+        # Draw a square centered at (size, size)
+        rect = pygame.Rect(0, 0, size * 2, size * 2)
+        pygame.draw.rect(surf, (*color, alpha), rect)
+        self.screen.blit(surf, (x - size, y - size))
+
+    def update(self) -> bool:
+        """Update the radar display.
+
+        Returns
+        -------
+        bool
+            False if a quit event was received and the caller should exit; True
+            otherwise.
+        """
+        # Handle window and input events (such as closing the window and interacting with controls)
+        for ev in pygame.event.get():
+            if ev.type == pygame.QUIT:
+                return False
+            if ev.type == pygame.VIDEORESIZE:
+                try:
+                    new_size = (ev.w, ev.h)
+                    self._handle_resize(new_size)
+                except Exception:
+                    pass
+                continue
+            if ev.type == pygame.MOUSEBUTTONDOWN:
+                try:
+                    self._handle_mouse_down(ev.pos)
+                except Exception:
+                    pass
+            elif ev.type == pygame.MOUSEMOTION:
+                try:
+                    self._handle_mouse_move(ev.pos)
+                except Exception:
+                    pass
+            elif ev.type == pygame.MOUSEBUTTONUP:
+                try:
+                    self._handle_mouse_up()
+                except Exception:
+                    pass
+        # Draw the radar background (concentric rings and grid)
+        self._draw_background()
+        # Draw sweeping radar line
+        try:
+            # Compute current sweep angle based on elapsed time and configured speed
+            sweep_angle = (time.monotonic() * self.sweep_speed) % 360.0
+            end_x = self.center[0] + int(self.r * math.sin(math.radians(sweep_angle)))
+            end_y = self.center[1] - int(self.r * math.cos(math.radians(sweep_angle)))
+            # Create a translucent surface for the sweep line
+            sweep_surf = pygame.Surface(self.screen.get_size(), pygame.SRCALPHA)
+            # A semi‑transparent line to simulate radar beam
+            pygame.draw.line(sweep_surf, (*self.sweep_color, 100), self.center, (end_x, end_y), 2)
+            # Blit the sweep onto the main screen
+            self.screen.blit(sweep_surf, (0, 0))
+        except Exception:
+            # In case of unexpected errors (e.g. during headless operation), skip drawing the sweep
+            pass
+        now = time.monotonic()
+        # Iterate over markers to draw them; rotate the deque to move through
+        for _ in range(len(self.markers)):
+            m = self.markers[0]
+            age = now - m["t"]
+            # Remove markers that have exceeded their lifetime
+            if age > self.life:
+                self.markers.popleft()
+                continue
+            # Fade factor from 1.0 down to 0.0 over the marker's lifetime
+            fade = 1.0 - age / self.life
+            # Convert angle to screen coordinates
+            rad = math.radians(m["a"])
+            x = self.center[0] + int(self.r * math.sin(rad))
+            y = self.center[1] - int(self.r * math.cos(rad))
+            # Determine colour based on event kind using an updated palette
+            if m["k"] == "shot":
+                # bright warm red for gunshots
+                col = (240, 80, 80)
+            elif m["k"] == "step":
+                # bright cool blue for footsteps
+                col = (80, 180, 250)
+            else:
+                # neutral grey for other events
+                col = (200, 200, 200)
+            # Marker size scales with amplitude and fade
+            size = max(4, int(12 * m["amp"] * fade))
+            alpha = int(220 * fade)
+            # Draw the appropriate shape
+            if m.get("shape") == "square":
+                self._draw_marker_square(x, y, size, col, alpha)
+            else:
+                # Default to circle for unknown shapes
+                self._draw_marker_circle(x, y, size, col, alpha)
+            # Rotate deque so that we visit each marker
+            self.markers.rotate(-1)
+        # Draw interactive controls on top of the radar
+        try:
+            self._draw_controls()
+        except Exception:
+            pass
+        # Draw a level meter showing the current RMS amplitude relative to
+        # thresholds if enabled.  This provides visual feedback that audio
+        # frames are being captured and allows manual calibration.
+        if self.show_meter and self.detector:
+            try:
+                self._draw_meter()
+            except Exception:
+                pass
+        pygame.display.flip()
+        # Limit frame rate to ~60 FPS
+        self.clock.tick(60)
+        return True
+
+    def _handle_resize(self, new_size: tuple) -> None:
+        """Handle window resizing by adjusting radar and control geometry."""
+        # Update internal size and adjust layout.  Use the same logic as in __init__
+        w, h = new_size
+        if w <= 50 or h <= 50:
+            return
+        self.size = [w, h]
+        # Recreate display
+        try:
+            self.screen = pygame.display.set_mode((w, h), pygame.RESIZABLE)
+        except Exception:
+            self.screen = pygame.display.set_mode((w, h))
+        # Compute new radar and panel dimensions.  Preserve controls_width but clamp if necessary.
+        if self.controls:
+            panel_w = self.controls_width
+            radar_w = w - panel_w
+            if radar_w < 50:
+                # If the window is too narrow, shrink the panel width
+                panel_w = max(50, w - 50)
+                radar_w = w - panel_w
+                self.controls_width = panel_w
+        else:
+            radar_w = w
+        # Height for radar area (exclude meter)
+        radar_h = h - self._meter_height
+        if radar_h < 50:
+            radar_h = max(50, h)
+        # Recompute radius and center
+        self.r = int(min(radar_w, radar_h) * 0.45)
+        self.center = (radar_w // 2, radar_h // 2)
+        # Preserve existing values and selection
+        old_values = {}
+        sel_index = self.selected_device_index
+        for cfg in self._controls_config:
+            if cfg["type"] in ("slider", "toggle"):
+                old_values[cfg["param"]] = cfg["value"]
+        # Rebuild control definitions
+        panel_height = h - self._meter_height
+        # Rebuild base controls and geometry.  First reinitialize base control definitions
+        self._init_controls((radar_w, h), panel_height)
+        # Restore previous values for sliders/toggles and frame state on the base config
+        # Iterate through all tabs to restore values
+        for tab in self.controls_by_tab:
+            for cfg in tab:
+                p = cfg.get("param")
+                if cfg["type"] in ("slider", "toggle"):
+                    if p in old_values:
+                        cfg["value"] = old_values[p]
+                        if p in ("threshold", "strength", "smoothing") and self.detector:
+                            setattr(self.detector, p, cfg["value"])
+                        elif p == "dynamic" and self.detector:
+                            setattr(self.detector, "dynamic", cfg["value"])
+                        elif p == "other" and self.detector:
+                            setattr(self.detector, "enable_other", cfg["value"])
+                    if p == "frame":
+                        self.frame_enabled = cfg["value"]
+                elif cfg["type"] == "selector":
+                    cfg["index"] = sel_index
+        # After restoring values, recompute geometry for current tab
+        self._layout_controls()
+
+    def _draw_meter(self) -> None:
+        """Draw a small horizontal level meter at the bottom of the window.
+
+        The meter visualizes the most recent RMS amplitude (filled bar)
+        alongside markers for the effective detection threshold, the
+        secondary threshold for 'other' events, and the estimated baseline.
+        This aids troubleshooting by confirming that audio is being
+        captured and showing how close the signal is to triggering an event.
+        """
+        h = self.screen.get_height()
+        w = self.screen.get_width()
+        mh = self._meter_height
+        if mh <= 0:
+            return
+        # Define meter bounding box.  Restrict the meter's width to the radar area so that it does not
+        # extend under the side panel.  If a controls panel is present, subtract its width; otherwise
+        # use the full window width.  Leave a small horizontal padding on both sides.
+        pad = 4
+        x0 = pad
+        y0 = h - mh - pad
+        # Determine available width for the meter: total width minus panel width (if any) minus padding
+        panel_offset = self.controls_width if (self.controls and self.controls_width > 0) else 0
+        width = (w - panel_offset) - 2 * pad
+        height = mh - pad if mh > pad else 0
+        # Background of the bar
+        bg_col = (30, 40, 55)
+        pygame.draw.rect(self.screen, bg_col, (x0, y0, width, height))
+        # Retrieve current values from detector
+        rms = getattr(self.detector, 'last_rms', 0.0)
+        thr = getattr(self.detector, 'last_effective_thr', 0.0)
+        othr = getattr(self.detector, 'last_other_thr', 0.0)
+        baseline = getattr(self.detector, 'last_baseline', 0.0)
+        # Normalize to [0,1]
+        def clamp01(v: float) -> float:
+            return max(0.0, min(1.0, float(v)))
+        rms_n = clamp01(rms)
+        thr_n = clamp01(thr)
+        othr_n = clamp01(othr)
+        base_n = clamp01(baseline)
+        # Draw RMS bar
+        bar_col = (80, 200, 240)
+        rms_width = int(width * rms_n)
+        pygame.draw.rect(self.screen, bar_col, (x0, y0, rms_width, height))
+        # Draw baseline line
+        baseline_col = (120, 160, 200)
+        base_x = x0 + int(width * base_n)
+        pygame.draw.line(self.screen, baseline_col, (base_x, y0), (base_x, y0 + height), 1)
+        # Draw other threshold marker
+        other_col = (180, 180, 180)
+        othr_x = x0 + int(width * othr_n)
+        pygame.draw.line(self.screen, other_col, (othr_x, y0), (othr_x, y0 + height), 1)
+        # Draw main threshold marker
+        thr_col = (200, 80, 80)
+        thr_x = x0 + int(width * thr_n)
+        pygame.draw.line(self.screen, thr_col, (thr_x, y0), (thr_x, y0 + height), 1)
+
+
+

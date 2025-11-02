@@ -1,0 +1,19 @@
+
+=== audio_radar/VERSION.txt ===
+$(sed 's/$/\n/' audio_radar/VERSION.txt)
+=== audio_radar/__init__.py ===
+$(sed 's/$/\n/' audio_radar/__init__.py)
+=== audio_radar/main.py ===
+$(sed 's/$/\n/' audio_radar/main.py)
+=== audio_radar/audio_capture.py ===
+$(sed 's/$/\n/' audio_radar/audio_capture.py)
+=== audio_radar/sound_analysis.py ===
+$(sed 's/$/\n/' audio_radar/sound_analysis.py)
+=== audio_radar/visualization.py ===
+$(sed 's/$/\n/' audio_radar/visualization.py)
+=== audio_radar/config.json ===
+$(sed 's/$/\n/' audio_radar/config.json)
+=== audio_radar/README.md ===
+$(sed 's/$/\n/' audio_radar/README.md)
+=== audio_radar/RUN_BUILD_ALL.cmd ===
+$(sed 's/$/\n/' audio_radar/RUN_BUILD_ALL.cmd)

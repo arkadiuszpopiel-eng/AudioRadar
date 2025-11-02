@@ -1,0 +1,5 @@
+ARC_FPS_PersonDetector — FULL TECHNICAL GUIDE (PL)
+=================================================
+Opis techniczny systemu, jego modułów, przepływu danych, konfiguracji, overlay, AI YOLOv8n i diagnostyki.
+Wersja: v9.5.1 Stable
+(... pełna treść przewodnika jak w paczce ...)

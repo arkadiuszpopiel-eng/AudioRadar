@@ -1,0 +1,4 @@
+ARC_FPS_PersonDetector — FULL ARCHIVE LOG (PL)
+==============================================
+Historia wersji od v1 do v9.5.1, opis zmian, napraw, decyzji projektowych i wniosków.
+(... pełna treść archiwum jak w paczce ...)

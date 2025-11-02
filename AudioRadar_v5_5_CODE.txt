@@ -1,0 +1,487 @@
+
+
+===== src/logger_setup.py =====
+import logging, datetime
+from logging.handlers import RotatingFileHandler
+from pathlib import Path
+
+def setup_logger(log_path: str, debug: bool=False) -> logging.Logger:
+    Path(log_path).parent.mkdir(parents=True, exist_ok=True)
+    logger = logging.getLogger("audioradar")
+    logger.setLevel(logging.DEBUG if debug else logging.INFO)
+    if logger.handlers:
+        return logger
+    fmt = logging.Formatter("%(asctime)s | %(levelname)-8s | %(message)s")
+    try:
+        fh = RotatingFileHandler(log_path, maxBytes=2_097_152, backupCount=2, encoding="utf-8")
+    except PermissionError:
+        ts = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
+        alt = Path(log_path).with_name(f"log_fallback-{ts}.txt")
+        fh = RotatingFileHandler(str(alt), maxBytes=2_097_152, backupCount=2, encoding="utf-8")
+        print(f"[WARN] Nie moge otworzyc {log_path} — uzywam {alt}")
+    fh.setFormatter(fmt); fh.setLevel(logging.DEBUG if debug else logging.INFO)
+    logger.addHandler(fh)
+    sh = logging.StreamHandler(); sh.setFormatter(fmt); sh.setLevel(logging.DEBUG if debug else logging.INFO)
+    logger.addHandler(sh)
+    logger.info("Logger initialized | log_path=%s | debug=%s", log_path, debug)
+    return logger
+
+
+===== src/audio_loopback.py =====
+import json, numpy as np, threading, logging, time
+from typing import Any, Optional, Tuple, List
+from pathlib import Path
+try:
+    import pyaudiowpatch as pyaudio
+except Exception:
+    pyaudio = None
+CACHE_FILE = Path("cache/last_device.json")
+def _normalize_index(candidate: Any) -> Optional[int]:
+    try:
+        if candidate is None: return None
+        if isinstance(candidate, int): return int(candidate)
+        if isinstance(candidate, float): return int(candidate)
+        if isinstance(candidate, str): return int(candidate.strip())
+        if isinstance(candidate, (tuple, list)) and candidate: return _normalize_index(candidate[0])
+        if isinstance(candidate, dict):
+            for k in ("index","device_index","id"):
+                if k in candidate: return _normalize_index(candidate[k])
+        return int(candidate)
+    except Exception: return None
+def _load_cache():
+    try:
+        with open(CACHE_FILE,"r",encoding="utf-8") as f: return json.load(f)
+    except Exception: return {}
+def _save_cache(data: dict):
+    try:
+        CACHE_FILE.parent.mkdir(parents=True, exist_ok=True)
+        with open(CACHE_FILE,"w",encoding="utf-8") as f: json.dump(data,f,ensure_ascii=False,indent=2)
+    except Exception: pass
+class AudioCapturer:
+    def __init__(self, rate:int, channels:int, buffer_ms:int, logger:logging.Logger, device_index:int|None=None):
+        self.req_rate=rate; self.req_channels=channels; self.buffer_ms=max(10, buffer_ms); self.logger=logger
+        self._running=False; self._thread=None; self._pa=None; self._stream=None; self._device_override=device_index
+        self.rate=rate; self.channels=channels; self._format="paInt16"
+    def _list_devices(self, pa):
+        rows=[]; 
+        for i in range(pa.get_device_count()):
+            info=pa.get_device_info_by_index(i)
+            rows.append((i, info.get("name",""), info.get("hostApi"), info.get("maxInputChannels")))
+        return rows
+    def _find_device(self, pa):
+        cache=_load_cache()
+        if self._device_override is not None: return _normalize_index(self._device_override)
+        last=_normalize_index(cache.get("device_index"))
+        if last is not None: return last
+        idx=None
+        try: idx=_normalize_index(pa.get_default_wasapi_loopback())
+        except Exception as e: self.logger.debug("get_default_wasapi_loopback failed: %s", e)
+        if idx is not None: return idx
+        for i in range(pa.get_device_count()):
+            info=pa.get_device_info_by_index(i); name=(info.get("name","") or "").lower()
+            if "loopback" in name or "stereo mix" in name or "what u hear" in name: return i
+        return None
+    def _probe_formats(self, pa, device_index:int)->Tuple[int,int,list]:
+        candidates_rate=[]; 
+        if self.req_rate not in (None,0): candidates_rate.append(int(self.req_rate))
+        for r in (48000,44100,96000,192000):
+            if r not in candidates_rate: candidates_rate.append(r)
+        chan_candidates=[]; 
+        if self.req_channels not in (None,0): chan_candidates.append(int(self.req_channels))
+        if 2 not in chan_candidates: chan_candidates.append(2)
+        formats=[("paInt16", pyaudio.paInt16), ("paFloat32", pyaudio.paFloat32)]
+        diags=[]; chosen_rate=None; chosen_ch=None; chosen_fmt="paInt16"; chosen_fmt_val=pyaudio.paInt16
+        for ch in chan_candidates:
+            for rate in candidates_rate:
+                for fmt_name, fmt_val in formats:
+                    ok=False
+                    try:
+                        ok=pa.is_format_supported(rate, input_device=device_index, input_channels=ch, input_format=fmt_val)
+                    except Exception: ok=False
+                    diags.append((rate,ch,fmt_name,bool(ok)))
+                    if ok and chosen_rate is None:
+                        chosen_rate, chosen_ch, chosen_fmt, chosen_fmt_val = rate, ch, fmt_name, fmt_val
+            if chosen_rate is not None: break
+        if chosen_rate is None:
+            chosen_rate=self.req_rate; chosen_ch=self.req_channels; chosen_fmt="paInt16"; chosen_fmt_val=pyaudio.paInt16
+        self._format=chosen_fmt
+        return chosen_rate, chosen_ch, diags, chosen_fmt_val
+    def _attempt_open(self, idx, rate, ch, fmt_val, frames):
+        return self._pa.open(format=fmt_val, channels=ch, rate=rate, input=True, frames_per_buffer=frames, input_device_index=idx)
+    def start(self, callback):
+        if self._running: return
+        if pyaudio is None: self.logger.warning("PyAudioWPatch nie jest zainstalowany — brak przechwytywania audio."); return
+        self._pa=pyaudio.PyAudio()
+        devs=self._list_devices(self._pa); self.logger.info("Lista urzadzen audio: %s", devs)
+        idx=self._find_device(self._pa)
+        if idx is None: self.logger.error("Nie znaleziono urzadzenia loopback (Stereo Mix/What U Hear)."); return
+        try:
+            info=self._pa.get_device_info_by_index(idx); self.logger.info("Wybrano device_index=%s name=%s", idx, info.get("name","?"))
+        except Exception: self.logger.info("Wybrano device_index=%s (nazwa nieznana)", idx)
+        rate,ch,diags,fmt_val=self._probe_formats(self._pa, idx); self.logger.info("Probe results: %s", diags)
+        if rate is None or ch is None: self.logger.error("Zaden testowany format nie jest wspierany."); return
+        # Domyślnie 50 ms bufor (stabilniej), ale nie mniej niż 10 ms
+        frames=max(64, int(rate*max(10, self.buffer_ms)/1000))
+        # Próba otwarcia + runtime fallback przy błędzie
+        for mult in (1.0, 1.5, 2.0):
+            try:
+                frames_try = max(64, int(frames*mult))
+                self._stream=self._attempt_open(idx, rate, ch, fmt_val, frames_try)
+                self.rate=int(rate); self.channels=int(ch)
+                self.logger.info("Uzywam rate=%s Hz, channels=%s, frames_per_buffer=%s, format=%s", self.rate, self.channels, frames_try, self._format)
+                _save_cache({"device_index": idx, "rate": self.rate, "channels": self.channels, "format": self._format})
+                break
+            except Exception as e:
+                self.logger.warning("Open failed (buf=%s): %s", int(frames*mult), e)
+                self._stream=None
+        if self._stream is None:
+            # Drugi rzut: spróbuj zmienić format (float<->int16) i/lub rate 48000
+            alt = [(pyaudio.paFloat32, "paFloat32"), (pyaudio.paInt16, "paInt16")]
+            rates = [rate, 48000, 44100, 96000]
+            tried=[]
+            for fmt_v, fmt_n in alt:
+                for r in rates:
+                    for mult in (1.5, 2.0):
+                        try:
+                            frames_try=max(64, int(r*max(10, self.buffer_ms)/1000*mult))
+                            st=self._attempt_open(idx, r, ch, fmt_v, frames_try)
+                            self._stream=st; self.rate=int(r); self.channels=int(ch); self._format=fmt_n
+                            self.logger.info("Fallback OK: rate=%s ch=%s buf=%s fmt=%s", r, ch, frames_try, fmt_n)
+                            _save_cache({"device_index": idx, "rate": self.rate, "channels": self.channels, "format": self._format})
+                            break
+                        except Exception as e:
+                            tried.append((fmt_n, r, mult, str(e)))
+                    if self._stream: break
+                if self._stream: break
+            if self._stream is None:
+                self.logger.error("Nie udalo sie otworzyc streamu. Proby: %s", tried)
+                try: self._pa.terminate()
+                except Exception: pass
+                return
+        self._running=True
+        def _run():
+            self.logger.info("Loopback START idx=%s rate=%s ch=%s fmt=%s", idx, self.rate, self.channels, self._format)
+            first_reads=0
+            while self._running:
+                try:
+                    data=self._stream.read(self._stream._frames_per_buffer, exception_on_overflow=False)
+                    frame=np.frombuffer(data, dtype=(np.float32 if self._format=='paFloat32' else np.int16))
+                    if self._format=='paInt16':
+                        frame=frame.astype(np.int16).reshape(-1, self.channels)
+                    else:
+                        # scale float32 -1..1 to int16-like range for downstream DSP
+                        frame=(np.clip(frame, -1.0, 1.0)*32767.0).astype(np.int16).reshape(-1, self.channels)
+                    callback(frame)
+                    first_reads+=1
+                except Exception as e:
+                    self.logger.warning("read() error: %s", e)
+                    time.sleep(0.01)
+                    if first_reads < 3:
+                        self.logger.info("Wczesny blad odczytu — zwiekszam bufor i probuje ponownie.")
+                        try:
+                            self._stream.stop_stream(); self._stream.close()
+                        except Exception: pass
+                        try:
+                            frames_new = int(self._stream._frames_per_buffer * 1.5)
+                        except Exception:
+                            frames_new = int(self.rate * max(10, self.buffer_ms)/1000 * 2.0)
+                        try:
+                            self._stream=self._attempt_open(idx, self.rate, self.channels,
+                                                            pyaudio.paFloat32 if self._format=='paFloat32' else pyaudio.paInt16,
+                                                            frames_new)
+                            self.logger.info("Restart stream z frames_per_buffer=%s OK.", frames_new)
+                            continue
+                        except Exception as e2:
+                            self.logger.warning("Restart nie powiodl sie: %s", e2)
+                            break
+            self.logger.info("Loopback STOP")
+        import threading; self._thread=threading.Thread(target=_run, daemon=True); self._thread.start()
+    def stop(self):
+        self._running=False
+        try:
+            if self._thread: self._thread.join(timeout=1.0)
+        except Exception: pass
+        try:
+            if self._stream: self._stream.stop_stream(); self._stream.close()
+        except Exception: pass
+        try:
+            if self._pa: self._pa.terminate()
+        except Exception: pass
+
+
+===== src/dsp.py =====
+import time, numpy as np, math
+def _amp_to_visual_scale(rms: float) -> float:
+    x = max(1e-6, min(1.0, rms))
+    return math.log10(1 + 9*x)
+class EventDetector:
+    def __init__(self, threshold: float, cooldown: float=0.2):
+        self.threshold=threshold; self.cooldown=cooldown; self._last=0.0
+    def process(self, frame: np.ndarray):
+        x = frame.astype(np.float32).reshape(-1)
+        rms = float(np.sqrt(np.mean(x*x)))/32768.0
+        now = time.monotonic()
+        if rms < self.threshold or (now-self._last) < self.cooldown:
+            return None
+        self._last = now
+        kind = "shot" if rms > self.threshold*3 else "step"
+        return kind, _amp_to_visual_scale(rms)
+
+
+===== src/direction.py =====
+import numpy as np
+CHANNEL_ANGLES = {2:{0:-45.0,1:45.0}, 6:{0:-30.0,1:30.0,2:0.0,4:-120.0,5:120.0}, 8:{0:-30.0,1:30.0,2:0.0,4:-90.0,5:90.0,6:-150.0,7:150.0}}
+IGNORE = {6:(3,), 8:(3,)}
+def estimate_angle(frame: np.ndarray) -> float:
+    if frame.ndim!=2: return 0.0
+    ch = frame.shape[1]
+    mapping = CHANNEL_ANGLES.get(ch, CHANNEL_ANGLES[2])
+    ignore = set(IGNORE.get(ch, ()))
+    e = np.sqrt(np.mean(frame.astype(np.float32)**2, axis=0))
+    s = float(np.sum(e)); 
+    if s==0: return 0.0
+    w = e/s
+    ang = 0.0; ws=0.0
+    for idx,a in mapping.items():
+        if idx in ignore or idx>=len(w): continue
+        ang += a*float(w[idx]); ws += float(w[idx])
+    return ang/ws if ws>0 else 0.0
+
+
+===== src/viz.py =====
+import pygame, math, time, collections
+class RadarDisplay:
+    def __init__(self, size=(500,500), debug=False):
+        pygame.init(); self.screen = pygame.display.set_mode(size); self.clock=pygame.time.Clock()
+        self.center=(size[0]//2, size[1]//2); self.r=int(min(size)*0.4); self.debug=debug
+        self.markers=collections.deque(); self.life=1.2
+    def add_marker(self, angle, kind, amp):
+        self.markers.append({"a":angle%360.0, "k":kind, "amp":max(0.02,min(1.0,amp)), "t":time.monotonic()})
+    def _bg(self):
+        self.screen.fill((10,10,12))
+        pygame.draw.circle(self.screen,(70,70,90),self.center,self.r,2)
+        for d in (0,90,180,270):
+            x=self.center[0]+int(self.r*math.sin(math.radians(d)))
+            y=self.center[1]-int(self.r*math.cos(math.radians(d)))
+            pygame.draw.line(self.screen,(60,60,80),self.center,(x,y),1)
+    def update(self):
+        for ev in pygame.event.get():
+            if ev.type==pygame.QUIT: return False
+        self._bg(); now=time.monotonic()
+        for _ in range(len(self.markers)):
+            m=self.markers[0]; age=now-m["t"]
+            if age>self.life: self.markers.popleft(); continue
+            fade=1.0-age/self.life
+            rad=math.radians(m["a"])
+            x=self.center[0]+int(self.r*math.sin(rad))
+            y=self.center[1]-int(self.r*math.cos(rad))
+            col=(255,80,80) if m["k"]=="shot" else (80,160,255)
+            size=max(4,int(12*m["amp"]*fade))
+            s=pygame.Surface((size*2,size*2), pygame.SRCALPHA)
+            s.fill((0,0,0,0))
+            pygame.draw.circle(s, (*col,int(220*fade)), (size,size), size)
+            self.screen.blit(s,(x-size,y-size))
+            self.markers.rotate(-1)
+        pygame.display.flip(); self.clock.tick(60); return True
+
+
+===== src/calibrate.py =====
+import numpy as np, time, logging
+try:
+    import pyaudiowpatch as pyaudio
+except Exception:
+    pyaudio = None
+def _tone(freq, duration, rate):
+    t = np.linspace(0, duration, int(rate*duration), endpoint=False, dtype=np.float32)
+    return (0.2*np.sin(2*np.pi*freq*t)).astype(np.float32)
+def run_calibration(logger: logging.Logger, rate_hint=48000, channels=2, duration=0.25):
+    if pyaudio is None:
+        logger.error("Kalibracja niedostepna: brak pyaudiowpatch (output)."); return 1
+    pa = pyaudio.PyAudio(); tried=[]
+    for rate in (rate_hint, 48000, 44100, 96000):
+        try:
+            stream = pa.open(format=pyaudio.paFloat32, channels=channels, rate=rate, output=True)
+            logger.info("Kalibracja: otwarto wyjscie rate=%s ch=%s", rate, channels)
+            names = {2:["FL","FR"], 6:["FL","FR","C","LFE","SL/RL","SR/RR"], 8:["FL","FR","C","LFE","SL","SR","RL","RR"]}.get(channels, [f"CH{i}" for i in range(channels)])
+            for ch_idx, name in enumerate(names):
+                sig = _tone(800 if ch_idx%2==0 else 1200, duration, rate)
+                frame = np.zeros((sig.shape[0], channels), dtype=np.float32)
+                frame[:, ch_idx % channels] = sig
+                logger.info("Ping kanalu %s (idx=%s)...", name, ch_idx)
+                stream.write(frame.tobytes()); time.sleep(0.15)
+            stream.stop_stream(); stream.close(); pa.terminate(); logger.info("Kalibracja: zakonczona."); return 0
+        except Exception as e:
+            tried.append((rate, str(e))); continue
+    logger.error("Kalibracja: nie udalo sie otworzyc zadnego wyjscia. Proby: %s", tried)
+    try: pa.terminate()
+    except Exception: pass
+    return 2
+
+
+===== src/main.py =====
+import argparse, sys, queue, traceback, time
+from logger_setup import setup_logger
+from audio_loopback import AudioCapturer
+from dsp import EventDetector
+from direction import estimate_angle
+def parse_args():
+    p=argparse.ArgumentParser()
+    p.add_argument("--rate", type=int, default=48000)
+    p.add_argument("--channels", type=int, default=2, choices=[2,6,8])
+    p.add_argument("--buffer_ms", type=int, default=50)
+    p.add_argument("--threshold", type=float, default=0.12)
+    p.add_argument("--device_index", type=str, default=None, help="Wymus indeks urzadzenia loopback (int)")
+    p.add_argument("--log", type=str, default="logs/log.txt")
+    p.add_argument("--debug", action="store_true")
+    p.add_argument("--calibrate", action="store_true", help="Uruchom generator pingow (stereo/5.1/7.1)")
+    p.add_argument("--headless", action="store_true", help="Bez okna Pygame (log-only)")
+    return p.parse_args()
+def main():
+    args = parse_args()
+    logger = setup_logger(args.log, args.debug)
+    logger.info("=== Audio Radar START (v5.5) === cfg: rate=%s ch=%s buf=%sms thr=%.3f device_index=%s calibrate=%s headless=%s",
+                args.rate, args.channels, args.buffer_ms, args.threshold, args.device_index, args.calibrate, args.headless)
+    if args.calibrate:
+        try:
+            from calibrate import run_calibration
+            rc = run_calibration(logger, rate_hint=args.rate, channels=args.channels)
+            if rc != 0: logger.warning("Kalibracja kod=%s", rc)
+        except Exception: logger.exception("Kalibracja nie powiodla sie:")
+    radar=None
+    if not args.headless:
+        try:
+            import pygame
+            from viz import RadarDisplay
+            radar = RadarDisplay(size=(500,500), debug=args.debug)
+            logger.info("UI: Pygame okno uruchomione.")
+        except Exception:
+            logger.exception("UI: inicjalizacja Pygame nie powiodla sie — przechodze w tryb headless.")
+            radar=None
+    import numpy as np, queue
+    det = EventDetector(threshold=args.threshold, cooldown=0.2)
+    q = queue.Queue()
+    def on_frame(frame: 'np.ndarray'):
+        ev = det.process(frame)
+        if ev:
+            kind, amp_scaled = ev
+            angle = estimate_angle(frame)
+            try: q.put_nowait((kind, angle, amp_scaled))
+            except queue.Full: pass
+            logger.debug("EVENT kind=%s amp(vis)=%.3f angle=%.1f", kind, amp_scaled, angle)
+    cap = AudioCapturer(rate=args.rate, channels=args.channels, buffer_ms=args.buffer_ms, logger=logger,
+                        device_index=args.device_index)
+    cap.start(on_frame)
+    try:
+        if radar is None:
+            logger.info("Tryb: HEADLESS (bez okna). Zdarzenia beda logowane do pliku.")
+            while True:
+                try:
+                    while True:
+                        kind, angle, amp = q.get_nowait()
+                        logger.info("EVENT: %-5s | angle=%6.1f | amp(vis)=%.3f", kind, angle, amp)
+                except queue.Empty:
+                    pass
+                time.sleep(0.01)
+        else:
+            while True:
+                try:
+                    while True:
+                        kind, angle, amp = q.get_nowait()
+                        radar.add_marker(angle, kind, amp)
+                except queue.Empty:
+                    pass
+                if not radar.update(): break
+    except KeyboardInterrupt:
+        logger.info("Przerwano przez uzytkownika.")
+    except Exception:
+        logger.exception("Nieobsluzony blad glownej petli:")
+        return 2
+    finally:
+        try: cap.stop()
+        except Exception: pass
+        if radar is not None:
+            try:
+                import pygame
+                pygame.quit()
+            except Exception: pass
+        logger.info("=== Audio Radar STOP ===")
+    return 0
+if __name__=="__main__":
+    raise SystemExit(main())
+
+
+===== RUN_BUILD_ALL.cmd =====
+@echo off
+setlocal ENABLEDELAYEDEXPANSION
+rem Audio Radar — RUN_BUILD_ALL.cmd (v5.5, stability)
+
+set "SCRIPT_DIR=%~dp0"
+pushd "%SCRIPT_DIR%"
+
+if not exist "logs" mkdir logs
+if not exist "data" mkdir data
+if not exist "cache" mkdir cache
+
+set "LOG=logs\log.txt"
+if not exist "%LOG%" type nul > "%LOG%"
+
+echo [%date% %time%] RUN_BUILD_ALL v5.5: init >> "%LOG%"
+
+where py >nul 2>nul
+if %errorlevel%==0 ( set PY_CMD=py ) else ( set PY_CMD=python )
+
+if not exist ".venv" (
+  echo [%date% %time%] Tworzenie .venv... >> "%LOG%"
+  %PY_CMD% -m venv .venv >> "%LOG%" 2>&1
+  if errorlevel 1 (
+    echo [%date% %time%] [ERROR] Nie można utworzyć venv >> "%LOG%"
+    exit /b 1
+  )
+)
+call .venv\Scripts\activate.bat >> "%LOG%" 2>&1
+if errorlevel 1 (
+  echo [%date% %time%] [ERROR] Nie można aktywować venv >> "%LOG%"
+  exit /b 1
+)
+
+echo [%date% %time%] Aktualizacja pip... >> "%LOG%"
+python -m pip install --upgrade pip >> "%LOG%" 2>&1
+
+echo [%date% %time%] Instalacja zaleznosci... >> "%LOG%"
+pip install -r requirements.txt >> "%LOG%" 2>&1
+if errorlevel 1 (
+  echo [%date% %time%] [ERROR] Instalacja paczek nie powiodla sie >> "%LOG%"
+  exit /b 1
+)
+
+echo [%date% %time%] Uruchamianie aplikacji... >> "%LOG%"
+python src\main.py %*
+
+set RC=%ERRORLEVEL%
+echo [%date% %time%] Aplikacja zakonczona RC=%RC% >> "%LOG%"
+exit /b %RC%
+
+popd
+endlocal
+
+
+===== requirements.txt =====
+numpy==2.1.3
+pygame==2.6.1
+pyaudiowpatch>=0.2.12.3,<0.3
+
+
+===== README.md =====
+# Audio Radar (Arc Raiders) — Test Package v5.5
+
+## Nowości w v5.5 (stabilność loopbacku)
+- **Domyślny bufor 50 ms** (wcześniej 20 ms) — mniej overflowów przy 96 kHz.
+- **Fallback formatu**: jeżeli `paInt16` nie przejdzie, automatycznie próbujemy `paFloat32` (często stabilniejszy w 96 kHz).
+- **Runtime fallback**: gdy pierwsze odczyty zwracają `Input overflowed`/`-9997`, program zwiększa bufor (x1.5, x2) i ponawia otwarcie.
+- **Lepsze logi awarii**: pełny traceback i tabelka prób (rate × channels × format).
+- Zachowane: jeden log (`logs/log.txt`), tryb `--headless`, auto‑detekcja `rate/channels`, cache ostatnio działających ustawień, `--calibrate`.
+
+## Start
+1. Rozpakuj zip.
+2. Uruchom `RUN_BUILD_ALL.cmd` (opcjonalnie: `--headless`, `--calibrate`, `--rate`, `--channels`, `--device_index`, `--buffer_ms 50`).
+3. Podgląd działania i diagnostyka: **`logs/log.txt`**.

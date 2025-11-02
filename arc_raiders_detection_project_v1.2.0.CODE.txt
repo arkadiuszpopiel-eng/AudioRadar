@@ -1,0 +1,94 @@
+import cv2
+import numpy as np
+import pyautogui
+from time import sleep
+import logging
+
+logging.basicConfig(filename='build_logs.txt', level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
+logging.info('Rozpoczęcie wersji 1.2.0 programu.')
+
+def capture_screen():
+    try:
+        screenshot = pyautogui.screenshot()  # Screenshot capture
+        img = np.array(screenshot)
+        img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+        logging.info("Zrzut ekranu wykonany pomyślnie.")
+        return img
+    except Exception as e:
+        logging.error(f"Błąd podczas przechwytywania ekranu: {e}")
+        raise
+
+def process_image(img):
+    try:
+        gray = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
+        _, thresh = cv2.threshold(gray, 100, 255, cv2.THRESH_BINARY)  # Adjusting threshold value
+        contours, _ = cv2.findContours(thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+        
+        # Filter out small contours to avoid noise
+        contours = [cnt for cnt in contours if cv2.contourArea(cnt) > 500]
+        
+        logging.info("Przetwarzanie obrazu zakończone.")
+        return contours
+    except Exception as e:
+        logging.error(f"Błąd podczas przetwarzania obrazu: {e}")
+        raise
+
+def draw_contours(img, contours):
+    try:
+        # Draw contours only if they are big enough
+        cv2.drawContours(img, contours, -1, (0, 255, 0), 3)  # Green contour color
+        logging.info("Kontury zostały narysowane na obrazie.")
+        return img
+    except Exception as e:
+        logging.error(f"Błąd podczas rysowania konturów: {e}")
+        raise
+
+def main():
+    try:
+        logging.info('Program rozpoczyna działanie.')
+        while True:
+            img = capture_screen()
+            contours = process_image(img)
+            img = draw_contours(img, contours)
+            
+            # Show image with contours
+            cv2.imshow("Game Screen", img)
+
+            # Exit condition when user presses 'q'
+            if cv2.waitKey(1) & 0xFF == ord('q'):
+                logging.info('Zakończenie działania programu.')
+                break
+        cv2.destroyAllWindows()
+    except Exception as e:
+        logging.error(f"Błąd główny: {e}")
+        raise
+
+if __name__ == "__main__":
+    main()
+
+@echo off
+setlocal enabledelayedexpansion
+set PROJECT_DIR=%~dp0
+
+echo Sprawdzanie zależności...
+python -m pip show opencv-python >nul 2>nul
+if errorlevel 1 (
+    echo Instalowanie opencv-python...
+    python -m pip install opencv-python
+)
+
+python -m pip show pyautogui >nul 2>nul
+if errorlevel 1 (
+    echo Instalowanie pyautogui...
+    python -m pip install pyautogui
+)
+
+echo Instalowanie wymaganych bibliotek...
+python -m pip install numpy
+
+echo Uruchamianie programu...
+python %PROJECT_DIR%main.py
+
+echo Proces zakończony.
+pause
+

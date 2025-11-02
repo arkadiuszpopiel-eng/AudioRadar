@@ -1,0 +1,346 @@
+# === logging_setup.py ===
+
+import os, sys, logging, logging.handlers, time
+def _base_dir():
+    return os.path.dirname(sys.executable) if getattr(sys, 'frozen', False) else os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+def init_logging():
+    base = os.path.join(_base_dir(), 'logs') if getattr(sys, 'frozen', False) else os.path.join(_base_dir(), 'portable', 'logs')
+    os.makedirs(base, exist_ok=True)
+    stamp = time.strftime('%Y%m%d_%H%M%S')
+    log_path = os.path.join(base, f"session_{stamp}.log")
+    logger = logging.getLogger('audioradar'); logger.setLevel(logging.INFO)
+    # Avoid duplicates
+    if not any(isinstance(h, logging.handlers.RotatingFileHandler) for h in logger.handlers):
+        fh = logging.handlers.RotatingFileHandler(log_path, maxBytes=2*1024*1024, backupCount=5, encoding='utf-8')
+        fh.setFormatter(logging.Formatter('%(asctime)s | %(levelname)-8s | audioradar | %(message)s'))
+        logger.addHandler(fh)
+    if not any(isinstance(h, logging.StreamHandler) for h in logger.handlers):
+        ch = logging.StreamHandler(); ch.setFormatter(logging.Formatter('[%(levelname)s] %(message)s'))
+        logger.addHandler(ch)
+    logger.info('Logger initialized. session_log=%s', log_path)
+    return logger, base
+
+
+# === audio_backends.py ===
+
+import numpy as np, queue
+import pyaudiowpatch as pyaudio
+import sounddevice as sd
+CANDIDATE_RATES=[48000,44100,96000,192000]
+class AudioBackendError(Exception): pass
+class LevelBuffer:
+    def __init__(self): self.q=queue.Queue(maxsize=256)
+    def push(self,v):
+        try: self.q.put_nowait(float(v))
+        except queue.Full: pass
+    def pop(self):
+        import queue as q
+        try: return float(self.q.get_nowait())
+        except q.Empty: return None
+def list_devices_pyaudio():
+    pa=pyaudio.PyAudio(); out=[]
+    for i in range(pa.get_device_count()):
+        info=pa.get_device_info_by_index(i); out.append((i,info.get('name'),info))
+    pa.terminate(); return out
+def list_devices_sounddevice():
+    return [(i,d['name'],d) for i,d in enumerate(sd.query_devices())]
+def prefer_device_index(devs):
+    for i,n,info in devs:
+        if n and 'What U Hear' in n: return i
+    for i,n,info in devs:
+        if n and 'Loopback' in n: return i
+    for i,n,info in devs:
+        if int(info.get('maxInputChannels',0) or 0)>0: return i
+    return None
+def _rms_i16(buf):
+    if not buf: return 0.0
+    x=np.frombuffer(buf,dtype=np.int16)
+    if x.size==0: return 0.0
+    return float(np.sqrt(np.mean((x.astype(np.float32)/32768.0)**2)))
+class PyAudioInput:
+    def __init__(self,device_index=None,channels=2,rate=48000,frames_per_buffer=None,level_sink=None,logger=None,use_callback=True):
+        self.pa=pyaudio.PyAudio(); self.device_index=device_index; self.channels=channels; self.rate=rate
+        self.frames_per_buffer=frames_per_buffer or max(256,int(rate*0.02)); self.level_sink=level_sink; self.logger=logger; self.use_callback=use_callback; self.stream=None
+    def is_supported(self,rate):
+        try: return self.pa.is_format_supported(rate,input_device=self.device_index,input_channels=self.channels,input_format=pyaudio.paInt16)
+        except Exception: return False
+    def auto_rate(self):
+        for r in CANDIDATE_RATES:
+            if self.is_supported(r): return r
+        info=self.pa.get_device_info_by_index(self.device_index); return int(info.get('defaultSampleRate',44100)) or 44100
+    def start(self):
+        if not self.is_supported(self.rate): self.rate=self.auto_rate()
+        cb=None
+        if self.use_callback:
+            def _cb(in_data,frame_count,time_info,status):
+                try:
+                    if self.level_sink: self.level_sink.push(_rms_i16(in_data))
+                    return (None,pyaudio.paContinue)
+                except Exception:
+                    return (None,pyaudio.paAbort)
+            cb=_cb
+        self.stream=self.pa.open(format=pyaudio.paInt16,channels=self.channels,rate=self.rate,input=True,input_device_index=self.device_index,frames_per_buffer=self.frames_per_buffer,stream_callback=cb)
+        self.stream.start_stream()
+    def stop(self):
+        try:
+            if self.stream is not None: self.stream.stop_stream(); self.stream.close()
+        finally:
+            self.pa.terminate()
+class SoundDeviceInput:
+    def __init__(self,device_index=None,channels=2,rate=48000,frames_per_buffer=None,level_sink=None,logger=None):
+        self.device_index=device_index; self.channels=channels; self.rate=rate; self.frames_per_buffer=frames_per_buffer or max(256,int(rate*0.02)); self.level_sink=level_sink; self.logger=logger; self.stream=None
+    def _cb(self,indata,frames,time,stat):
+        try:
+            import numpy as np
+            x=(indata[:,0].astype(np.float32) if getattr(indata,'ndim',1)>1 else indata.astype(np.float32))
+            rms=float(np.sqrt(np.mean((x/32768.0)**2))) if x.size>0 else 0.0
+            if self.level_sink: self.level_sink.push(rms)
+        except Exception: pass
+    def start(self):
+        self.stream=sd.InputStream(device=self.device_index,channels=self.channels,samplerate=self.rate,dtype='int16',blocksize=self.frames_per_buffer,callback=self._cb,latency='low')
+        self.stream.start()
+    def stop(self):
+        try:
+            if self.stream is not None: self.stream.stop(); self.stream.close()
+        finally: pass
+def normalize_channels(name, reported_channels):
+    return 2 if (name and ('What U Hear' in name or 'Loopback' in name)) else min(int(reported_channels or 2),2)
+
+
+# === radar_widget.py ===
+
+from PyQt5 import QtWidgets, QtGui, QtCore
+import math
+
+class RadarWidget(QtWidgets.QWidget):
+    def __init__(self):
+        super().__init__()
+        self._angle = 0.0
+        self._level = 0.0     # aktualny wyświetlany poziom (z wygaszaniem)
+        self._sens  = 1.0     # czułość
+        self._decay = 0.92    # współczynnik zaniku na klatkę
+        self._timer = QtCore.QTimer(self)
+        self._timer.setInterval(33)  # ~30 FPS
+        self._timer.timeout.connect(self._tick)
+        self._timer.start()
+
+    def setSensitivity(self, s: float):
+        self._sens = max(0.5, min(4.0, float(s)))
+
+    def setLevel(self, lvl: float):
+        if lvl is None:
+            lvl = 0.0
+        lvl = max(0.0, min(1.0, float(lvl)))
+        # wzmocnienie + SQRT dla cichych sygnałów
+        target = math.sqrt(lvl * self._sens)
+        self._level = max(target, self._level * self._decay)
+
+    def _tick(self):
+        self._angle = (self._angle + 2.0) % 360.0
+        self.update()
+
+    def sizeHint(self):
+        return QtCore.QSize(380, 380)
+
+    def paintEvent(self, ev):
+        p = QtGui.QPainter(self)
+        p.setRenderHint(QtGui.QPainter.Antialiasing)
+
+        r = float(min(self.width(), self.height()) - 10)
+        cx = float(self.width()) / 2.0
+        cy = float(self.height()) / 2.0
+        rad = r / 2.0
+
+        # tło
+        p.fillRect(self.rect(), QtGui.QColor(10, 15, 20))
+
+        # siatka
+        grid_pen = QtGui.QPen(QtGui.QColor(70, 90, 110))
+        grid_pen.setWidth(1)
+        p.setPen(grid_pen)
+        for k in range(1, 5):
+            rr = rad * k / 4.0
+            p.drawEllipse(QtCore.QPointF(cx, cy), rr, rr)
+
+        # osie
+        p.drawLine(QtCore.QPointF(cx - rad, cy), QtCore.QPointF(cx + rad, cy))
+        p.drawLine(QtCore.QPointF(cx, cy - rad), QtCore.QPointF(cx, cy + rad))
+
+        # wskazówka
+        angle = self._angle
+        beam_pen = QtGui.QPen(QtGui.QColor(120, 220, 255))
+        beam_pen.setWidth(2)
+        p.setPen(beam_pen)
+        x2 = cx + rad * math.cos(math.radians(angle))
+        y2 = cy - rad * math.sin(math.radians(angle))
+        p.drawLine(QtCore.QPointF(cx, cy), QtCore.QPointF(x2, y2))
+
+        # blip z zależnym rozmiarem i alfa
+        lvl = max(0.0, min(1.0, self._level))
+        blip_r = 8.0 + 40.0 * lvl
+        blip_color = QtGui.QColor(90, 255, 120, int(80 + 160 * lvl))
+        p.setBrush(blip_color)
+        p.setPen(QtGui.QPen(QtGui.QColor(0, 0, 0, 0)))
+        bx = cx + (rad * 0.65) * math.cos(math.radians(angle))
+        by = cy - (rad * 0.65) * math.sin(math.radians(angle))
+        p.drawEllipse(QtCore.QPointF(bx, by), blip_r, blip_r)
+
+
+# === gui.py ===
+
+from PyQt5 import QtWidgets, QtCore
+from logging_setup import init_logging
+from audio_backends import list_devices_pyaudio, list_devices_sounddevice, prefer_device_index, CANDIDATE_RATES, LevelBuffer, PyAudioInput, SoundDeviceInput, normalize_channels
+from radar_widget import RadarWidget
+import sounddevice as sd, numpy as np
+
+class MainWindow(QtWidgets.QMainWindow):
+    def __init__(self):
+        super().__init__()
+        self.setWindowTitle('AudioRadar v5.2.1 (MAX+)')
+        self.resize(1000, 640)
+        self.logger, self.logdir = init_logging()
+        self.status = self.statusBar()
+
+        tabs=QtWidgets.QTabWidget(); self.setCentralWidget(tabs)
+        # Control tab
+        ctrl=QtWidgets.QWidget(); tabs.addTab(ctrl,'Control')
+        lay=QtWidgets.QFormLayout(ctrl)
+
+        self.cmb_dev=QtWidgets.QComboBox(); self._devs=list_devices_pyaudio()
+        for idx,name,info in self._devs:
+            maxin=int(info.get('maxInputChannels',0) or 0); self.cmb_dev.addItem(f'[{idx}] {name} (in={maxin})', idx)
+        pref=prefer_device_index(self._devs)
+        if pref is not None:
+            row=next((i for i,(ix,_,_) in enumerate(self._devs) if ix==pref),0); self.cmb_dev.setCurrentIndex(row)
+
+        self.cmb_rate=QtWidgets.QComboBox(); [self.cmb_rate.addItem(str(r),r) for r in CANDIDATE_RATES]; self.cmb_rate.setCurrentIndex(0)
+        self.cmb_mode=QtWidgets.QComboBox(); self.cmb_mode.addItems(['callback','poll'])
+
+        self.btn_list=QtWidgets.QPushButton('List Devices')
+        self.btn_tone=QtWidgets.QPushButton('TEST TONE (1 kHz) 3s')
+        self.btn_start=QtWidgets.QPushButton('START'); self.btn_stop=QtWidgets.QPushButton('STOP'); self.btn_stop.setEnabled(False)
+
+        self.pb=QtWidgets.QProgressBar(); self.pb.setRange(0,100)
+        self.lbl_rms=QtWidgets.QLabel('RMS: 0.000')
+
+        self.txt=QtWidgets.QPlainTextEdit(); self.txt.setReadOnly(True); self.txt.setMaximumBlockCount(1000)
+
+        lay.addRow('Urządzenie', self.cmb_dev)
+        lay.addRow('Samplerate', self.cmb_rate)
+        lay.addRow('Tryb', self.cmb_mode)
+        lay.addRow(self.btn_start, self.btn_stop)
+        lay.addRow('Poziom (VU)', self.pb)
+        lay.addRow('Input Monitor', self.lbl_rms)
+        lay.addRow(self.btn_list, self.btn_tone)
+        lay.addRow('Log', self.txt)
+
+        # Radar tab
+        radar_tab=QtWidgets.QWidget(); tabs.addTab(radar_tab,'Radar')
+        vbox=QtWidgets.QVBoxLayout(radar_tab)
+        self.radar=RadarWidget(); vbox.addWidget(self.radar,1)
+        sens_layout = QtWidgets.QHBoxLayout()
+        sens_layout.addWidget(QtWidgets.QLabel('Sensitivity'))
+        self.sens = QtWidgets.QSlider(QtCore.Qt.Horizontal); self.sens.setRange(50, 400); self.sens.setValue(150)
+        sens_layout.addWidget(self.sens)
+        vbox.addLayout(sens_layout)
+
+        # state
+        self.levels=LevelBuffer(); self.backend=None
+        self.btn_start.clicked.connect(self.on_start); self.btn_stop.clicked.connect(self.on_stop)
+        self.btn_list.clicked.connect(self.on_list); self.btn_tone.clicked.connect(self.on_tone)
+        self.sens.valueChanged.connect(self.on_sens)
+
+        self.timer=QtCore.QTimer(self); self.timer.setInterval(50); self.timer.timeout.connect(self.on_tick); self.timer.start()
+
+    def log(self,s): self.txt.appendPlainText(s); self.logger.info(s)
+    def banner(self, backend, ch, rate): self.status.showMessage(f'Backend: {backend} | Ch: {ch} | Rate: {rate} Hz')
+    def _error(self, title, msg): QtWidgets.QMessageBox.critical(self, title, msg)
+
+    def on_sens(self, value):
+        self.radar.setSensitivity(value/100.0)
+
+    def on_list(self):
+        self.log('--- PyAudio devices ---')
+        for idx, name, info in list_devices_pyaudio():
+            self.log(f"[{idx}] {name} | in={info.get('maxInputChannels')} sr={info.get('defaultSampleRate')}")
+        self.log('--- sounddevice devices ---')
+        for i, n, inf in list_devices_sounddevice():
+            self.log(f"[{i}] {n} | in={inf.get('max_input_channels')} out={inf.get('max_output_channels')}")
+
+    def on_tone(self):
+        sr=48000; dur=3.0; n=int(sr*dur)
+        x=(0.5*np.sin(2*np.pi*1000*np.arange(n)/sr)).astype('float32')
+        try: sd.play(x, sr, blocking=False); self.log('TEST TONE: 1 kHz przez 3s na domyślne wyjście Windows.')
+        except Exception as e: self._error('Test tone error', str(e))
+
+    def on_start(self):
+        if self.backend is not None: return
+        idx=self.cmb_dev.currentData(); rate=int(self.cmb_rate.currentData()); mode=self.cmb_mode.currentText()
+        _,name,info=next((d for d in self._devs if d[0]==idx), self._devs[0])
+        ch=2 if (name and ('What U Hear' in name or 'Loopback' in name)) else int(info.get('maxInputChannels',2) or 2); ch=min(ch,2)
+        self.log(f'START requested: dev={idx} name={name} ch={ch} rate={rate} mode={mode}')
+        try:
+            self.backend=PyAudioInput(device_index=idx,channels=ch,rate=rate,level_sink=self.levels,logger=self.logger,use_callback=(mode=='callback'))
+            self.backend.start(); self.btn_start.setEnabled(False); self.btn_stop.setEnabled(True)
+            self.log('PyAudio backend started'); self.banner('PyAudio', ch, rate); return
+        except Exception as e:
+            self.backend=None; self.log(f'PyAudio failed: {e}')
+        try:
+            self.backend=SoundDeviceInput(device_index=None,channels=ch,rate=rate,level_sink=self.levels,logger=self.logger)
+            self.backend.start(); self.btn_start.setEnabled(False); self.btn_stop.setEnabled(True)
+            self.log('Fallback sounddevice backend started'); self.banner('sounddevice', ch, rate)
+        except Exception as e:
+            self.backend=None; self._error('Błąd uruchamiania', f'Nie udało się uruchomić wejścia audio.\nSzczegóły: {e}'); self.log(f'Fallback failed: {e}')
+
+    def on_stop(self):
+        try:
+            if self.backend is not None: self.backend.stop()
+        finally:
+            self.backend=None; self.btn_start.setEnabled(True); self.btn_stop.setEnabled(False)
+            self.pb.setValue(0); self.lbl_rms.setText('RMS: 0.000'); self.log('Stopped'); self.status.clearMessage()
+
+    def on_tick(self):
+        v=self.levels.pop()
+        if v is not None:
+            self.pb.setValue(max(0,min(100,int(v*120)))); self.lbl_rms.setText(f'RMS: {v:.3f}'); self.radar.setLevel(v)
+
+
+# === main.py ===
+
+import os, sys, traceback
+# Force software rendering for Qt to avoid GPU issues
+os.environ.setdefault('QT_OPENGL','software')
+os.environ.setdefault('QT_QUICK_BACKEND','software')
+os.environ.setdefault('QT_ANGLE_PLATFORM','d3d11')
+from PyQt5 import QtWidgets, QtCore
+from logging_setup import init_logging
+from gui import MainWindow
+def selftest(logdir):
+    try:
+        with open(os.path.join(logdir,'selftest.log'),'w',encoding='utf-8') as f:
+            f.write('SELFTEST_OK\n')
+        return True
+    except Exception:
+        return False
+def _excepthook(tp, val, tb):
+    logger,_ = init_logging()
+    logger.exception('UNCAUGHT: %s', ''.join(traceback.format_exception(tp,val,tb)))
+    try:
+        QtWidgets.QMessageBox.critical(None, 'Nieoczekiwany błąd', str(val))
+    except Exception:
+        pass
+def main():
+    logger, logdir = init_logging()
+    sys.excepthook = _excepthook
+    ap=__import__('argparse').ArgumentParser(); ap.add_argument('--selftest',action='store_true'); args=ap.parse_args()
+    if args.selftest: return 0 if selftest(logdir) else 1
+    try: QtWidgets.QApplication.setAttribute(QtCore.Qt.AA_UseSoftwareOpenGL, on=True)
+    except Exception: pass
+    app=QtWidgets.QApplication(sys.argv)
+    win=MainWindow(); win.show()
+    return app.exec_()
+if __name__=='__main__':
+    sys.exit(main())
+
+

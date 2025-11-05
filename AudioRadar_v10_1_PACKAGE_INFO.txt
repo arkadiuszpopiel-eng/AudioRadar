@@ -1,0 +1,79 @@
+AudioRadar v10.1 - FULL Package
+================================
+
+Release Date: 2025-11-05
+Version: 10.1
+
+WHAT'S INCLUDED
+---------------
+✓ Complete AudioRadar application (audio_radar/)
+✓ Interactive calibration tool (calibrate.py)
+✓ Comprehensive documentation (README.md, INSTALL.md, USER_GUIDE.md)
+✓ Setup files (requirements.txt, QUICKSTART.cmd)
+✓ Changelog and License
+
+NEW IN v10.1
+------------
+✓ Multi-channel directional detection (stereo, 5.1, 7.1 surround)
+✓ Bandpass filtering for improved accuracy
+✓ Distance estimation based on amplitude
+✓ Background noise adaptation
+✓ Interactive calibration utility
+✓ Extended configuration system
+✓ Comprehensive documentation
+✓ Test suite
+
+INSTALLATION
+------------
+1. Extract AudioRadar_v10_1_FULL.zip to your desired location
+2. Run QUICKSTART.cmd (Windows) or follow INSTALL.md
+3. Use calibrate.py to tune detection thresholds for your games
+4. Read USER_GUIDE.md for tips and configuration examples
+
+QUICK START
+-----------
+Windows:
+  1. Double-click QUICKSTART.cmd
+  2. Follow on-screen instructions
+
+Manual:
+  1. Install Python 3.8+
+  2. Run: pip install -r requirements.txt
+  3. cd audio_radar
+  4. Run: python main.py
+
+DOCUMENTATION
+-------------
+- README.md: Project overview and features
+- INSTALL.md: Detailed installation guide
+- USER_GUIDE.md: Complete user manual with examples
+- CHANGELOG.md: Version history
+
+FEATURES
+--------
+✓ Real-time audio capture (WASAPI loopback)
+✓ Footstep and gunshot detection
+✓ 8-way directional radar display
+✓ Multi-channel support (stereo, 5.1, 7.1)
+✓ Configurable detection thresholds
+✓ Distance estimation
+✓ Keyboard controls for real-time adjustments
+
+SYSTEM REQUIREMENTS
+-------------------
+- Windows 11 or Windows 10 (64-bit)
+- Python 3.8 or newer
+- Sound card with loopback support
+- 4 GB RAM (8 GB recommended)
+
+SUPPORT
+-------
+For issues, questions, or contributions:
+- GitHub: https://github.com/arkadiuszpopiel-eng/AudioRadar
+- Documentation: See INSTALL.md and USER_GUIDE.md
+
+LICENSE
+-------
+MIT License - See LICENSE file for details
+
+Enjoy enhanced gaming audio awareness! 🎮🔊

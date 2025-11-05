@@ -272,4 +272,17 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except KeyboardInterrupt:
+        print("\n\nCalibration stopped by user.")
+    except Exception as e:
+        print(f"\n\nERROR: {e}")
+        import traceback
+        traceback.print_exc()
+    finally:
+        print("\n\nPress Enter to exit...")
+        try:
+            input()
+        except:
+            pass

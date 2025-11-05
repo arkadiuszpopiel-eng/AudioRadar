@@ -132,12 +132,13 @@ class Visualizer:
     MAX_TRANSPARENCY = 255
     MIN_TRANSPARENCY = 20
 
-    def __init__(self, bar_width: int = 40, bar_height: int = 200, transparency: int = 180) -> None:
+    def __init__(self, bar_width: int = 40, bar_height: int = 200, transparency: int = 180, show_stats: bool = True) -> None:
         if pygame is None:
             raise RuntimeError("Pygame library is required for Visualizer")
         # Initialise Pygame only once
         pygame.init()
-        self.screen = pygame.display.set_mode((600, 600))
+        # Create borderless window for modern widget look
+        self.screen = pygame.display.set_mode((600, 600), pygame.NOFRAME)
         pygame.display.set_caption("Audio Radar")
         self.clock = pygame.time.Clock()
         # Create bars for each direction
@@ -148,7 +149,40 @@ class Visualizer:
         self.bar_width = bar_width
         self.bar_height = bar_height
         self.transparency = transparency
+        self.show_stats = show_stats
+        
+        # Stats tracking
+        self.peak_value = 0.0
+        self.rms_value = 0.0
+        self.last_event_type = None
+        self.last_event_time = 0
+        
+        # Initialize font for stats display
+        try:
+            self.font = pygame.font.Font(None, 24)
+            self.small_font = pygame.font.Font(None, 18)
+        except:
+            self.font = None
+            self.small_font = None
+        
+        # Window dragging
+        self.dragging = False
+        self.drag_offset_x = 0
+        self.drag_offset_y = 0
 
+    def update_stats(self, peak: float, rms: float) -> None:
+        """Update audio statistics for display.
+        
+        Parameters
+        ----------
+        peak : float
+            Peak amplitude value (0.0-1.0)
+        rms : float
+            RMS (root mean square) value (0.0-1.0)
+        """
+        self.peak_value = peak
+        self.rms_value = rms
+    
     def trigger_event(self, event_type: str, direction: int = None, distance: float = None) -> None:
         """Light up the appropriate bar for a detected event.
 
@@ -178,6 +212,10 @@ class Visualizer:
         
         bar = self.bars[index]
         bar.trigger(event_type)
+        
+        # Track last event for stats display
+        self.last_event_type = event_type
+        self.last_event_time = time.time()
     
     def _find_closest_bar(self, direction: int) -> int:
         """Find the bar index closest to the given direction.

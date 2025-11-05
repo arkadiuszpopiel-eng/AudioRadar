@@ -3,10 +3,12 @@
 
 # Audio capture and processing
 sounddevice>=0.4.6
-numpy>=1.21.0
+numpy>=1.21.0,<2.0.0
 scipy>=1.7.0
 
 # Visualization
+# Note: pygame 2.5.0+ recommended for best compatibility
+# If installation fails, try: pip install pygame --no-build-isolation
 pygame>=2.5.0
 
 # Optional: Machine Learning (for future ML-based detection)

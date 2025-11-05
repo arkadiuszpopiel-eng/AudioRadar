@@ -183,6 +183,29 @@ pip install sounddevice numpy scipy pygame
 }
 ```
 
+### Pygame Installation Fails (Windows)
+**Problem**: `error: subprocess-exited-with-error` when installing pygame
+
+**Solution 1** - Use pre-built wheel:
+```bash
+pip install pygame==2.5.2 --only-binary :all:
+```
+
+**Solution 2** - Use alternative requirements:
+```bash
+pip install -r requirements-windows.txt
+```
+
+**Solution 3** - Install Visual Studio Build Tools:
+1. Download from [Visual Studio](https://visualstudio.microsoft.com/downloads/)
+2. Install "Desktop development with C++"
+3. Retry: `pip install pygame`
+
+**Solution 4** - Use older Python:
+- Python 3.14 may not have pygame wheels yet
+- Recommended: Python 3.11 or 3.12
+- Check: `python --version`
+
 ### Performance Issues
 **Problem**: Audio Radar uses too much CPU
 

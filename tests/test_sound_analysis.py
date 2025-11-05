@@ -2,9 +2,20 @@
 
 import sys
 from pathlib import Path
+import os
 
-# Add parent directory to path for imports
-sys.path.insert(0, str(Path(__file__).parent.parent / "audio_radar_v10" / "audio_radar"))
+# Add audio_radar module to path for imports
+# This works whether running from project root or tests directory
+project_root = Path(__file__).parent.parent
+audio_radar_path = project_root / "audio_radar_v10" / "audio_radar"
+
+if audio_radar_path.exists():
+    sys.path.insert(0, str(audio_radar_path))
+else:
+    # Alternative: try relative path from current directory
+    alt_path = Path.cwd() / "audio_radar_v10" / "audio_radar"
+    if alt_path.exists():
+        sys.path.insert(0, str(alt_path))
 
 import numpy as np
 import pytest
@@ -17,8 +28,12 @@ try:
         estimate_distance,
         set_detection_config,
     )
+    HAS_SOUND_ANALYSIS = True
 except ImportError as e:
-    pytest.skip(f"Could not import sound_analysis: {e}", allow_module_level=True)
+    HAS_SOUND_ANALYSIS = False
+    IMPORT_ERROR = str(e)
+    # Skip all tests if module cannot be imported
+    pytestmark = pytest.mark.skip(reason=f"Could not import sound_analysis: {e}")
 
 
 class TestSoundAnalysis:

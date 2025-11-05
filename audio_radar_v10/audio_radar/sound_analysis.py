@@ -219,16 +219,14 @@ def detect_event(samples: np.ndarray) -> Optional[str]:
     if enable_filter and signal is not None:
         footstep_freq = _detection_config.get("footstep_freq_range", [2000, 8000])
         filtered_footstep = apply_bandpass_filter(mono, footstep_freq[0], footstep_freq[1], samplerate)
-        std_filtered = np.std(filtered_footstep)
-        
-        # Use filtered standard deviation for footstep detection
-        if std_filtered > footstep_threshold:
-            return 'footstep'
+        std_value = np.std(filtered_footstep)
     else:
         # Fallback to unfiltered detection
-        std = np.std(mono)
-        if std > footstep_threshold:
-            return 'footstep'
+        std_value = np.std(mono)
+    
+    # Check against threshold
+    if std_value > footstep_threshold:
+        return 'footstep'
     
     return None
 

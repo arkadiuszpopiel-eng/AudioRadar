@@ -86,12 +86,12 @@ sys.path.append(os.path.dirname(__file__))
 try:
     # Attempt to import via the package name when running as module
     from audio_radar.audio_capture import list_audio_input_devices, list_audio_output_devices, AudioStream
-    from audio_radar.sound_analysis import detect_event, detect_event_with_direction
+    from audio_radar.sound_analysis import detect_event, detect_event_with_direction, set_detection_config
     from audio_radar.visualization import Visualizer
 except ImportError:
     # Fallback to local imports when running as a script
     from audio_capture import list_audio_input_devices, list_audio_output_devices, AudioStream  # type: ignore
-    from sound_analysis import detect_event, detect_event_with_direction  # type: ignore
+    from sound_analysis import detect_event, detect_event_with_direction, set_detection_config  # type: ignore
     from visualization import Visualizer  # type: ignore
 
 
@@ -225,7 +225,6 @@ def run(cfg: dict) -> None:
     # Update detection configuration
     detection_cfg = cfg.get("detection", {})
     detection_cfg["samplerate"] = samplerate
-    from sound_analysis import set_detection_config
     set_detection_config(detection_cfg)
     
     stream = AudioStream(input_device=input_device, samplerate=samplerate, blocksize=blocksize)

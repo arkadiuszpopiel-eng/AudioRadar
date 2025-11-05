@@ -86,12 +86,12 @@ sys.path.append(os.path.dirname(__file__))
 try:
     # Attempt to import via the package name when running as module
     from audio_radar.audio_capture import list_audio_input_devices, list_audio_output_devices, AudioStream
-    from audio_radar.sound_analysis import detect_event
+    from audio_radar.sound_analysis import detect_event, detect_event_with_direction
     from audio_radar.visualization import Visualizer
 except ImportError:
     # Fallback to local imports when running as a script
     from audio_capture import list_audio_input_devices, list_audio_output_devices, AudioStream  # type: ignore
-    from sound_analysis import detect_event  # type: ignore
+    from sound_analysis import detect_event, detect_event_with_direction  # type: ignore
     from visualization import Visualizer  # type: ignore
 
 
@@ -230,12 +230,25 @@ def run(cfg: dict) -> None:
     
     stream = AudioStream(input_device=input_device, samplerate=samplerate, blocksize=blocksize)
 
+    # Check if we should use directional detection (multi-channel audio)
+    use_directional = audio_cfg.get("channels", 2) > 1
+    
     # Define callback to handle audio blocks
     def on_audio_data(samples):
-        event = detect_event(samples)
-        if event:
-            logging.info("Detected event: %s", event)
-            vis.trigger_event(event)
+        if use_directional and samples.ndim == 2 and samples.shape[1] > 1:
+            # Try directional detection for multi-channel audio
+            result = detect_event_with_direction(samples)
+            if result:
+                event_type, direction, distance = result
+                logging.info("Detected event: %s at %d° (distance: %.2f)", 
+                           event_type, direction, distance)
+                vis.trigger_event(event_type, direction=direction, distance=distance)
+        else:
+            # Fallback to simple detection
+            event = detect_event(samples)
+            if event:
+                logging.info("Detected event: %s", event)
+                vis.trigger_event(event)
 
     stream.on_data = on_audio_data
 

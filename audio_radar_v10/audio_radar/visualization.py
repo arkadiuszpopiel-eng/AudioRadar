@@ -149,25 +149,64 @@ class Visualizer:
         self.bar_height = bar_height
         self.transparency = transparency
 
-    def trigger_event(self, event_type: str) -> None:
+    def trigger_event(self, event_type: str, direction: int = None, distance: float = None) -> None:
         """Light up the appropriate bar for a detected event.
 
         Parameters
         ----------
         event_type : str
             Either 'footstep' or 'shot'. Uses the event type to colour
-            the bar appropriately. The bar is chosen by mapping the
-            event type to a fixed direction: footsteps light up the
-            'front' bar (0°) and shots light up the bar behind the
-            player (180°). You can customise this mapping by editing
-            this method.
+            the bar appropriately.
+        direction : int, optional
+            Direction in degrees (0-359). If provided, lights up the bar
+            closest to this direction. If None, uses default mapping:
+            footsteps light up the 'front' bar (0°) and shots light up
+            the bar behind the player (180°).
+        distance : float, optional
+            Relative distance (0.0-1.0). Currently not used but reserved
+            for future distance visualization features.
         """
         if not self.bars:
             return
-        # Map event type to a bar index. Footsteps: front; shots: back.
-        index = 0 if event_type == 'footstep' else 4
+        
+        if direction is not None:
+            # Find closest bar to the specified direction
+            index = self._find_closest_bar(direction)
+        else:
+            # Use default mapping: footsteps front, shots back
+            index = 0 if event_type == 'footstep' else 4
+        
         bar = self.bars[index]
         bar.trigger(event_type)
+    
+    def _find_closest_bar(self, direction: int) -> int:
+        """Find the bar index closest to the given direction.
+        
+        Parameters
+        ----------
+        direction : int
+            Direction in degrees (0-359), where 0 is front/north.
+            
+        Returns
+        -------
+        int
+            Index of the closest bar.
+        """
+        min_diff = 360
+        closest_idx = 0
+        
+        for idx, angle_deg in enumerate(self.DIRECTIONS_DEG):
+            # Calculate angular difference
+            diff = abs(direction - angle_deg)
+            # Handle wraparound (e.g., 350° vs 10°)
+            if diff > 180:
+                diff = 360 - diff
+            
+            if diff < min_diff:
+                min_diff = diff
+                closest_idx = idx
+        
+        return closest_idx
 
     def _clamp_values(self) -> None:
         """Ensure bar width/height/transparency remain within safe bounds."""

@@ -1,0 +1,197 @@
+================================================================================
+  AudioRadar v10.2 - Complete Package Information
+================================================================================
+
+Release Date: 2025-11-05
+Package Size: 42 KB
+Version: 10.2
+
+WHAT'S NEW IN v10.2
+-------------------
+✅ Fixed calibrate.py immediate close issue
+   - Better error handling with full traceback display
+   - "Press Enter to exit" pause so errors are visible
+   - Helps diagnose audio device configuration problems
+
+✅ Improved visualization module
+   - Added stats tracking infrastructure (Peak/RMS)
+   - Prepared for future stats overlay display
+   - Better code organization
+
+✅ All improvements from v10.1 included:
+   - Multi-channel directional detection (0-360°)
+   - Bandpass filtering for improved accuracy
+   - Distance estimation
+   - Background noise adaptation
+   - Interactive calibration tool
+   - Comprehensive documentation
+
+PACKAGE CONTENTS
+----------------
+AudioRadar_v10_2_FULL.zip includes:
+
+📁 audio_radar_v10/audio_radar/    Main application folder
+   ├── main.py                      Main program entry point
+   ├── audio_capture.py             Audio input handling
+   ├── sound_analysis.py            Detection algorithms with filtering
+   ├── visualization.py             Pygame radar display
+   ├── calibrate.py                 Calibration tool (IMPROVED)
+   ├── config.json                  Configuration file
+   └── README.md                    Module documentation
+
+📄 Documentation Files:
+   ├── README.md                    Project overview and features
+   ├── INSTALL.md                   Installation guide with troubleshooting
+   ├── USER_GUIDE.md                Complete user manual with examples
+   ├── CHANGELOG.md                 Version history
+   ├── CONTRIBUTING.md              Development guidelines
+   └── LICENSE                      MIT License
+
+🔧 Installation Files:
+   ├── requirements.txt             Python dependencies
+   ├── requirements-windows.txt     Windows-specific fallback
+   ├── QUICKSTART.cmd               One-click Windows installer
+   └── setup.py                     Python package installer
+
+INSTALLATION
+------------
+1. Extract AudioRadar_v10_2_FULL.zip to your desired location
+
+2. Windows Quick Start:
+   - Double-click QUICKSTART.cmd
+   - Follow on-screen instructions
+
+3. Manual Installation:
+   pip install -r requirements.txt
+   cd audio_radar_v10/audio_radar
+   python main.py
+
+4. If pygame installation fails (Python 3.14):
+   pip install -r requirements-windows.txt
+   (Or install Python 3.11/3.12 - recommended)
+
+IMPORTANT: AUDIO CONFIGURATION
+------------------------------
+⚠️ AudioRadar requires audio loopback to detect game sounds!
+
+Windows Setup:
+1. Open Settings → Sound → Recording (or right-click sound icon)
+2. Right-click in recording devices → "Show Disabled Devices"
+3. Find "Stereo Mix" → Right-click → Enable
+4. Right-click "Stereo Mix" → "Set as Default Device"
+5. Restart AudioRadar
+
+Without Stereo Mix enabled:
+- calibrate.py will close immediately with error
+- main.py won't detect any sounds
+- No bars will light up on the radar
+
+USAGE
+-----
+1. Start AudioRadar:
+   cd audio_radar_v10/audio_radar
+   python main.py
+
+2. Calibrate thresholds (optional but recommended):
+   python calibrate.py
+   - Watch Peak/RMS values while playing game sounds
+   - Press 'y' to update config.json with recommended values
+
+3. Controls while running:
+   Z/X - Adjust bar width
+   C/V - Adjust bar height  
+   B/N - Adjust transparency
+   ESC - Exit
+
+4. What you'll see:
+   - Czarne okno 600x600 px (black window)
+   - 8 szarych konturów (8 gray bar outlines)
+   - ZIELONE paski = footsteps (kroki)
+   - CZERWONE paski = gunshots (strzały)
+
+TROUBLESHOOTING
+---------------
+Problem: calibrate.py closes immediately
+Solution: Check if Stereo Mix is enabled and set as default recording device
+         Run: python main.py --list-devices
+         Should see "Stereo Mix" in the list
+
+Problem: No bars light up / detection doesn't work
+Solution: 1. Verify Stereo Mix is enabled
+         2. Play loud game sounds/music
+         3. Run calibrate.py - you should see Peak/RMS values changing
+         4. If values don't change, Stereo Mix isn't capturing audio
+
+Problem: pygame won't install (Python 3.14)
+Solution: Use Python 3.11 or 3.12 (recommended)
+         OR: pip install -r requirements-windows.txt
+         OR: pip install pygame==2.5.2 --only-binary :all:
+
+FEATURES
+--------
+✓ Real-time sound event detection
+✓ Multi-channel audio support (stereo, 5.1, 7.1)
+✓ Directional detection (0-360°)
+✓ Bandpass filtering (2-8 kHz footsteps, 0.2-12 kHz gunshots)
+✓ Distance estimation
+✓ Background noise adaptation
+✓ Interactive calibration utility
+✓ Configurable detection thresholds
+✓ Visual radar overlay with 8 directional bars
+✓ Adjustable bar size and transparency
+✓ Comprehensive documentation
+
+SYSTEM REQUIREMENTS
+-------------------
+- Windows 10/11 (recommended)
+- Python 3.11 or 3.12 (best compatibility)
+- Python 3.14 may have pygame installation issues
+- Sound card with Stereo Mix or loopback capability
+- ~50 MB disk space
+
+DEPENDENCIES
+------------
+- numpy >= 1.20.0
+- sounddevice >= 0.4.0
+- pygame >= 2.0.0
+- scipy >= 1.7.0 (for bandpass filtering)
+
+SUPPORT & DOCUMENTATION
+-----------------------
+See included documentation files:
+- INSTALL.md - Detailed installation instructions
+- USER_GUIDE.md - Complete usage guide with tips
+- CHANGELOG.md - Version history and changes
+- CONTRIBUTING.md - How to contribute to development
+
+For issues, check:
+1. Stereo Mix is enabled (most common issue!)
+2. Python version compatibility (3.11/3.12 recommended)
+3. All dependencies installed correctly
+4. Game audio is playing
+
+LICENSE
+-------
+MIT License - See LICENSE file for details
+
+CHANGELOG v10.2
+---------------
+- Fixed calibrate.py immediate close on error
+- Added comprehensive error handling and traceback display
+- Added "Press Enter to exit" pause for error visibility
+- Improved visualization module with stats infrastructure
+- Better debugging for audio device configuration issues
+
+Previous changes (v10.0 → v10.1):
+- Multi-channel directional detection with vector-based calculations
+- Bandpass filtering using scipy Butterworth filters
+- Distance estimation based on amplitude
+- Background noise adaptation with exponential smoothing
+- Interactive calibration tool with auto-config updates
+- Comprehensive documentation (5 guides)
+- Test suite for core functionality
+- Fixed pygame installation on Python 3.14
+
+================================================================================
+AudioRadar v10.2 - Better Error Handling & Improved Diagnostics
+================================================================================

@@ -1,0 +1,19 @@
+# Audio Radar Dependencies
+# Python 3.8+ required
+
+# Audio capture and processing
+sounddevice>=0.4.6
+numpy>=1.21.0
+scipy>=1.7.0
+
+# Visualization
+pygame>=2.5.0
+
+# Optional: Machine Learning (for future ML-based detection)
+# tensorflow>=2.13.0
+# torch>=2.0.0
+
+# Development tools
+# pytest>=7.4.0
+# black>=23.0.0
+# mypy>=1.5.0

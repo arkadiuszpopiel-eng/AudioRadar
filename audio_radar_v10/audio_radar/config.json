@@ -3,5 +3,26 @@
   "output_device": null,
   "bar_width": 40,
   "bar_height": 200,
-  "transparency": 180
+  "transparency": 180,
+  "detection": {
+    "shot_peak_threshold": 0.6,
+    "footstep_std_threshold": 0.05,
+    "enable_bandpass_filter": true,
+    "footstep_freq_range": [2000, 8000],
+    "shot_freq_range": [200, 12000],
+    "enable_dynamic_range_compression": false,
+    "compression_ratio": 4.0,
+    "compression_threshold": -20.0
+  },
+  "visualization": {
+    "fade_duration": 0.5,
+    "show_distance_indicator": true,
+    "footstep_color": [0, 255, 0],
+    "shot_color": [255, 0, 0]
+  },
+  "audio": {
+    "samplerate": 48000,
+    "blocksize": 1024,
+    "channels": 2
+  }
 }

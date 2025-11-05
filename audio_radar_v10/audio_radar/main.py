@@ -121,12 +121,35 @@ def load_config() -> dict:
         "bar_width": 40,
         "bar_height": 200,
         "transparency": 180,
+        "detection": {
+            "shot_peak_threshold": 0.6,
+            "footstep_std_threshold": 0.05,
+            "enable_bandpass_filter": True,
+            "footstep_freq_range": [2000, 8000],
+            "shot_freq_range": [200, 12000],
+        },
+        "visualization": {
+            "fade_duration": 0.5,
+            "show_distance_indicator": True,
+            "footstep_color": [0, 255, 0],
+            "shot_color": [255, 0, 0],
+        },
+        "audio": {
+            "samplerate": 48000,
+            "blocksize": 1024,
+            "channels": 2,
+        },
     }
     if CONFIG_FILE.exists():
         try:
             with open(CONFIG_FILE, "r", encoding="utf-8") as f:
                 user_cfg = json.load(f)
-            defaults.update({k: user_cfg.get(k, v) for k, v in defaults.items()})
+            # Deep merge of nested dictionaries
+            for key, value in user_cfg.items():
+                if isinstance(value, dict) and key in defaults and isinstance(defaults[key], dict):
+                    defaults[key].update(value)
+                else:
+                    defaults[key] = value
         except Exception as exc:
             logging.error("Failed to load configuration: %s", exc)
     return defaults
@@ -193,8 +216,19 @@ def run(cfg: dict) -> None:
         print("Required libraries are missing. Please install dependencies before running.")
         return
 
+    # Get audio configuration
+    audio_cfg = cfg.get("audio", {})
     input_device = cfg.get("input_device")
-    stream = AudioStream(input_device=input_device, samplerate=44100, blocksize=1024)
+    samplerate = audio_cfg.get("samplerate", 48000)
+    blocksize = audio_cfg.get("blocksize", 1024)
+    
+    # Update detection configuration
+    detection_cfg = cfg.get("detection", {})
+    detection_cfg["samplerate"] = samplerate
+    from sound_analysis import set_detection_config
+    set_detection_config(detection_cfg)
+    
+    stream = AudioStream(input_device=input_device, samplerate=samplerate, blocksize=blocksize)
 
     # Define callback to handle audio blocks
     def on_audio_data(samples):

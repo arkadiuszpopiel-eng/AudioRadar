@@ -1,0 +1,33 @@
+{
+  "window": {
+    "width": 800,
+    "height": 600,
+    "always_on_top": true,
+    "borderless": false,
+    "opacity": 0.95
+  },
+  "detection": {
+    "volume_threshold": 0.3,
+    "sensitivity": 0.5,
+    "enable_filter": true,
+    "auto_calibrate": false,
+    "shot_peak_threshold": 0.6,
+    "footstep_std_threshold": 0.05,
+    "enable_bandpass_filter": true,
+    "footstep_freq_range": [2000, 8000],
+    "shot_freq_range": [200, 12000]
+  },
+  "audio": {
+    "samplerate": 48000,
+    "blocksize": 1024,
+    "channels": 2,
+    "device": null
+  },
+  "visualization": {
+    "show_stats": true,
+    "fade_duration": 0.5,
+    "footstep_color": [0, 255, 0],
+    "shot_color": [255, 0, 0],
+    "show_distance_indicator": true
+  }
+}

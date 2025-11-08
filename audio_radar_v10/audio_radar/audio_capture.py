@@ -47,6 +47,27 @@ def list_audio_input_devices() -> List[Tuple[int, str]]:
     return results
 
 
+def auto_detect_stereo_mix() -> Optional[int]:
+    """Auto-detect Stereo Mix or loopback device.
+    
+    Returns the device index if found, None otherwise.
+    Searches for common loopback device names.
+    """
+    if sd is None:
+        return None
+    
+    devices = sd.query_devices()
+    loopback_names = ["stereo mix", "wave out", "loopback", "what u hear", "what you hear"]
+    
+    for idx, dev in enumerate(devices):
+        if dev.get("max_input_channels", 0) > 0:
+            name_lower = dev.get("name", "").lower()
+            for loopback_name in loopback_names:
+                if loopback_name in name_lower:
+                    return idx
+    return None
+
+
 def list_audio_output_devices() -> List[Tuple[int, str]]:
     """Return a list of available audio output devices.
 

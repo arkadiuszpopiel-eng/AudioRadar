@@ -85,12 +85,12 @@ import sys
 sys.path.append(os.path.dirname(__file__))
 try:
     # Attempt to import via the package name when running as module
-    from audio_radar.audio_capture import list_audio_input_devices, list_audio_output_devices, AudioStream
+    from audio_radar.audio_capture import list_audio_input_devices, list_audio_output_devices, AudioStream, auto_detect_stereo_mix
     from audio_radar.sound_analysis import detect_event, detect_event_with_direction, set_detection_config
     from audio_radar.visualization import Visualizer
 except ImportError:
     # Fallback to local imports when running as a script
-    from audio_capture import list_audio_input_devices, list_audio_output_devices, AudioStream  # type: ignore
+    from audio_capture import list_audio_input_devices, list_audio_output_devices, AudioStream, auto_detect_stereo_mix  # type: ignore
     from sound_analysis import detect_event, detect_event_with_direction, set_detection_config  # type: ignore
     from visualization import Visualizer  # type: ignore
 
@@ -99,7 +99,7 @@ CONFIG_FILE = Path(__file__).parent / "config.json"
 # Define the version of this Audio Radar release. Update this string
 # whenever you package a new version so that logs and archive names
 # clearly reflect the version in use.
-VERSION = "v10"
+VERSION = "v10.3"
 
 # Log file name includes the version number to avoid confusion between
 # releases. For example, version ``v9`` will log to ``log_v9.txt`` in
@@ -222,6 +222,18 @@ def run(cfg: dict) -> None:
     samplerate = audio_cfg.get("samplerate", 48000)
     blocksize = audio_cfg.get("blocksize", 1024)
     
+    # Auto-detect Stereo Mix if no device specified
+    if input_device is None:
+        detected = auto_detect_stereo_mix()
+        if detected is not None:
+            input_device = detected
+            logging.info("Auto-detected loopback device: index %d", input_device)
+            print(f"[AudioRadar {VERSION}] Auto-detected loopback device (index {input_device})")
+        else:
+            logging.warning("No loopback device detected, using system default")
+            print(f"[AudioRadar {VERSION}] No loopback device detected, using system default")
+            print("Tip: Enable 'Stereo Mix' in Windows Sound settings for best results")
+    
     # Update detection configuration
     detection_cfg = cfg.get("detection", {})
     detection_cfg["samplerate"] = samplerate
@@ -234,6 +246,19 @@ def run(cfg: dict) -> None:
     
     # Define callback to handle audio blocks
     def on_audio_data(samples):
+        # Calculate and update stats
+        if samples is not None and len(samples) > 0:
+            peak = float(np.max(np.abs(samples)))
+            rms = float(np.sqrt(np.mean(samples**2)))
+            vis.update_stats(peak, rms)
+            
+            # Log stats periodically (every 100 blocks ~ 2 seconds at 1024 blocksize/48kHz)
+            if not hasattr(on_audio_data, 'block_count'):
+                on_audio_data.block_count = 0
+            on_audio_data.block_count += 1
+            if on_audio_data.block_count % 100 == 0:
+                logging.debug("Audio stats - Peak: %.3f, RMS: %.3f", peak, rms)
+        
         if use_directional and samples.ndim == 2 and samples.shape[1] > 1:
             # Try directional detection for multi-channel audio
             result = detect_event_with_direction(samples)

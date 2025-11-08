@@ -245,6 +245,47 @@ class Visualizer:
                 closest_idx = idx
         
         return closest_idx
+    
+    def _draw_stats(self) -> None:
+        """Draw real-time statistics overlay."""
+        if not self.font:
+            return
+        
+        # Position stats in top-left corner
+        y_offset = 10
+        x_offset = 10
+        line_height = 25
+        
+        # Draw semi-transparent background for readability
+        stats_bg = pygame.Surface((220, 120), pygame.SRCALPHA)
+        stats_bg.fill((0, 0, 0, 180))
+        self.screen.blit(stats_bg, (5, 5))
+        
+        # Draw Peak value
+        peak_text = f"Peak: {self.peak_value:.3f}"
+        peak_surface = self.font.render(peak_text, True, (0, 255, 0))
+        self.screen.blit(peak_surface, (x_offset, y_offset))
+        y_offset += line_height
+        
+        # Draw RMS value
+        rms_text = f"RMS:  {self.rms_value:.3f}"
+        rms_surface = self.font.render(rms_text, True, (0, 255, 0))
+        self.screen.blit(rms_surface, (x_offset, y_offset))
+        y_offset += line_height
+        
+        # Draw last event info
+        if self.last_event_type and (time.time() - self.last_event_time) < 2.0:
+            event_color = (255, 0, 0) if self.last_event_type == 'shot' else (0, 255, 0)
+            event_text = f"Event: {self.last_event_type.upper()}"
+            event_surface = self.font.render(event_text, True, event_color)
+            self.screen.blit(event_surface, (x_offset, y_offset))
+        y_offset += line_height
+        
+        # Draw help text
+        if self.small_font:
+            help_text = "Z/X: Width | C/V: Height | B/N: Alpha"
+            help_surface = self.small_font.render(help_text, True, (150, 150, 150))
+            self.screen.blit(help_surface, (x_offset, y_offset))
 
     def _clamp_values(self) -> None:
         """Ensure bar width/height/transparency remain within safe bounds."""
@@ -315,6 +356,11 @@ class Visualizer:
             for bar in self.bars:
                 bar.update()
                 bar.draw(self.screen, center)
+            
+            # Draw stats overlay if enabled
+            if self.show_stats and self.font:
+                self._draw_stats()
+            
             pygame.display.flip()
             # Limit to ~60 frames per second
             self.clock.tick(60)

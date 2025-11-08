@@ -1,0 +1,208 @@
+═══════════════════════════════════════════════════════════════
+  AudioRadar v10.3 FULL Package - Release Information
+═══════════════════════════════════════════════════════════════
+
+📦 PACKAGE: AudioRadar_v10_3_FULL.zip
+📅 RELEASE DATE: 2025-11-08
+💾 SIZE: ~44 KB
+🔧 VERSION: 10.3 (Critical Fixes & Enhancements)
+
+═══════════════════════════════════════════════════════════════
+✨ WHAT'S NEW IN v10.3
+═══════════════════════════════════════════════════════════════
+
+🎯 AUTO-DETECT STEREO MIX
+  ✓ Automatically finds loopback audio device
+  ✓ Intelligent fallback to system default
+  ✓ User-friendly configuration guidance
+  ✓ No more manual device setup required!
+
+📊 REAL-TIME STATS OVERLAY
+  ✓ Peak amplitude display (0.0-1.0)
+  ✓ RMS (Root Mean Square) value
+  ✓ Last event indicator (shot/footstep)
+  ✓ Keyboard shortcuts help
+  ✓ Semi-transparent overlay for clarity
+
+📝 ENHANCED LOGGING
+  ✓ Periodic audio statistics (~2 second intervals)
+  ✓ Detailed event detection logs
+  ✓ Auto-detection status logging
+  ✓ Debug-level diagnostics
+
+🖼️ MODERN INTERFACE
+  ✓ Borderless window (widget-style)
+  ✓ Clean stats display
+  ✓ Foundation for v11 GUI
+
+═══════════════════════════════════════════════════════════════
+📦 PACKAGE CONTENTS
+═══════════════════════════════════════════════════════════════
+
+AudioRadar_v10_3_package/
+├── audio_radar_v10/audio_radar/    # Main application
+│   ├── main.py                     # Entry point (v10.3)
+│   ├── audio_capture.py            # Auto-detect Stereo Mix
+│   ├── sound_analysis.py           # Detection algorithms
+│   ├── visualization.py            # Stats overlay + UI
+│   ├── calibrate.py                # Calibration tool
+│   ├── config.json                 # Configuration
+│   └── ...
+├── README.md                        # Project overview
+├── INSTALL.md                       # Installation guide
+├── USER_GUIDE.md                    # Complete user manual
+├── CHANGELOG.md                     # Version history
+├── CONTRIBUTING.md                  # Developer guide
+├── LICENSE                          # MIT License
+├── requirements.txt                 # Python dependencies
+├── requirements-windows.txt         # Windows fallback
+├── setup.py                         # Package installer
+└── QUICKSTART.cmd                   # Windows quick start
+
+═══════════════════════════════════════════════════════════════
+🚀 QUICK START (WINDOWS)
+═══════════════════════════════════════════════════════════════
+
+1. Extract AudioRadar_v10_3_FULL.zip
+2. Double-click QUICKSTART.cmd
+3. Program will auto-detect Stereo Mix!
+
+═══════════════════════════════════════════════════════════════
+💻 MANUAL INSTALLATION
+═══════════════════════════════════════════════════════════════
+
+STEP 1: Install Dependencies
+────────────────────────────
+cd AudioRadar_v10_3_package
+pip install -r requirements.txt
+
+# If pygame fails (Python 3.14):
+pip install -r requirements-windows.txt
+
+STEP 2: Run AudioRadar
+───────────────────────
+cd audio_radar_v10/audio_radar
+python main.py
+
+STEP 3: Enjoy!
+──────────────
+✓ Stats overlay shows Peak/RMS in top-left
+✓ Auto-detects Stereo Mix
+✓ Green bars = footsteps, Red bars = shots
+✓ Use Z/X/C/V/B/N keys to adjust display
+
+═══════════════════════════════════════════════════════════════
+🔧 SYSTEM REQUIREMENTS
+═══════════════════════════════════════════════════════════════
+
+✓ Python 3.11 or 3.12 (recommended)
+✓ Python 3.14 supported with requirements-windows.txt
+✓ Windows 10/11 (Stereo Mix required for detection)
+✓ 50 MB disk space
+✓ Audio loopback device (Stereo Mix)
+
+═══════════════════════════════════════════════════════════════
+🎮 ENABLING STEREO MIX (IF NEEDED)
+═══════════════════════════════════════════════════════════════
+
+If auto-detection fails, manually enable:
+
+1. Windows Settings → Sound → Recording
+2. Right-click → "Show Disabled Devices"
+3. Right-click "Stereo Mix" → Enable
+4. Right-click "Stereo Mix" → Set as Default Device
+5. Restart AudioRadar
+
+v10.3 will detect it automatically on next run!
+
+═══════════════════════════════════════════════════════════════
+🎨 INTERFACE CONTROLS
+═══════════════════════════════════════════════════════════════
+
+KEYBOARD SHORTCUTS:
+  Z / X    →  Increase / Decrease bar width
+  C / V    →  Increase / Decrease bar height
+  B / N    →  Increase / Decrease transparency
+
+STATS DISPLAY (Top-Left):
+  Peak     →  Maximum amplitude (0.0-1.0)
+  RMS      →  Root Mean Square value
+  Event    →  Last detected event type
+  Help     →  Keyboard shortcut guide
+
+═══════════════════════════════════════════════════════════════
+🐛 TROUBLESHOOTING v10.3
+═══════════════════════════════════════════════════════════════
+
+PROBLEM: "No audio device detected"
+SOLUTION: Run calibrate.py to see error details
+          Enable Stereo Mix in Windows Sound settings
+
+PROBLEM: Stats show 0.000 values
+SOLUTION: Audio not playing or Stereo Mix not default
+          Play music and check stats overlay updates
+
+PROBLEM: pygame installation fails
+SOLUTION: Use requirements-windows.txt
+          Or install Python 3.11/3.12 instead
+
+PROBLEM: Stats overlay too bright/dim
+SOLUTION: Background opacity is fixed at 180/255
+          Future v11 will have adjustable overlay
+
+═══════════════════════════════════════════════════════════════
+📚 DOCUMENTATION
+═══════════════════════════════════════════════════════════════
+
+README.md       → Project overview & features
+INSTALL.md      → Detailed installation guide
+USER_GUIDE.md   → Complete user manual with examples
+CHANGELOG.md    → Version history (v10.3 added)
+
+═══════════════════════════════════════════════════════════════
+🔄 VERSION HISTORY
+═══════════════════════════════════════════════════════════════
+
+v10.3 (2025-11-08)  → Auto-detect, stats overlay, enhanced logging
+v10.2 (2025-11-05)  → Calibrate.py fixes, error handling
+v10.1 (2025-11-05)  → Initial packaged release
+v10.0               → Base version with multi-channel detection
+
+═══════════════════════════════════════════════════════════════
+🚀 WHAT'S NEXT? v11.0 PREVIEW
+═══════════════════════════════════════════════════════════════
+
+v10.3 is the final v10 release. Next major version:
+
+AudioRadar v11.0 will feature:
+  ✓ Modern GUI with tkinter/PyQt
+  ✓ Draggable borderless window
+  ✓ Control panel with sliders/buttons
+  ✓ Real-time threshold adjustment
+  ✓ Advanced detection algorithms
+  ✓ Comprehensive settings panel
+
+Stay tuned for v11 development!
+
+═══════════════════════════════════════════════════════════════
+📄 LICENSE
+═══════════════════════════════════════════════════════════════
+
+MIT License - Free for personal and commercial use
+See LICENSE file in package for full details
+
+═══════════════════════════════════════════════════════════════
+💬 SUPPORT & FEEDBACK
+═══════════════════════════════════════════════════════════════
+
+Found a bug? Have suggestions? 
+Open an issue on GitHub repository
+
+═══════════════════════════════════════════════════════════════
+🎉 ENJOY AudioRadar v10.3!
+═══════════════════════════════════════════════════════════════
+
+Thank you for using AudioRadar!
+This version focuses on usability improvements and auto-configuration.
+
+Happy gaming! 🎮🔊

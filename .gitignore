@@ -58,3 +58,6 @@ log_*.txt
 *.zip
 *.tar.gz
 *.tgz
+
+# Release package build directory
+release_package/

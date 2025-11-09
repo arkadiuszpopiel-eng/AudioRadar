@@ -1,0 +1,371 @@
+═══════════════════════════════════════════════════════════════
+              AUDIO RADAR v10.1 - TROUBLESHOOTING
+                    Rozwiązywanie Problemów
+═══════════════════════════════════════════════════════════════
+
+Ten dokument zawiera rozwiązania najczęstszych problemów.
+
+═══════════════════════════════════════════════════════════════
+1. PROGRAM SIĘ NIE URUCHAMIA
+═══════════════════════════════════════════════════════════════
+
+OBJAW: Błąd przy uruchomieniu, brak okna
+
+MOŻLIWE PRZYCZYNY I ROZWIĄZANIA:
+
+A) Brak Pythona lub niewłaściwa wersja
+   
+   Sprawdź:
+   python --version
+   
+   Wymagane: Python 3.8 lub nowszy
+   
+   Rozwiązanie:
+   Zainstaluj Python 3.8+ z python.org
+
+B) Brak bibliotek
+   
+   Błędy typu: "ModuleNotFoundError: No module named 'pygame'"
+   
+   Rozwiązanie:
+   pip install sounddevice pygame numpy
+
+C) Problem z PortAudio (sounddevice)
+   
+   Błąd: "Could not import sounddevice"
+   
+   Rozwiązanie Windows:
+   pip uninstall sounddevice
+   pip install sounddevice
+   
+   Lub pobierz wheel z:
+   https://www.lfd.uci.edu/~gohlke/pythonlibs/#sounddevice
+
+D) Problem z Pygame
+   
+   Błąd: "pygame.error: No available video device"
+   
+   Rozwiązanie:
+   - Sprawdź sterowniki karty graficznej
+   - Uruchom jako administrator
+   - Reinstall: pip install --upgrade pygame
+
+═══════════════════════════════════════════════════════════════
+2. BRAK DETEKCJI DŹWIĘKÓW
+═══════════════════════════════════════════════════════════════
+
+OBJAW: Program działa, ale radar nie reaguje na dźwięki
+
+DIAGNOSTYKA KROK PO KROKU:
+
+KROK 1: Test audio (klawisz T)
+   
+   1. Uruchom program
+   2. Naciśnij T
+   3. Włącz muzykę lub grę (GŁOŚNO!)
+   4. Obserwuj poziomy RMS i Peak
+
+KROK 2: Analiza wyników testu
+
+   Scenariusz A: Peak < 0.001 (prawie zero)
+   
+   PROBLEM: Brak sygnału audio
+   
+   Rozwiązanie:
+   □ Sprawdź czy loopback jest włączony:
+     Windows Settings → Sound → Input → Stereo Mix
+   
+   □ Ustaw loopback jako domyślne urządzenie nagrywające
+   
+   □ Sprawdź volume systemowy (nie zmutowany)
+   
+   □ Sprawdź czy coś naprawdę gra w systemie
+   
+   □ Użyj: python main.py --list-devices
+     i sprawdź czy loopback jest widoczny
+
+   Scenariusz B: Peak 0.001 - 0.01 (bardzo słaby sygnał)
+   
+   PROBLEM: Sygnał zbyt słaby
+   
+   Rozwiązanie:
+   □ Zwiększ volume systemowy
+   
+   □ Zwiększ głośność w grze
+   
+   □ W sound_analysis.py zmniejsz progi:
+     SHOT_PEAK_THRESHOLD = 0.3     # było 0.6
+     FOOTSTEP_STD_THRESHOLD = 0.02  # było 0.05
+
+   Scenariusz C: Peak 0.01 - 0.1 (słaby sygnał)
+   
+   PROBLEM: Sygnał jest, ale za słaby dla domyślnych progów
+   
+   Rozwiązanie:
+   □ Zwiększ volume
+   
+   □ LUB zmniejsz progi w sound_analysis.py
+
+   Scenariusz D: Peak > 0.1 ale brak wykryć
+   
+   PROBLEM: Sygnał OK, ale algorytm nie wykrywa
+   
+   Rozwiązanie:
+   □ Włącz tryb debug (klawisz D)
+   □ Zobacz czy zdarzenia są logowane
+   □ Sprawdź log_v10.1.txt
+   □ Może być problem z typem dźwięku (ambient vs impulse)
+
+═══════════════════════════════════════════════════════════════
+3. ZA DUŻO FAŁSZYWYCH ALARMÓW
+═══════════════════════════════════════════════════════════════
+
+OBJAW: Radar ciągle się włącza, nawet bez powodu
+
+ROZWIĄZANIE:
+
+1. Włącz tryb debug (D) aby zobaczyć co jest wykrywane
+
+2. Zwiększ progi w sound_analysis.py:
+   
+   SHOT_PEAK_THRESHOLD = 0.8      # było 0.6
+   FOOTSTEP_STD_THRESHOLD = 0.08  # było 0.05
+
+3. Sprawdź czy używasz właściwego urządzenia (loopback, nie mikrofon)
+
+4. Zmniejsz volume jeśli jest bardzo głośno
+
+5. W głośnych grach (explosions, ambient) zwiększ progi jeszcze bardziej
+
+═══════════════════════════════════════════════════════════════
+4. OPÓŹNIENIE (LATENCY) JEST ZA DUŻE
+═══════════════════════════════════════════════════════════════
+
+OBJAW: Wskaźnik pokazuje > 50 ms
+
+PRZYCZYNA: Duży blocksize
+
+ROZWIĄZANIE:
+
+1. Edytuj main.py, linia ~197:
+   
+   blocksize = 512  # było 1024
+   
+   Latencja = (blocksize / samplerate) * 1000
+   
+   512 / 44100 * 1000 = ~11.6 ms
+   1024 / 44100 * 1000 = ~23.2 ms
+
+2. Mniejsze wartości:
+   - 256 = ~5.8 ms (wymaga więcej CPU)
+   - 512 = ~11.6 ms (dobry balans)
+   - 1024 = ~23.2 ms (mniej CPU)
+   - 2048 = ~46.4 ms (bardzo mało CPU)
+
+UWAGA: Mniejszy blocksize = więcej obliczeń = więcej CPU
+
+═══════════════════════════════════════════════════════════════
+5. WYSOKIE UŻYCIE CPU
+═══════════════════════════════════════════════════════════════
+
+OBJAW: Program zużywa dużo procesora
+
+ROZWIĄZANIA:
+
+1. Zwiększ blocksize w main.py:
+   blocksize = 2048  # było 1024
+
+2. Zmniejsz FPS w visualization.py, linia ~360:
+   self.clock.tick(30)  # było 60
+
+3. Wyłącz tryb debug (D) jeśli włączony
+
+4. Zamknij inne programy w tle
+
+5. Sprawdź Task Manager czy inny proces nie zajmuje CPU
+
+═══════════════════════════════════════════════════════════════
+6. PROGRAM ZAWIESZONY / NIE REAGUJE
+═══════════════════════════════════════════════════════════════
+
+OBJAW: Okno nie odpowiada
+
+MOŻLIWE PRZYCZYNY:
+
+A) Okno testowe otwarte
+   
+   Test window blokuje główne okno (Pygame limitation)
+   
+   Rozwiązanie:
+   Zamknij test window (ESC)
+
+B) Błąd audio stream
+   
+   Sprawdź log_v10.1.txt dla błędów
+   
+   Rozwiązanie:
+   Restart programu
+
+C) Pygame crashed
+   
+   Rozwiązanie:
+   Ctrl+C w konsoli lub zamknij przez Task Manager
+
+═══════════════════════════════════════════════════════════════
+7. PROBLEM Z URZĄDZENIEM AUDIO
+═══════════════════════════════════════════════════════════════
+
+OBJAW: Błąd "Invalid device" lub "Device not found"
+
+DIAGNOSTYKA:
+
+1. Listuj dostępne urządzenia:
+   python main.py --list-devices
+
+2. Sprawdź output:
+   
+   Audio input devices:
+     0: Mikrofon (Realtek)
+     1: Stereo Mix (Realtek)     <-- TO WYBIERZ
+     2: Line In
+   
+3. Edytuj config.json:
+   {
+     "input_device": 1
+   }
+
+4. Restart programu
+
+TYPOWE PROBLEMY:
+
+- Loopback wyłączony w systemie
+  Rozwiązanie: Windows Sound Settings → Show disabled devices
+
+- Loopback nie jest widoczny
+  Rozwiązanie: Zaktualizuj sterowniki karty dźwiękowej
+
+- Sterowniki Realtek
+  Rozwiązanie: Pobierz najnowsze z witryny producenta
+
+═══════════════════════════════════════════════════════════════
+8. LOGI I DEBUGGING
+═══════════════════════════════════════════════════════════════
+
+LOKALIZACJA LOGÓW:
+
+audio_radar/log_v10.1.txt
+
+CO ZAWIERAJĄ LOGI:
+
+• Czas startu
+• Używana konfiguracja
+• Wykryte zdarzenia
+• Błędy audio stream
+• Błędy ogólne
+
+JAK CZYTAĆ LOGI:
+
+2025-11-09 12:00:00,123 [INFO] Audio Radar version v10.1 starting
+2025-11-09 12:00:00,124 [INFO] Using configuration: {...}
+2025-11-09 12:00:05,456 [INFO] Detected event: footstep
+2025-11-09 12:00:06,789 [ERROR] Audio stream error: [Errno -9999]
+
+WŁĄCZANIE WIĘCEJ LOGÓW:
+
+1. Tryb debug (klawisz D) - pokazuje więcej na ekranie
+
+2. W main.py zmień level na DEBUG:
+   
+   logging.basicConfig(
+       ...
+       level=logging.DEBUG,  # było INFO
+       ...
+   )
+
+═══════════════════════════════════════════════════════════════
+9. BRAK PLIKU CONFIG.JSON
+═══════════════════════════════════════════════════════════════
+
+OBJAW: Program używa domyślnych ustawień
+
+ROZWIĄZANIE:
+
+Program automatycznie tworzy config.json przy pierwszym uruchomieniu.
+Jeśli nie istnieje, utwórz ręcznie:
+
+{
+  "input_device": null,
+  "output_device": null,
+  "bar_width": 40,
+  "bar_height": 200,
+  "transparency": 180
+}
+
+Zapisz jako: audio_radar/config.json
+
+═══════════════════════════════════════════════════════════════
+10. PROBLEMY Z SOUND BLASTER Z SE
+═══════════════════════════════════════════════════════════════
+
+SPECYFICZNE DLA SOUND BLASTER Z SE:
+
+A) Brak Stereo Mix
+   
+   Rozwiązanie:
+   Zainstaluj Sound Blaster Command
+   Włącz "What U Hear" w ustawieniach
+
+B) Loopback wykrywa tylko lewy/prawy kanał
+   
+   Rozwiązanie:
+   Sound Blaster Command → Audio → Output Mode → Stereo
+
+C) Latency > 100ms
+   
+   Rozwiązanie:
+   Sound Blaster Command → Audio → Buffer Size → Small
+
+D) Crackling / pops
+   
+   Rozwiązanie:
+   - Zwiększ blocksize do 2048
+   - Zaktualizuj sterowniki
+   - Wyłącz audio enhancements
+
+═══════════════════════════════════════════════════════════════
+11. KONTAKT I WSPARCIE
+═══════════════════════════════════════════════════════════════
+
+Jeśli problem nie został rozwiązany:
+
+1. Sprawdź GitHub Issues:
+   https://github.com/arkadiuszpopiel-eng/AudioRadar/issues
+
+2. Przygotuj informacje:
+   - System operacyjny i wersja
+   - Python version (python --version)
+   - Karta dźwiękowa
+   - Zawartość log_v10.1.txt
+   - Dokładny opis problemu
+   - Kroki do odtworzenia
+
+3. Utwórz nowy Issue na GitHub
+
+═══════════════════════════════════════════════════════════════
+12. SZYBKIE SPRAWDZENIE (CHECKLIST)
+═══════════════════════════════════════════════════════════════
+
+Przed zgłoszeniem problemu sprawdź:
+
+□ Python 3.8+ zainstalowany
+□ Wszystkie biblioteki zainstalowane (pip list)
+□ Loopback włączony i ustawiony jako domyślny
+□ Volume systemowy nie zmutowany
+□ Coś naprawdę gra w systemie
+□ Test audio (T) pokazuje sygnał
+□ Config.json istnieje i jest poprawny
+□ Logi nie pokazują błędów krytycznych
+□ Sterowniki karty dźwiękowej aktualne
+□ Program uruchomiony z audio_radar folder
+
+═══════════════════════════════════════════════════════════════

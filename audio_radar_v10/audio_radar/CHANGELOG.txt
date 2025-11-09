@@ -1,0 +1,134 @@
+═══════════════════════════════════════════════════════════════
+                    AUDIO RADAR - CHANGELOG
+═══════════════════════════════════════════════════════════════
+
+v10.1 (2025-11-09) - Audio Testing Tools & Diagnostics
+───────────────────────────────────────────────────────────────
+
+NOWE FUNKCJE:
+
++ Audio Test Window - narzędzie do testowania wejścia audio
+  • Naciśnij T w głównym oknie aby otworzyć
+  • Wyświetla poziomy RMS i Peak na żywo
+  • Licznik wykryć powyżej progu
+  • Automatyczne diagnozy problemów
+  • Podsumowanie po zamknięciu
+
++ VU Meter - miernik poziomu audio w głównym oknie
+  • Wyświetla RMS (zielony) i Peak (żółty)
+  • Aktualizacja w czasie rzeczywistym
+  • Umieszczony w lewym górnym rogu
+
++ Tryb Debug - szczegółowe statystyki w czasie rzeczywistym
+  • Włącz/wyłącz klawiszem D
+  • Pokazuje RMS, Peak, typ zdarzenia
+  • Licznik wykryć
+  • Logi w pliku i na ekranie
+
++ Wskaźnik latencji - rzeczywiste opóźnienie w ms
+  • Wyświetlane w prawym dolnym rogu
+  • Obliczone na podstawie blocksize i sample rate
+  • Pomaga zoptymalizować wydajność
+
++ Nowe skróty klawiszowe:
+  • T - otwórz okno testowania audio
+  • D - włącz/wyłącz tryb debug
+  • ESC - zamknij program
+
+POPRAWKI:
+
+- Latencja teraz pokazuje rzeczywiste wartości (było zawsze 0.0 ms)
+- Lepsza diagnostyka problemów z audio
+- Dokładniejsze obliczenia RMS i Peak
+- Ulepszone logowanie zdarzeń
+
+USPRAWNIENIA:
+
+- Dodano funkcję analyze_audio_levels() w sound_analysis.py
+- Wizualizacja teraz wspiera więcej callbacków
+- Lepsze komunikaty o błędach
+- Więcej informacji w logach
+
+DOKUMENTACJA:
+
++ README_PL.txt - kompletna dokumentacja po polsku
++ CHANGELOG.txt - ten plik
++ Ulepszone komentarze w kodzie
++ Docstringi dla nowych funkcji
+
+STRUKTURA KODU:
+
++ audio_test_window.py - nowy moduł testowania
+  • Standalone window dla diagnostyki audio
+  • Może być uruchomiony oddzielnie
+  • Pełna obsługa błędów
+
+~ visualization.py - rozszerzone funkcje
+  • Dodano VU meter
+  • Dodano wskaźnik latencji
+  • Dodano tryb debug
+  • Nowe metody: update_audio_stats(), set_latency(), add_debug_message()
+
+~ sound_analysis.py - nowa funkcja
+  • analyze_audio_levels() dla VU meter
+
+~ main.py - integracja nowych funkcji
+  • Obliczanie latencji
+  • Callback dla test window
+  • Przekazywanie statystyk audio
+  • Wersja 10.1
+
+ZNANE PROBLEMY:
+
+- Test window musi być zamknięty przed powrotem do głównego okna
+  (Pygame single-threaded limitation)
+- Wysokie użycie CPU przy małych blocksize
+- Detekcja może dawać fałszywe alarmy w głośnych grach
+
+PLANY NA PRZYSZŁOŚĆ:
+
+- Multi-threading dla test window
+- Więcej typów zdarzeń (wybuchy, reload)
+- Kalibracja automatyczna progów
+- Profile dla różnych gier
+- Export logów do CSV
+- Statystyki sesji
+
+
+═══════════════════════════════════════════════════════════════
+
+v10 (2025-10-29) - Stabilna wersja bazowa
+───────────────────────────────────────────────────────────────
+
+FUNKCJE PODSTAWOWE:
+
++ Przechwytywanie audio przez sounddevice
++ Detekcja kroków i strzałów
++ Wizualizacja 2D (Pygame radar)
++ 8-kierunkowy radar
++ Konfigurowalne progi
++ Logowanie do pliku
++ Obsługa loopback (Stereo Mix)
+
+MOŻLIWOŚCI:
+
++ Dostosowanie wyglądu (Z/X/C/V/B/N)
++ Wybór urządzenia audio przez config.json
++ Lista urządzeń: python main.py --list-devices
++ Versioned logs (log_v10.txt)
+
+TECHNOLOGIE:
+
++ Python 3.8+
++ sounddevice - przechwytywanie audio
++ pygame - wizualizacja
++ numpy - przetwarzanie sygnału
+
+═══════════════════════════════════════════════════════════════
+
+UWAGI TECHNICZNE:
+- Każda wersja ma własny plik logu (log_v10.txt, log_v10.1.txt)
+- Config.json współdzielony między wersjami
+- Wsteczna kompatybilność z v10
+
+═══════════════════════════════════════════════════════════════

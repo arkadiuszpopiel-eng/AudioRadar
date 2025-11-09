@@ -86,20 +86,22 @@ sys.path.append(os.path.dirname(__file__))
 try:
     # Attempt to import via the package name when running as module
     from audio_radar.audio_capture import list_audio_input_devices, list_audio_output_devices, AudioStream
-    from audio_radar.sound_analysis import detect_event
+    from audio_radar.sound_analysis import detect_event, analyze_audio_levels
     from audio_radar.visualization import Visualizer
+    from audio_radar.audio_test_window import AudioTestWindow
 except ImportError:
     # Fallback to local imports when running as a script
     from audio_capture import list_audio_input_devices, list_audio_output_devices, AudioStream  # type: ignore
-    from sound_analysis import detect_event  # type: ignore
+    from sound_analysis import detect_event, analyze_audio_levels  # type: ignore
     from visualization import Visualizer  # type: ignore
+    from audio_test_window import AudioTestWindow  # type: ignore
 
 
 CONFIG_FILE = Path(__file__).parent / "config.json"
 # Define the version of this Audio Radar release. Update this string
 # whenever you package a new version so that logs and archive names
 # clearly reflect the version in use.
-VERSION = "v10"
+VERSION = "v10.1"
 
 # Log file name includes the version number to avoid confusion between
 # releases. For example, version ``v9`` will log to ``log_v9.txt`` in
@@ -194,16 +196,58 @@ def run(cfg: dict) -> None:
         return
 
     input_device = cfg.get("input_device")
-    stream = AudioStream(input_device=input_device, samplerate=44100, blocksize=1024)
+    samplerate = 44100
+    blocksize = 1024
+    stream = AudioStream(input_device=input_device, samplerate=samplerate, blocksize=blocksize)
+    
+    # Calculate and set latency
+    latency_ms = (blocksize / samplerate) * 1000
+    vis.set_latency(latency_ms)
+    
+    # Event counter for debug
+    event_counter = 0
 
     # Define callback to handle audio blocks
     def on_audio_data(samples):
+        nonlocal event_counter
+        
+        # Analyze audio levels for VU meter
+        rms, peak = analyze_audio_levels(samples)
+        vis.update_audio_stats(rms, peak)
+        
+        # Detect events
         event = detect_event(samples)
         if event:
+            event_counter += 1
             logging.info("Detected event: %s", event)
             vis.trigger_event(event)
+            
+            # Debug info
+            if vis.debug_mode:
+                debug_msg = f"Event #{event_counter}: {event} | RMS={rms:.4f} Peak={peak:.4f}"
+                vis.add_debug_message(debug_msg)
+                logging.debug(debug_msg)
 
     stream.on_data = on_audio_data
+    
+    # Test window callback
+    def open_test_window():
+        """Open audio test window."""
+        print("[AudioRadar] Opening test window...")
+        logging.info("Opening audio test window")
+        try:
+            test_window = AudioTestWindow(
+                device_id=input_device,
+                samplerate=samplerate,
+                blocksize=blocksize
+            )
+            # Run in same thread (blocks until closed)
+            test_window.run()
+        except Exception as e:
+            logging.error("Test window error: %s", e)
+            print(f"Test window error: {e}")
+    
+    vis.test_callback = open_test_window
 
     # Start audio stream in a background thread
     def audio_thread():

@@ -138,8 +138,11 @@ class Visualizer:
         # Initialise Pygame only once
         pygame.init()
         self.screen = pygame.display.set_mode((600, 600))
-        pygame.display.set_caption("Audio Radar")
+        pygame.display.set_caption("Audio Radar v10.1")
         self.clock = pygame.time.Clock()
+        self.font_small = pygame.font.Font(None, 20)
+        self.font_medium = pygame.font.Font(None, 24)
+        
         # Create bars for each direction
         self.bars: List[Bar] = [
             Bar(angle_deg=d, width=bar_width, height=bar_height, transparency=transparency)
@@ -148,6 +151,16 @@ class Visualizer:
         self.bar_width = bar_width
         self.bar_height = bar_height
         self.transparency = transparency
+        
+        # Audio monitoring
+        self.current_rms = 0.0
+        self.current_peak = 0.0
+        self.latency_ms = 0.0
+        
+        # Debug mode
+        self.debug_mode = False
+        self.debug_messages = []
+        self.max_debug_lines = 5
 
     def trigger_event(self, event_type: str) -> None:
         """Light up the appropriate bar for a detected event.
@@ -168,6 +181,41 @@ class Visualizer:
         index = 0 if event_type == 'footstep' else 4
         bar = self.bars[index]
         bar.trigger(event_type)
+    
+    def update_audio_stats(self, rms: float, peak: float) -> None:
+        """Update current audio level statistics for VU meter.
+        
+        Parameters
+        ----------
+        rms : float
+            Current RMS (root mean square) audio level.
+        peak : float
+            Current peak audio level.
+        """
+        self.current_rms = rms
+        self.current_peak = peak
+    
+    def set_latency(self, latency_ms: float) -> None:
+        """Set the current audio latency for display.
+        
+        Parameters
+        ----------
+        latency_ms : float
+            Audio latency in milliseconds.
+        """
+        self.latency_ms = latency_ms
+    
+    def add_debug_message(self, message: str) -> None:
+        """Add a debug message to the display.
+        
+        Parameters
+        ----------
+        message : str
+            Debug message to display.
+        """
+        self.debug_messages.append(message)
+        if len(self.debug_messages) > self.max_debug_lines:
+            self.debug_messages.pop(0)
 
     def _clamp_values(self) -> None:
         """Ensure bar width/height/transparency remain within safe bounds."""
@@ -179,6 +227,66 @@ class Visualizer:
             b.width = self.bar_width
             b.height = self.bar_height
             b.transparency = self.transparency
+    
+    def _draw_vu_meter(self) -> None:
+        """Draw VU meter showing current audio levels."""
+        # Position at top of screen
+        x, y = 10, 10
+        width, height = 200, 20
+        
+        # Background
+        pygame.draw.rect(self.screen, (40, 40, 40), (x, y, width, height))
+        
+        # RMS bar (green)
+        rms_width = int(min(self.current_rms * 2000, width))
+        if rms_width > 0:
+            pygame.draw.rect(self.screen, (50, 200, 50), (x, y, rms_width, height // 2))
+        
+        # Peak bar (yellow)
+        peak_width = int(min(self.current_peak * 200, width))
+        if peak_width > 0:
+            pygame.draw.rect(self.screen, (200, 200, 50), (x, y + height // 2, peak_width, height // 2))
+        
+        # Border
+        pygame.draw.rect(self.screen, (100, 100, 100), (x, y, width, height), 1)
+        
+        # Label
+        label = f"VU: RMS {self.current_rms:.4f} | Peak {self.current_peak:.4f}"
+        text = self.font_small.render(label, True, (200, 200, 200))
+        self.screen.blit(text, (x, y + height + 2))
+    
+    def _draw_status_info(self) -> None:
+        """Draw status information (latency, version, etc)."""
+        # Position at bottom right
+        x, y = 400, 570
+        
+        # Latency
+        latency_text = f"Latencja: {self.latency_ms:.1f} ms"
+        text = self.font_small.render(latency_text, True, (150, 150, 150))
+        self.screen.blit(text, (x, y))
+        
+        # Version
+        version_text = "v10.1"
+        text = self.font_small.render(version_text, True, (100, 100, 100))
+        self.screen.blit(text, (x, y + 15))
+    
+    def _draw_debug_info(self) -> None:
+        """Draw debug information if debug mode is enabled."""
+        if not self.debug_mode:
+            return
+        
+        # Position at bottom left
+        x, y = 500
+        
+        # Background
+        bg_height = len(self.debug_messages) * 18 + 10
+        if bg_height > 10:
+            pygame.draw.rect(self.screen, (0, 0, 0, 180), (x - 5, y - 5, 400, bg_height))
+        
+        # Debug messages
+        for i, msg in enumerate(self.debug_messages):
+            text = self.font_small.render(msg[:60], True, (255, 255, 100))
+            self.screen.blit(text, (x, y + i * 18))
 
     def run(self) -> None:
         """Enter the main Pygame loop.
@@ -194,7 +302,9 @@ class Visualizer:
                 if event.type == pygame.QUIT:
                     running = False
                 elif event.type == pygame.KEYDOWN:
-                    if event.key == pygame.K_z:
+                    if event.key == pygame.K_ESCAPE:
+                        running = False
+                    elif event.key == pygame.K_z:
                         self.bar_width += 2
                     elif event.key == pygame.K_x:
                         self.bar_width -= 2
@@ -206,6 +316,14 @@ class Visualizer:
                         self.transparency += 10
                     elif event.key == pygame.K_n:
                         self.transparency -= 10
+                    elif event.key == pygame.K_d:
+                        self.debug_mode = not self.debug_mode
+                        status = "ON" if self.debug_mode else "OFF"
+                        print(f"[AudioRadar] Debug mode: {status}")
+                    elif event.key == pygame.K_t:
+                        # Trigger test window (handled by caller)
+                        if hasattr(self, 'test_callback') and self.test_callback:
+                            self.test_callback()
                     # Clamp after adjustments
                     self._clamp_values()
 
@@ -238,6 +356,12 @@ class Visualizer:
             for bar in self.bars:
                 bar.update()
                 bar.draw(self.screen, center)
+            
+            # Draw UI overlays
+            self._draw_vu_meter()
+            self._draw_status_info()
+            self._draw_debug_info()
+            
             pygame.display.flip()
             # Limit to ~60 frames per second
             self.clock.tick(60)

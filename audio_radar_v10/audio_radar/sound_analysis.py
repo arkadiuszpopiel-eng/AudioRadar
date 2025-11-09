@@ -77,3 +77,38 @@ def detect_event(samples: np.ndarray) -> Optional[str]:
     if std > FOOTSTEP_STD_THRESHOLD:
         return 'footstep'
     return None
+
+
+def analyze_audio_levels(samples: np.ndarray) -> tuple:
+    """Analyze audio samples and return RMS and peak levels.
+    
+    Parameters
+    ----------
+    samples : ndarray
+        A 2‑D NumPy array of shape (frames, channels) containing audio samples.
+    
+    Returns
+    -------
+    tuple
+        (rms, peak) where rms is the root mean square level and peak is
+        the maximum absolute amplitude, both in range [0, 1].
+    """
+    if np is None or samples.size == 0:
+        return (0.0, 0.0)
+    
+    # Convert multi‑channel audio to mono by averaging channels
+    if samples.ndim == 2 and samples.shape[1] > 1:
+        mono = samples.mean(axis=1)
+    else:
+        mono = samples.ravel()
+    
+    # Normalise to range [-1, 1] if values are integer types
+    if np.issubdtype(mono.dtype, np.integer):
+        info = np.iinfo(mono.dtype)
+        mono = mono.astype(np.float32) / max(abs(info.min), info.max)
+    
+    # Calculate levels
+    rms = float(np.sqrt(np.mean(mono**2)))
+    peak = float(np.max(np.abs(mono)))
+    
+    return (rms, peak)

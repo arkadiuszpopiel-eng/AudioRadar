@@ -1,0 +1,73 @@
+═══════════════════════════════════════════════════════════════
+AudioRadar v10.0 - QUICK START
+═══════════════════════════════════════════════════════════════
+
+NAJSZYBSZE URUCHOMIENIE:
+========================
+
+1. Dwukrotnie kliknij: START_V10_GUI.bat
+
+   LUB
+
+2. Otwórz PowerShell/CMD w tym folderze:
+   python main.py
+
+   LUB
+
+3. Jeśli powyższe nie działa:
+   python START_V10_GUI.py
+
+PIERWSZE URUCHOMIENIE:
+======================
+- Automatycznie zainstaluje potrzebne biblioteki
+- Może to zająć 1-2 minuty
+
+CO ZOBACZYSZ:
+=============
+✓ Okno z tytułem "AudioRadar v10.0 - Optimized Core"
+✓ Ciemny motyw (szary/czarny z cyjanowym akcentem)
+✓ Status bar na dole: 🔴 Disconnected | Latency | CPU
+✓ Przyciski: ▶ START, ■ STOP, 🔄 List Devices
+
+JEŚLI WIDZISZ CZARNY EKRAN Z RADAREM:
+======================================
+To STARA wersja Pygame. Zrób tak:
+
+1. Zamknij aplikację
+2. Usuń __pycache__/ folder
+3. Uruchom: python main.py
+
+LUB zainstaluj ponownie PyQt5:
+   pip uninstall PyQt5
+   pip install PyQt5
+
+JAK UŻYWAĆ:
+===========
+1. Uruchom aplikację
+2. Wybierz urządzenie audio z listy (np. Stereo Mix)
+3. Kliknij "▶ START" lub naciśnij SPACJĘ
+4. Status zmieni się na: 🟢 Connected
+5. Aplikacja będzie wykrywać zdarzenia dźwiękowe
+
+SKRÓTY KLAWISZOWE:
+==================
+SPACE   = START/STOP monitorowania
+F5      = Odśwież listę urządzeń
+
+WYMAGANIA:
+==========
+- Python 3.8+
+- PyQt5 (GUI)
+- sounddevice (audio)
+- numpy (przetwarzanie)
+
+Instalacja zależności:
+pip install PyQt5 sounddevice numpy psutil
+
+POMOC:
+======
+Więcej w README_PL.txt sekcja "ROZWIĄZYWANIE PROBLEMÓW"
+
+Logi znajdują się w: log_v10.txt
+
+═══════════════════════════════════════════════════════════════

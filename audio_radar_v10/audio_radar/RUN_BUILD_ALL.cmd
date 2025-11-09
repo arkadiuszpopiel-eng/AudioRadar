@@ -3,26 +3,37 @@ REM ============================================================================
 REM  RUN_BUILD_ALL.cmd
 REM
 REM  This batch script installs Python dependencies and launches the Audio
-REM  Radar application. It is designed for Windows systems. The script
-REM  installs required packages in the current user’s environment via pip
-REM  and then runs the program. Logs are written by the Python application
-REM  itself into a versioned log file inside the ``audio_radar`` folder
-REM  (for example ``log_v9.txt``). No console output is redirected to
-REM  the log file here to avoid conflicts when the Python logger writes
-REM  concurrently.
+REM  Radar v10.1 application with PyQt5 GUI. It is designed for Windows 
+REM  systems. The script installs required packages in the current user's 
+REM  environment via pip and then runs the program.
 REM =============================================================================
 
-echo Installing dependencies...
-python -m pip install --user numpy sounddevice pygame
+echo ===============================================================================
+echo   AudioRadar v10.1 - PyQt5 GUI Installation
+echo ===============================================================================
+echo.
+
+echo [1/3] Checking Python...
+python --version
 if %errorlevel% neq 0 (
-    echo Failed to install dependencies. See the console output for details.
+    echo [ERROR] Python not found! Please install Python 3.8 or newer.
     pause
     goto :EOF
 )
+echo.
 
-echo Starting Audio Radar (version v10)...
-REM Run the main script. It will handle both module and script execution.
-python main.py
+echo [2/3] Installing dependencies...
+echo Installing: PyQt5, sounddevice, numpy, scipy, psutil, pyaudiowpatch
+python -m pip install --user PyQt5 sounddevice numpy scipy psutil pyaudiowpatch
+if %errorlevel% neq 0 (
+    echo [WARN] Some packages failed to install. Trying to continue anyway...
+)
+echo.
 
-echo Application exited. Refer to the versioned log file in the audio_radar directory for details.
+echo [3/3] Starting AudioRadar v10.1 PyQt5 GUI...
+REM Run the __main__.py which launches PyQt5 GUI
+python __main__.py
+
+echo.
+echo Application exited.
 pause

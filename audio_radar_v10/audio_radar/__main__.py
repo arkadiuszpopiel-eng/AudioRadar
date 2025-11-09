@@ -1,16 +1,27 @@
-"""Entry point for running the Audio Radar package as a module.
+"""AudioRadar v10.2 - PyQt5 Entry Point"""
+import sys
+import os
+from PyQt5.QtWidgets import QApplication
 
-This file allows you to start the application by running
+# Add current directory to path for module imports
+sys.path.insert(0, os.path.dirname(__file__))
 
-    python -m audio_radar
+def main():
+    print("AudioRadar v10.2 starting...")
+    try:
+        import gui
+        import theme_manager
+    except ImportError as e:
+        print(f"Import error: {e}")
+        return 1
+    
+    app = QApplication(sys.argv)
+    theme_manager.ThemeManager.apply_dark_theme(app)
+    window = gui.MainWindow()
+    window.setWindowTitle("AudioRadar v10.2")
+    window.show()
+    print("GUI ready!")
+    return app.exec_()
 
-from the root of the unpacked archive. It simply imports and
-executes the ``main`` function from ``audio_radar.main``. See
-``README.md`` for more details.
-"""
-
-from .main import main
-
-
-if __name__ == '__main__':
-    main()
+if __name__ == "__main__":
+    sys.exit(main())

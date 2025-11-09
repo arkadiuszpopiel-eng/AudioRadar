@@ -23,6 +23,7 @@ except ImportError:
     PYQT5_AVAILABLE = False
 
 # v10.0: Import theme manager and performance monitor
+# Note: PerformanceMonitor is imported and used by gui.MainWindow
 try:
     from .theme_manager import ThemeManager
     THEME_MANAGER_AVAILABLE = True

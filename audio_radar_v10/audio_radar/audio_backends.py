@@ -90,6 +90,7 @@ class LevelBuffer:
         
         This method is more efficient when you only care about the most
         recent value and want to skip over any accumulated backlog.
+        It pops from the right (newest) and discards all older values.
         
         Returns
         -------
@@ -97,12 +98,14 @@ class LevelBuffer:
             Most recent value, or None if buffer is empty.
         """
         with self._lock:
-            last = None
             try:
-                while True:
-                    last = self.q.pop()
+                # Pop the latest (rightmost) value first
+                latest = self.q.pop()
+                # Discard all older values
+                self.q.clear()
+                return latest
             except IndexError:
-                return last
+                return None
     
     def clear(self) -> None:
         """Remove all values from the buffer."""

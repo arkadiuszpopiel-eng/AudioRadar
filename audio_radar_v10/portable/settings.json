@@ -1,0 +1,49 @@
+{
+  "version": "10.0",
+  "audio": {
+    "buffer_size": 128,
+    "sample_rate": 48000,
+    "channels": 2,
+    "device_index": null,
+    "use_loopback": true
+  },
+  "gui": {
+    "theme": "dark",
+    "accent_color": "#0d7377",
+    "window_width": 1200,
+    "window_height": 700,
+    "fps": 60
+  },
+  "performance": {
+    "monitoring_enabled": true,
+    "history_size": 300,
+    "export_stats": false,
+    "thread_priority": "TIME_CRITICAL"
+  },
+  "keyboard_shortcuts": {
+    "toggle_capture": "Space",
+    "refresh_devices": "F5",
+    "quit": "Alt+F4"
+  },
+  "detection": {
+    "enabled": false,
+    "footstep_threshold": 0.5,
+    "gunshot_threshold": 0.7,
+    "filter_low_freq": 2000,
+    "filter_high_freq": 8000
+  },
+  "visualization": {
+    "radar_enabled": true,
+    "bar_width": 40,
+    "bar_height": 200,
+    "transparency": 180,
+    "footstep_color": [0, 255, 0],
+    "gunshot_color": [255, 0, 0]
+  },
+  "advanced": {
+    "log_level": "INFO",
+    "auto_start": false,
+    "minimize_to_tray": false,
+    "always_on_top": false
+  }
+}

@@ -1,0 +1,216 @@
+╔═══════════════════════════════════════════════════════════════════════════╗
+║              AudioRadar v10.0 "Optimized Core" - Release Package          ║
+╚═══════════════════════════════════════════════════════════════════════════╝
+
+Nazwa pliku: AudioRadar_v10.0_Release.zip
+Wersja: 10.0 "Optimized Core"
+Data wydania: 2025-11-09
+Rozmiar: ~40 KB (rozpakowane: ~150 KB kodu źródłowego)
+
+═══════════════════════════════════════════════════════════════════════════
+  📦 ZAWARTOŚĆ PACZKI
+═══════════════════════════════════════════════════════════════════════════
+
+AudioRadar_v10.0_Release/
+├── START_HERE.bat                    ← Uruchom TEN plik aby rozpocząć!
+├── audio_radar/                      ← Główny katalog aplikacji
+│   ├── __main__.py                   ← Punkt wejścia PyQt5
+│   ├── gui.py                        ← Interfejs użytkownika
+│   ├── audio_backends.py             ← Zoptymalizowany backend audio
+│   ├── performance_monitor.py        ← Monitoring wydajności
+│   ├── theme_manager.py              ← System motywów
+│   ├── requirements.txt              ← Lista zależności
+│   ├── README_PL.txt                 ← Pełna dokumentacja PL
+│   ├── CHANGELOG.txt                 ← Historia zmian
+│   └── ... (pozostałe pliki modułów)
+└── portable/
+    └── settings.json                 ← Domyślna konfiguracja
+
+═══════════════════════════════════════════════════════════════════════════
+  🚀 SZYBKA INSTALACJA
+═══════════════════════════════════════════════════════════════════════════
+
+KROK 1: Wypakuj ZIP
+-------------------
+Rozpakuj AudioRadar_v10.0_Release.zip do wybranego folderu, np:
+C:\AudioRadar\
+
+KROK 2: Uruchom Launcher
+-------------------------
+Kliknij dwukrotnie: START_HERE.bat
+
+Launcher automatycznie:
+✓ Sprawdzi czy Python jest zainstalowany
+✓ Zainstaluje wymagane zależności (jeśli potrzeba)
+✓ Uruchomi aplikację AudioRadar v10.0
+
+KROK 3: Gotowe!
+---------------
+Aplikacja uruchomi się z nowoczesnymi interfejsem PyQt5.
+
+═══════════════════════════════════════════════════════════════════════════
+  📋 WYMAGANIA SYSTEMOWE
+═══════════════════════════════════════════════════════════════════════════
+
+MINIMALNE:
+- System: Windows 10/11 (64-bit)
+- Python: 3.11 lub nowszy
+- RAM: 512 MB wolnej pamięci
+- Karta dźwiękowa: Dowolna z obsługą loopback
+- Dysk: 200 MB wolnego miejsca
+
+ZALECANE:
+- System: Windows 11
+- Python: 3.11+
+- RAM: 1 GB wolnej pamięci
+- Karta: Sound Blaster Z SE (z loopback)
+- CPU: 4 rdzenie, 2.5+ GHz
+
+═══════════════════════════════════════════════════════════════════════════
+  📚 DOKUMENTACJA
+═══════════════════════════════════════════════════════════════════════════
+
+Pełna dokumentacja znajduje się w pliku:
+audio_radar/README_PL.txt
+
+Zawiera:
+✓ Szczegółową instrukcję instalacji
+✓ Przewodnik szybkiego startu
+✓ Rozwiązywanie problemów
+✓ Konfigurację karty dźwiękowej
+✓ Opis wszystkich funkcji v10.0
+✓ Metryki wydajności
+✓ Roadmap rozwoju (Fazy B-E)
+
+═══════════════════════════════════════════════════════════════════════════
+  ✨ CO NOWEGO W v10.0
+═══════════════════════════════════════════════════════════════════════════
+
+GŁÓWNE USPRAWNIENIA:
+
+1. Nowy interfejs PyQt5
+   ✓ Ciemny motyw z cyjanowymi akcentami
+   ✓ Płynna animacja 60 FPS
+   ✓ Responsywny layout 1200x700px
+   ✓ Pasek stanu z monitoringiem live
+
+2. Zoptymalizowany audio
+   ✓ Bufor: 128 ramek (było 256)
+   ✓ Opóźnienie: ~10ms (było ~20ms)
+   ✓ Priorytet: TIME_CRITICAL
+   ✓ Lepsza wydajność CPU
+
+3. Monitoring w czasie rzeczywistym
+   ✓ Śledzenie opóźnień
+   ✓ Użycie CPU
+   ✓ Licznik dropouts
+   ✓ Eksport do CSV
+
+4. Skróty klawiszowe
+   ✓ SPACJA - START/STOP
+   ✓ F5 - Odświeżenie urządzeń
+
+═══════════════════════════════════════════════════════════════════════════
+  🎯 PIERWSZE URUCHOMIENIE
+═══════════════════════════════════════════════════════════════════════════
+
+Po uruchomieniu START_HERE.bat:
+
+1. Wybierz urządzenie:
+   - Znajdź urządzenie z [LOOPBACK] (np. Stereo Mix)
+   - Ustaw częstotliwość: 48000 Hz
+   - Ustaw bufor: 128 ramek
+
+2. Naciśnij SPACJA lub START
+
+3. Sprawdź status:
+   - LED: 🟢 Połączono (zielony = OK)
+   - Opóźnienie: ~10ms
+   - CPU: 3-5%
+
+═══════════════════════════════════════════════════════════════════════════
+  ⚠️ ROZWIĄZYWANIE PROBLEMÓW
+═══════════════════════════════════════════════════════════════════════════
+
+PROBLEM: START_HERE.bat nie działa
+ROZWIĄZANIE:
+1. Zainstaluj Python 3.11+ z python.org
+2. Podczas instalacji zaznacz "Add Python to PATH"
+3. Uruchom ponownie START_HERE.bat
+
+PROBLEM: Brak urządzeń loopback
+ROZWIĄZANIE:
+1. Panel sterowania → Dźwięk → Nagrywanie
+2. PPM → Pokaż wyłączone urządzenia
+3. Włącz "Stereo Mix" lub "What U Hear"
+
+PROBLEM: Błąd importu PyQt5
+ROZWIĄZANIE:
+1. Otwórz wiersz poleceń w folderze audio_radar
+2. Wykonaj: pip install -r requirements.txt
+
+Więcej w: audio_radar/README_PL.txt
+
+═══════════════════════════════════════════════════════════════════════════
+  📊 METRYKI WYDAJNOŚCI
+═══════════════════════════════════════════════════════════════════════════
+
+PORÓWNANIE z v9.9.32:
+
+┌─────────────────────┬─────────────┬─────────────┬────────────┐
+│ Parametr            │ v9.9.32     │ v10.0       │ Poprawa    │
+├─────────────────────┼─────────────┼─────────────┼────────────┤
+│ Opóźnienie @ 48kHz  │ ~20ms       │ ~10ms       │ -50%       │
+│ FPS interfejsu      │ ~20 FPS     │ ~60 FPS     │ +200%      │
+│ Użycie CPU          │ 5-8%        │ 3-5%        │ -40%       │
+│ Rozmiar bufora      │ 256 ramek   │ 128 ramek   │ -50%       │
+└─────────────────────┴─────────────┴─────────────┴────────────┘
+
+═══════════════════════════════════════════════════════════════════════════
+  🔧 ZAAWANSOWANE
+═══════════════════════════════════════════════════════════════════════════
+
+URUCHOMIENIE Z LINII POLECEŃ:
+cd audio_radar
+python -m audio_radar
+
+INSTALACJA ZALEŻNOŚCI RĘCZNIE:
+pip install PyQt5 pyaudiowpatch numpy scipy psutil
+
+KONFIGURACJA:
+Edytuj: portable/settings.json
+Dostosuj parametry audio, GUI, wykrywania
+
+LOGI:
+Plik: audio_radar/log_v10.txt
+Zawiera szczegóły diagnostyczne
+
+═══════════════════════════════════════════════════════════════════════════
+  📞 WSPARCIE
+═══════════════════════════════════════════════════════════════════════════
+
+GitHub: https://github.com/arkadiuszpopiel-eng/AudioRadar
+Dokumentacja: audio_radar/README_PL.txt
+Changelog: audio_radar/CHANGELOG.txt
+Logi: audio_radar/log_v10.txt
+
+═══════════════════════════════════════════════════════════════════════════
+  ℹ️ INFORMACJE O WERSJI
+═══════════════════════════════════════════════════════════════════════════
+
+Wersja: 10.0 "Optimized Core"
+Kod: v10.0-release
+Data: 2025-11-09
+Status: Stabilna - Gotowa do użycia
+Licencja: Proprietary
+Autor: Arkadiusz Popiel
+
+Następna wersja: v10.1 (Faza B - Wykrywanie dźwięków)
+Planowana: Q1 2026
+
+═══════════════════════════════════════════════════════════════════════════
+
+                   Dziękujemy za pobranie AudioRadar v10.0!
+                   Rozpocznij od uruchomienia START_HERE.bat
+
+═══════════════════════════════════════════════════════════════════════════

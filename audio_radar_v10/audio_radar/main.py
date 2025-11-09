@@ -99,7 +99,7 @@ CONFIG_FILE = Path(__file__).parent / "config.json"
 # Define the version of this Audio Radar release. Update this string
 # whenever you package a new version so that logs and archive names
 # clearly reflect the version in use.
-VERSION = "v10"
+VERSION = "v10.2"
 
 # Log file name includes the version number to avoid confusion between
 # releases. For example, version ``v9`` will log to ``log_v9.txt`` in

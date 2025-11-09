@@ -24,6 +24,16 @@ gaming.
 * **Logging** to a versioned `log_<version>.txt` file (e.g. `log_v10.txt`) so you can troubleshoot audio problems or
   unexpected behaviour.
 
+### v10.2 New Features
+
+* **PyQt5 Control Panel GUI** with intuitive controls for all settings
+* **Input Gain Control** (0.1x - 10.0x amplification) for weak audio signals
+* **Adjustable Detection Threshold** (0.001 - 0.200) for fine-tuning sensitivity
+* **Signal Strength Indicator** with color-coded feedback (red/orange/green)
+* **Auto-Calibration** feature that analyzes background noise and sets optimal threshold
+* **Pre-Amplifier** checkbox for quick x5 boost when signals are very weak
+* **Real-time Visual Feedback** showing signal strength during operation
+
 ## Prerequisites
 
 This project targets Windows 11 but should work on other platforms with
@@ -33,6 +43,7 @@ minor adjustments. You will need:
 * `sounddevice` for audio capture
 * `pygame` for the graphical interface
 * `numpy` for basic signal processing
+* `PyQt5` for the control panel GUI (v10.2+)
 
 Because the container environment used to generate this archive cannot
 install packages, please install the required libraries yourself. You
@@ -52,6 +63,12 @@ dependencies on Windows using `pip`.
 4. Możesz uruchomić program również ręcznie: wejdź do folderu
    `audio_radar` i wywołaj:
 
+   **With GUI (v10.2+, recommended):**
+   ```
+   python run_gui.py
+   ```
+
+   **Classic mode (Pygame only):**
    ```
    python main.py
    ```
@@ -86,12 +103,46 @@ dependencies on Windows using `pip`.
 
 If you encounter issues:
 
-* Ensure that `sounddevice`, `pygame` and `numpy` are installed and that
+* Ensure that `sounddevice`, `pygame`, `numpy` and `PyQt5` are installed and that
   your audio loopback device is enabled. You can verify installation
-  by running `python -c "import sounddevice, pygame, numpy"`.
+  by running `python -c "import sounddevice, pygame, numpy, PyQt5"`.
 * Po uruchomieniu program wypisuje w konsoli ścieżkę, do której zapisywany jest plik logu (np. `log_v10.txt` w folderze `audio_radar`). Jeśli szukasz logu w niewłaściwym miejscu, może wydawać się, że się nie tworzy. Sprawdź lokalizację podaną w komunikacie `[AudioRadar v10] Logging to …`.
 * Use `--list-devices` to confirm that your loopback device is
   recognised by the program.
+
+### Weak Audio Signal (v10.2)
+
+**Problem:** Radar does not detect footsteps/gunshots even though audio is playing.
+
+**Symptom:** Signal Strength indicator shows red (< 1%) or orange (1-5%).
+
+**Solution:**
+
+1. **Increase Input Gain:**
+   - Open the GUI with `python run_gui.py`
+   - Move the "Input Gain" slider to the right
+   - Start with 2.0x and increase until Signal Strength shows green (> 5%)
+   - Watch the Signal Strength bar for real-time feedback
+
+2. **Lower Detection Threshold:**
+   - Move the "Detection Threshold" slider to the left
+   - Start at 0.025 and decrease until detection works
+   - Warning: Too low = many false positives
+
+3. **Use Auto-Calibration (RECOMMENDED):**
+   - Click "🎯 Auto-Calibrate Threshold"
+   - Turn off all game audio and music
+   - Wait 10 seconds while program analyzes background noise
+   - Program will automatically set optimal threshold
+
+4. **Enable Pre-Amplifier:**
+   - Check "Enable Pre-Amplifier" for quick x5 boost
+   - Use for very weak signals
+
+**Signal Strength Indicator:**
+- 🔴 Red (< 1%): Signal too weak - increase gain
+- 🟡 Orange (1-5%): Weak signal - may need adjustment  
+- 🟢 Green (> 5%): Good signal strength
 
 ## Credits
 

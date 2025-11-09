@@ -1,0 +1,139 @@
+═══════════════════════════════════════════════════════════════════════
+AudioRadar v10.0 - Complete Package Manifest
+═══════════════════════════════════════════════════════════════════════
+
+PACKAGE FILE: AudioRadar_v10.0_Complete_Package.zip
+SIZE: ~21 KB (compressed)
+CREATED: 2025-11-09
+
+═══════════════════════════════════════════════════════════════════════
+CONTENTS
+═══════════════════════════════════════════════════════════════════════
+
+PYTHON MODULES (10 files):
+─────────────────────────
+✓ main.py                  - Main entry point (PyQt5 launcher)
+✓ gui.py                   - PyQt5 main window with dark theme
+✓ theme_manager.py         - Dark theme stylesheet manager
+✓ performance_monitor.py   - CPU/latency monitoring
+✓ audio_capture.py         - Audio device handling
+✓ sound_analysis.py        - Sound event detection
+✓ visualization.py         - Original Pygame visualization (reference)
+✓ START_V10_GUI.py         - Python launcher
+✓ __init__.py              - Package initialization
+✓ __main__.py              - Module execution support
+
+LAUNCHERS (2 files):
+───────────────────
+✓ START_V10_GUI.bat        - Windows batch launcher
+✓ RUN_BUILD_ALL.cmd        - Build script with PyInstaller
+
+DOCUMENTATION (4 files):
+──────────────────────
+✓ README.md                - English quick start guide
+✓ README_PL.txt            - Polish documentation + troubleshooting
+✓ QUICK_START.txt          - Quick start instructions
+✓ PACKAGE_MANIFEST.txt     - This file
+
+CONFIGURATION (3 files):
+──────────────────────
+✓ config.json              - Application configuration
+✓ VERSION.txt              - Version number (v10)
+✓ .gitignore               - Git exclusions
+
+LOGS (1 file):
+────────────
+✓ log_v10.txt              - Sample log file
+
+═══════════════════════════════════════════════════════════════════════
+INSTALLATION
+═══════════════════════════════════════════════════════════════════════
+
+1. Extract AudioRadar_v10.0_Complete_Package.zip to your desired location
+2. Open the extracted folder
+3. Double-click START_V10_GUI.bat (Windows)
+   OR run: python main.py (any platform)
+
+═══════════════════════════════════════════════════════════════════════
+REQUIREMENTS
+═══════════════════════════════════════════════════════════════════════
+
+Python 3.8+ with the following packages:
+• PyQt5 (GUI framework)
+• sounddevice (audio capture)
+• numpy (signal processing)
+• psutil (performance monitoring)
+• scipy (optional, advanced analysis)
+
+All dependencies are automatically installed by START_V10_GUI.bat
+
+═══════════════════════════════════════════════════════════════════════
+FEATURES
+═══════════════════════════════════════════════════════════════════════
+
+✓ Modern PyQt5 GUI with dark theme (cyan on gray/black)
+✓ Audio device selection with refresh
+✓ Start/Stop monitoring controls
+✓ Real-time CPU and latency display
+✓ Status bar with connection indicators
+✓ Keyboard shortcuts:
+  - SPACE: Start/Stop monitoring
+  - F5: Refresh device list
+✓ Polish language tooltips and labels
+✓ Thread-safe audio capture
+✓ Comprehensive error handling
+✓ Detailed logging to log_v10.txt
+
+═══════════════════════════════════════════════════════════════════════
+BUILDING STANDALONE EXECUTABLE
+═══════════════════════════════════════════════════════════════════════
+
+To create a standalone .exe file:
+
+1. Open Command Prompt in the package folder
+2. Run: RUN_BUILD_ALL.cmd build
+3. Find the executable in: dist\AudioRadar_v10_GUI.exe
+
+The executable includes all dependencies and can be distributed without
+requiring Python installation.
+
+═══════════════════════════════════════════════════════════════════════
+TROUBLESHOOTING
+═══════════════════════════════════════════════════════════════════════
+
+If you see a black Pygame screen:
+  1. Close the application
+  2. Delete __pycache__ folder
+  3. Run: pip install --upgrade PyQt5
+  4. Restart with START_V10_GUI.bat
+
+If dependencies fail to install:
+  1. Manually install: pip install PyQt5 sounddevice numpy psutil
+  2. Run: python main.py
+
+For detailed troubleshooting, see README_PL.txt section:
+"ROZWIĄZYWANIE PROBLEMÓW - GUI"
+
+═══════════════════════════════════════════════════════════════════════
+SUPPORT
+═══════════════════════════════════════════════════════════════════════
+
+For questions or issues:
+• Check README_PL.txt for Polish documentation
+• Check QUICK_START.txt for quick reference
+• Review log_v10.txt for error details
+• See original repository for updates
+
+═══════════════════════════════════════════════════════════════════════
+VERSION HISTORY
+═══════════════════════════════════════════════════════════════════════
+
+v10.0 (November 2024):
+• Complete rewrite of main.py for PyQt5 GUI
+• New modern dark theme interface
+• Added performance monitoring
+• Created comprehensive documentation
+• Added multiple launcher options
+• PyInstaller build support
+
+═══════════════════════════════════════════════════════════════════════

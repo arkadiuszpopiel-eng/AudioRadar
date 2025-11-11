@@ -1,0 +1,117 @@
+name: Publish AudioRadar v10.2 Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version_tag:
+        description: 'Release tag name'
+        required: true
+        default: 'v10.2-complete'
+      title:
+        description: 'Release title'
+        required: true
+        default: 'AudioRadar v10.2 COMPLETE'
+
+jobs:
+  build-and-release:
+    runs-on: windows-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      
+      - name: Create ZIP archive
+        shell: powershell
+        run: |
+          # Define paths
+          $sourcePath = "audio_radar_v10/audio_radar"
+          $outputZip = "AudioRadar_v10.2_COMPLETE.zip"
+          
+          # Create temporary directory for packaging
+          $tempDir = "AudioRadar_v10.2_COMPLETE_temp"
+          New-Item -ItemType Directory -Path $tempDir -Force | Out-Null
+          
+          # Copy audio_radar folder
+          Copy-Item -Path $sourcePath -Destination "$tempDir/audio_radar" -Recurse -Force
+          
+          # Copy root-level files (START_HERE.bat, RUN_BUILD_ALL.cmd, etc.)
+          $rootFiles = @(
+            "START_HERE.bat",
+            "RUN_BUILD_ALL.cmd",
+            "PACK_ZIP.cmd",
+            "README_PL.txt",
+            "QUICK_START.txt",
+            "TROUBLESHOOTING.txt",
+            "CHANGELOG.txt",
+            "VERSION.txt"
+          )
+          
+          foreach ($file in $rootFiles) {
+            $sourceFile = Join-Path $sourcePath $file
+            if (Test-Path $sourceFile) {
+              Copy-Item -Path $sourceFile -Destination $tempDir -Force
+              Write-Host "Copied: $file"
+            } else {
+              Write-Warning "File not found: $file"
+            }
+          }
+          
+          # Create ZIP archive
+          Compress-Archive -Path "$tempDir/*" -DestinationPath $outputZip -Force
+          
+          # Clean up temporary directory
+          Remove-Item -Path $tempDir -Recurse -Force
+          
+          Write-Host "Created ZIP: $outputZip"
+          
+          # Verify ZIP was created
+          if (Test-Path $outputZip) {
+            $zipSize = (Get-Item $outputZip).Length
+            Write-Host "ZIP size: $zipSize bytes"
+          } else {
+            Write-Error "Failed to create ZIP file"
+            exit 1
+          }
+      
+      - name: Create or Update Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ inputs.version_tag }}
+          name: ${{ inputs.title }}
+          body: |
+            ## AudioRadar v10.2 COMPLETE
+            
+            **Complete PyQt5-based audio radar application for Windows**
+            
+            ### Features
+            - PyQt5 GUI with WASAPI loopback device selection
+            - Start/Stop/Test controls
+            - Gain and Threshold sliders for fine-tuning
+            - Real-time VU meter
+            - Event detection (shots and footsteps)
+            - Dark theme interface
+            
+            ### Requirements
+            - Windows 10/11
+            - Python 3.11 or newer
+            - WASAPI loopback capable sound card
+            
+            ### Quick Start
+            1. Extract ZIP archive
+            2. Run `START_HERE.bat`
+            3. Select WASAPI loopback device
+            4. Click Start and adjust Gain/Threshold as needed
+            
+            ### Documentation
+            - `README_PL.txt` - Main documentation (Polish)
+            - `QUICK_START.txt` - Quick start guide
+            - `TROUBLESHOOTING.txt` - Problem solving
+            - `CHANGELOG.txt` - Version history
+            
+            ---
+            **Package contents:** Complete application with all dependencies installable via pip
+          files: |
+            AudioRadar_v10.2_COMPLETE.zip
+          draft: false
+          prerelease: false
+          token: ${{ secrets.GITHUB_TOKEN }}

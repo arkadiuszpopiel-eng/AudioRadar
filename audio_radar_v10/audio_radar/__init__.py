@@ -9,4 +9,4 @@ constant in :mod:`audio_radar.main` and the contents of the
 """
 
 # Public version identifier for this release
-__version__ = "v10"
+__version__ = "v10.2"

@@ -1,0 +1,53 @@
+================================================================================
+  AudioRadar - CHANGELOG (Historia zmian)
+================================================================================
+
+v10.2 (2024-11-11) - COMPLETE
+------------------------------
+[MAJOR UPDATE] Całkowicie przepisana aplikacja z PyQt5
+
+NOWE FUNKCJE:
++ Interfejs graficzny PyQt5 zamiast Pygame
++ Lista urządzeń WASAPI loopback bezpośrednio w GUI
++ Przyciski Start/Stop/Test dla łatwiejszej kontroli
++ Slider Gain (wzmocnienie) z zakresem 0.1x - 5.0x
++ Slider Threshold (próg wykrywania) z zakresem 0.01 - 1.00
++ VU meter (wskaźnik poziomu dźwięku) z kodowaniem kolorami
++ Status Log pokazujący wykryte zdarzenia w czasie rzeczywistym
++ Ciemny motyw (dark theme) dla lepszej widoczności
++ Przycisk Test do weryfikacji wykrywania
+
+ZMIANY TECHNICZNE:
+* Usunięto zależność Pygame
+* Nowy moduł audio_backend.py dla WASAPI loopback
+* Uproszczony moduł sound_analysis.py
+* Nowy moduł theme_manager.py dla motywów
+* Nowy moduł gui.py z kompletnym interfejsem PyQt5
+* Zaktualizowany __main__.py jako entry point PyQt5
+
+DOKUMENTACJA:
++ README_PL.txt - główna dokumentacja po polsku
++ QUICK_START.txt - szybkie instrukcje
++ TROUBLESHOOTING.txt - rozwiązywanie problemów
++ Ten CHANGELOG.txt
+
+SKRYPTY:
++ START_HERE.bat - instalacja i uruchomienie
+* RUN_BUILD_ALL.cmd - teraz wywołuje START_HERE.bat
++ PACK_ZIP.cmd - pakowanie do ZIP
+
+NAPRAWY:
+* Usunięto wszystkie referencje do Pygame
+* Poprawiono wykrywanie urządzeń WASAPI
+* Stabilniejsze przechwytywanie audio
+* Lepsze zarządzanie wątkami
+
+
+v10.0 (wcześniej)
+------------------
+- Wersja bazowa z Pygame
+- Podstawowe wykrywanie kroków i strzałów
+- Wizualizacja kierunkowa z paskami radialnymi
+
+
+================================================================================

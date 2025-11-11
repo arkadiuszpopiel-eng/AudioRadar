@@ -1,0 +1,84 @@
+================================================================================
+  AudioRadar v10.2 COMPLETE - TROUBLESHOOTING (Rozwiązywanie problemów)
+================================================================================
+
+PROBLEM: "No devices found" (Nie znaleziono urządzeń)
+-------------------------------------------------------
+ROZWIĄZANIE:
+1. Sprawdź czy Python może uzyskać dostęp do urządzeń audio
+2. Uruchom w konsoli: python -c "import sounddevice; print(sounddevice.query_devices())"
+3. Upewnij się że masz włączone urządzenie wyjściowe (nie tylko wejściowe)
+4. Restart aplikacji po podłączeniu/włączeniu urządzeń
+
+PROBLEM: "PyQt5 is not installed"
+----------------------------------
+ROZWIĄZANIE:
+1. Uruchom: python -m pip install --user PyQt5 sounddevice numpy
+2. Jeśli błąd instalacji, zaktualizuj pip: python -m pip install --upgrade pip
+3. Spróbuj bez --user: python -m pip install PyQt5 sounddevice numpy
+
+PROBLEM: Brak wykrywania dźwięków
+----------------------------------
+ROZWIĄZANIE:
+1. Zwiększ Gain (wzmocnienie) do 2.0x lub wyżej
+2. Zmniejsz Threshold do 0.15-0.20
+3. Sprawdź czy VU meter reaguje - jeśli nie:
+   - Upewnij się że wybrane urządzenie to WASAPI loopback
+   - Sprawdź czy gra odtwarza dźwięk
+   - Sprawdź poziom głośności systemu
+4. Użyj przycisku "Test" aby sprawdzić podstawowe działanie
+
+PROBLEM: Za dużo fałszywych wykryć
+-----------------------------------
+ROZWIĄZANIE:
+1. Zwiększ Threshold do 0.40-0.50
+2. Zmniejsz Gain jeśli VU meter często jest w czerwieni
+3. Zmniejsz głośność systemową lub gry
+4. Sprawdź czy nie ma innych źródeł dźwięku (muzyka, video w tle)
+
+PROBLEM: Aplikacja nie startuje
+--------------------------------
+ROZWIĄZANIE:
+1. Sprawdź wersję Python: python --version (wymagane 3.11+)
+2. Sprawdź instalację zależności:
+   python -c "import PyQt5; import sounddevice; import numpy"
+3. Jeśli błąd importu, przeinstaluj:
+   python -m pip uninstall PyQt5 sounddevice numpy
+   python -m pip install PyQt5 sounddevice numpy
+4. Sprawdź czy nie blokuje antywirus/firewall
+
+PROBLEM: "Audio stream error" lub "Error reading audio"
+--------------------------------------------------------
+ROZWIĄZANIE:
+1. Sprawdź czy urządzenie jest aktywne i nie jest używane wyłącznie
+2. Restart aplikacji
+3. Wybierz inne urządzenie z listy
+4. Sprawdź uprawnienia aplikacji do mikrofonu w Windows Privacy Settings
+5. Zaktualizuj sterowniki karty dźwiękowej
+
+PROBLEM: Niska wydajność / zawieszanie
+---------------------------------------
+ROZWIĄZANIE:
+1. Zamknij inne aplikacje audio
+2. Zmniejsz jakość audio w grze
+3. Sprawdź obciążenie CPU - zamknij niepotrzebne procesy
+4. Restart komputera
+
+PROBLEM: WASAPI loopback niedostępny
+-------------------------------------
+ROZWIĄZANIE:
+1. Sprawdź czy karta obsługuje Stereo Mix / What U Hear
+2. W Windows Sound Settings:
+   - Prawy klik w pustym obszarze -> "Show Disabled Devices"
+   - Włącz Stereo Mix
+3. Niektóre karty (np. Realtek) wymagają włączenia w sterowniku
+4. Alternatywa: użyj wirtualnego kabla audio (VB-Cable, VoiceMeeter)
+
+================================================================================
+DALSZE WSPARCIE
+================================================================================
+Jeśli problem nie został rozwiązany:
+1. Sprawdź Status Log w aplikacji dla szczegółów błędu
+2. Sprawdź wersję w VERSION.txt
+3. Sprawdź CHANGELOG.txt dla znanych problemów
+================================================================================

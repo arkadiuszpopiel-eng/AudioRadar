@@ -1,0 +1,48 @@
+================================================================================
+  AudioRadar v10.2 COMPLETE - QUICK START
+================================================================================
+
+KROK 1: INSTALACJA
+------------------
+- Uruchom START_HERE.bat
+- Poczekaj na instalację PyQt5, sounddevice i numpy
+- Aplikacja uruchomi się automatycznie
+
+KROK 2: KONFIGURACJA AUDIO
+---------------------------
+W Windows Sound Settings:
+1. Otwórz Panel Sterowania > Dźwięk
+2. Zakładka "Nagrywanie"
+3. Włącz "Stereo Mix" lub "What U Hear" (prawym przyciskiem -> Włącz)
+4. Ustaw jako domyślne urządzenie nagrywające
+
+KROK 3: WYBÓR URZĄDZENIA
+-------------------------
+- W AudioRadar wybierz urządzenie WASAPI loopback z listy rozwijanej
+- Powinno być widoczne urządzenie wyjściowe twojej karty dźwiękowej
+
+KROK 4: START
+-------------
+- Kliknij przycisk "Start"
+- Uruchom grę
+- Dostosuj Gain i Threshold według potrzeb
+
+KROK 5: OPTYMALIZACJA
+----------------------
+- Jeśli nie wykrywa dźwięków: zwiększ Gain
+- Jeśli za dużo fałszywych wykryć: zwiększ Threshold
+- VU meter powinien reagować na dźwięki z gry
+- Użyj przycisku "Test" aby sprawdzić wykrywanie
+
+KROK 6: STOP
+------------
+- Kliknij "Stop" aby zatrzymać przechwytywanie
+- Zamknij okno aby zakończyć aplikację
+
+================================================================================
+WSKAZÓWKI:
+- Rozpocznij od Gain=1.0x i Threshold=0.30
+- Obserwuj VU meter podczas rozgrywki
+- Status Log pokazuje wszystkie wykryte zdarzenia
+- WASAPI loopback przechwytuje cały dźwięk systemowy
+================================================================================

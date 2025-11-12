@@ -1,0 +1,6 @@
+PyQt5==5.15.10
+numpy==1.24.3
+sounddevice==0.4.6
+scipy==1.11.4
+pyaudio==0.2.14
+pyinstaller==6.3.0

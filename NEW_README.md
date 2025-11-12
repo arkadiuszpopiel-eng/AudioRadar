@@ -8,6 +8,29 @@
 
 Audio Radar is an advanced real-time audio visualization and detection system with a sophisticated PyQt5 GUI. It captures audio from your system, detects specific events (footsteps, running, gunshots), and visualizes them on a 360-degree radar display with directional and distance information.
 
+## 📥 Download
+
+**Latest Release: v1.0.0**
+
+Download the complete Audio Radar package as a ZIP file:
+
+👉 **[Download AudioRadar-v1.0.0.zip](https://github.com/arkadiuszpopiel-eng/AudioRadar/releases/latest/download/AudioRadar-v1.0.0.zip)**
+
+Or visit the [Releases page](https://github.com/arkadiuszpopiel-eng/AudioRadar/releases) to see all available versions.
+
+**What's included:**
+- Complete source code
+- All dependencies listed in requirements.txt
+- Build script (RUN_BUILD_ALL.cmd)
+- Comprehensive documentation
+- Test suite
+
+**Quick Start:**
+1. Download the ZIP file
+2. Extract to your desired location
+3. Run `RUN_BUILD_ALL.cmd`
+4. Start using Audio Radar!
+
 ## ✨ Features
 
 ### Core Features
@@ -58,12 +81,16 @@ Audio Radar is an advanced real-time audio visualization and detection system wi
 
 ### Installation & Running
 
-1. **Extract the Package**
+1. **Download the Package**
+   
+   Download from: [AudioRadar-v1.0.0.zip](https://github.com/arkadiuszpopiel-eng/AudioRadar/releases/latest/download/AudioRadar-v1.0.0.zip)
+
+2. **Extract the Package**
    ```
    Unzip AudioRadar package to desired location
    ```
 
-2. **Run the Build Script**
+3. **Run the Build Script**
    ```cmd
    RUN_BUILD_ALL.cmd
    ```
@@ -76,7 +103,7 @@ Audio Radar is an advanced real-time audio visualization and detection system wi
    - Build executable (optional)
    - Launch the application
 
-3. **First Run Configuration**
+4. **First Run Configuration**
    - Click "Select Device..." to choose your audio input
    - Adjust detection thresholds if needed
    - Click "Start" to begin detection

@@ -1,5 +1,15 @@
 # Audio Radar - Quick Start Guide
 
+## 📥 Download First
+
+**Get the latest version:**
+
+👉 **[Download AudioRadar-v1.0.0.zip](https://github.com/arkadiuszpopiel-eng/AudioRadar/releases/latest/download/AudioRadar-v1.0.0.zip)**
+
+Extract the ZIP file to your desired location.
+
+---
+
 ## 🚀 Get Started in 3 Steps
 
 ### Step 1: Run the Build Script

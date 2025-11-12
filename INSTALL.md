@@ -1,15 +1,29 @@
 # Audio Radar - Installation Guide
 
+## 📥 Download
+
+**Download the latest version:**
+
+👉 **[AudioRadar-v1.0.0.zip](https://github.com/arkadiuszpopiel-eng/AudioRadar/releases/latest/download/AudioRadar-v1.0.0.zip)**
+
+Or visit [Releases](https://github.com/arkadiuszpopiel-eng/AudioRadar/releases) for all versions.
+
+---
+
 ## Quick Start (Windows)
 
 ### Method 1: Automated Installation (Recommended)
 
-1. **Extract Package**
+1. **Download Package**
+   
+   Download from: [AudioRadar-v1.0.0.zip](https://github.com/arkadiuszpopiel-eng/AudioRadar/releases/latest/download/AudioRadar-v1.0.0.zip)
+
+2. **Extract Package**
    ```
    Extract AudioRadar.zip to a folder (e.g., C:\AudioRadar)
    ```
 
-2. **Run Build Script**
+3. **Run Build Script**
    ```
    Double-click: RUN_BUILD_ALL.cmd
    ```
@@ -21,7 +35,7 @@
    - ✅ Test modules
    - ✅ Launch application
 
-3. **Done!**
+4. **Done!**
    - Application starts automatically
    - Check log.txt for any issues
 

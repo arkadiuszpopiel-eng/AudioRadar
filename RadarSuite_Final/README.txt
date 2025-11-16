@@ -1,7 +1,25 @@
 ╔══════════════════════════════════════════════════════════════════════════════╗
-║                      RadarSuite Final v2.3.0                                   ║
+║                      RadarSuite Final v2.3.1-Claude-001                        ║
 ║            Advanced Audio Radar and Detection System for Gaming                ║
 ╚══════════════════════════════════════════════════════════════════════════════╝
+
+═══════════════════════════════════════════════════════════════════════════════
+  VERSION INFO
+═══════════════════════════════════════════════════════════════════════════════
+
+Version: v2.3.1-Claude-001
+Release Date: 2024-11-16
+Build: Production
+
+NEW IN v2.3.1-Claude-001:
+  ✓ Independent Radar window (works when main window minimized)
+  ✓ Independent LED window (works when main window minimized)
+  ✓ Independent opacity controls for Radar and LED
+  ✓ Frameless window mode (for both Radar and LED)
+  ✓ Language switcher: English / Polish (EN/PL button)
+  ✓ Drag support for frameless windows
+  ✓ Complete translation system
+  ✓ Version naming with Claude designation
 
 ═══════════════════════════════════════════════════════════════════════════════
   DESCRIPTION
@@ -40,6 +58,10 @@ Optimized for:
   - Radial lines every 45 degrees
   - Target echo with position and pseudo-distance
   - Real-time sweep animation
+  - **DETACHABLE WINDOW** - works independently
+  - **FRAMELESS MODE** - no window borders
+  - **INDEPENDENT OPACITY** control (0-100%)
+  - Drag support for repositioning
 
 ✓ SPECTRUM ANALYZER
   - Live FFT spectrum (20 Hz - 10 kHz)
@@ -58,6 +80,16 @@ Optimized for:
   - Walk/Run: green → yellow → red gradient
   - Shot: blue color
   - Smooth fade-out with intensity decay
+  - **DETACHABLE WINDOW** - works independently
+  - **FRAMELESS MODE** - no window borders
+  - **INDEPENDENT OPACITY** control (0-100%)
+  - Drag support for repositioning
+
+✓ LANGUAGE SUPPORT
+  - English (EN)
+  - Polish (PL)
+  - Toggle with EN/PL button in toolbar
+  - All UI elements translated
 
 ✓ SYNTHETIC TEST MODE
   - Internal test signal generator
@@ -166,9 +198,11 @@ Option 2: Run from Python (Development)
 
 4. RADAR AND LED SETTINGS
 
-   - Radar Alpha: Transparency of radar background
-   - LED Alpha: Opacity of edge alert bars
-   - Both range from 0-100
+   - Radar Alpha: Transparency of radar window (0-100%)
+   - LED Alpha: Opacity of LED bars (0-100%)
+   - Detach Radar: Creates independent radar window
+   - Detach LED: Creates independent LED window
+   - Frameless Mode: Removes window borders (drag with left mouse button)
 
 ═══════════════════════════════════════════════════════════════════════════════
   USAGE GUIDE
@@ -180,7 +214,25 @@ Option 2: Run from Python (Development)
    - Radar sweep should start rotating
    - Play game or make test sounds
 
-2. SYNTHETIC TEST MODE
+2. LANGUAGE SWITCHING
+   - Click "EN/PL" button in toolbar to toggle language
+   - All UI elements will update immediately
+   - Detached windows will also update
+
+3. DETACH RADAR/LED
+   - Click "Detach Radar" button to create independent radar window
+   - Click "Detach LED" button to create independent LED window
+   - These windows work even when main window is minimized
+   - Each has independent opacity control
+   - Each can be set to frameless mode
+
+4. FRAMELESS MODE
+   - Check "Frameless Mode" checkbox for Radar or LED
+   - Window borders will be removed
+   - Drag window with left mouse button to reposition
+   - Useful for overlay on game screen
+
+5. SYNTHETIC TEST MODE
    - Check "Synthetic Test Mode" in Device panel
    - Click "Start"
    - You should see:
@@ -189,7 +241,7 @@ Option 2: Run from Python (Development)
      * Detection labels lighting up
      * LED bars activating
 
-3. INTERPRETING THE DISPLAY
+6. INTERPRETING THE DISPLAY
 
    Radar:
    - Green rotating line = sweep
@@ -211,6 +263,7 @@ Option 2: Run from Python (Development)
    - "WALK: DETECTED" (green) = footsteps detected
    - "RUN: DETECTED" (orange) = running detected
    - "SHOT: DETECTED" (red) = gunshot detected
+   - Polish: "CHÓD: WYKRYTO", "BIEG: WYKRYTO", "STRZAŁ: WYKRYTO"
 
    LED Edge Alert:
    - Top bars (G1, G2, G3) = general/front
@@ -227,7 +280,7 @@ Option 2: Run from Python (Development)
 
 RadarSuite_Final/
 ├── app/
-│   └── main.py              # Main application code (all-in-one)
+│   └── main.py              # Main application code (all-in-one, 1630 lines)
 ├── build_tools/
 │   └── radarsuite.spec      # PyInstaller specification file
 ├── requirements.txt         # Python dependencies
@@ -242,7 +295,7 @@ After building:
 │   ├── RadarSuite_Final/    # Standalone application folder
 │   │   ├── RadarSuite_Final.exe
 │   │   └── ... (dependencies)
-│   └── RadarSuite_Final_v2.3.0_win64_*.zip  # Packaged archive
+│   └── RadarSuite_Final_v2.3.1-Claude-001_win64_*.zip  # Packaged archive
 
 ═══════════════════════════════════════════════════════════════════════════════
   TROUBLESHOOTING
@@ -272,6 +325,18 @@ Solution:
   - Increase sensitivity sliders (try 70-80)
   - Disable detection types you don't need
   - Check for background noise in spectrum
+
+Problem: Detached window not showing
+Solution:
+  - Check if window is off-screen (alt+space, move)
+  - Uncheck and recheck "Detach" button
+  - Close and restart application
+
+Problem: Frameless window stuck
+Solution:
+  - Uncheck "Frameless Mode"
+  - Window will get title bar back
+  - Move window back to visible area
 
 Problem: Build failed
 Solution:
@@ -321,6 +386,12 @@ Update Rate:
   - Audio blocks: depends on sample rate and block size
   - At 48kHz, 2048 samples = ~42ms per block
 
+Translation System:
+  - Dictionary-based translations
+  - Runtime language switching
+  - All UI elements supported
+  - Currently: English, Polish
+
 ═══════════════════════════════════════════════════════════════════════════════
   DEPENDENCIES
 ═══════════════════════════════════════════════════════════════════════════════
@@ -339,7 +410,21 @@ Required Python packages (installed automatically by build script):
   VERSION HISTORY
 ═══════════════════════════════════════════════════════════════════════════════
 
-v2.3.0 (Current)
+v2.3.1-Claude-001 (2024-11-16)
+  - NEW: Independent Radar window (Qt.Window with WindowStaysOnTopHint)
+  - NEW: Independent LED window (Qt.Window with WindowStaysOnTopHint)
+  - NEW: Independent opacity controls for Radar (0-100%)
+  - NEW: Independent opacity controls for LED (0-100%)
+  - NEW: Frameless window mode (Qt.FramelessWindowHint)
+  - NEW: Drag support for frameless windows (mousePressEvent/mouseMoveEvent)
+  - NEW: Language switcher EN/PL (button in toolbar)
+  - NEW: Complete translation system (TRANSLATIONS dictionary)
+  - NEW: Version naming with Claude designation
+  - Works when main window is minimized
+  - Both windows update in real-time
+  - All UI elements translated on language switch
+
+v2.3.0 (2024-11-15)
   - Initial RadarSuite Final release
   - PyQt5 GUI with docked panels
   - pyqtgraph radar, spectrum, waterfall
@@ -354,7 +439,7 @@ v2.3.0 (Current)
   LICENSE & CREDITS
 ═══════════════════════════════════════════════════════════════════════════════
 
-RadarSuite Final v2.3.0
+RadarSuite Final v2.3.1-Claude-001
 Copyright © 2024 RadarSuite Project
 
 Built with:
@@ -378,6 +463,6 @@ All logs are saved to super_log.txt with timestamps and full details.
 
 ═══════════════════════════════════════════════════════════════════════════════
 
-                    Thank you for using RadarSuite Final v2.3.0!
+            Thank you for using RadarSuite Final v2.3.1-Claude-001!
 
 ═══════════════════════════════════════════════════════════════════════════════

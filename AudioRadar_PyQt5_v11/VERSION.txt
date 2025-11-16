@@ -1,0 +1,21 @@
+AudioRadar PyQt5 v11 - Professional Edition
+Version: 11.0
+Release Date: 2024-11-16
+Build: Production
+
+Features:
+- Full PyQt5 GUI with advanced controls
+- Walking/Running/Shooting detection
+- Directional tracking (360°)
+- Distance estimation
+- Live spectrum analyzer
+- Detachable transparent radar widget
+- Sound Blaster Z SE optimization
+- Multiple themes (Dark, Light, Blue Dark, Matrix)
+- Comprehensive logging from build to runtime
+- Audio device selection and quality testing
+- Configuration import/export
+
+Platform: Windows
+Python: 3.7+
+Status: Stable

@@ -1,30 +1,68 @@
 ╔══════════════════════════════════════════════════════════════════════════════╗
-║                      RadarSuite Final v2.3.2-Claude-001                        ║
-║            Advanced Audio Radar and Detection System for Gaming                ║
+║                      RadarSuite Final v3.0.0-Claude-001                        ║
+║       Advanced Audio Radar with AI-Powered Human Detection System             ║
 ╚══════════════════════════════════════════════════════════════════════════════╝
 
 ═══════════════════════════════════════════════════════════════════════════════
   VERSION INFO
 ═══════════════════════════════════════════════════════════════════════════════
 
-Version: v2.3.2-Claude-001
+Version: v3.0.0-Claude-001 - "HUMAN HUNTER"
 Release Date: 2025-11-16
-Build: Production
+Build: Production - Major Update
 
-FIXES IN v2.3.2-Claude-001:
-  ✓ FIXED: Complete translation system - all UI elements now update when switching EN/PL
-    (dock titles, toolbar labels, panel group boxes, checkboxes, detection status)
-  ✓ FIXED: Radar target clearing - now only shows on detection events (walk/run/shot)
-    (radar clears immediately when no threat detected, no more persistent ghosts)
+🎯 NEW IN v3.0.0 - HUMAN FOOTSTEP PATTERN RECOGNITION:
+  ✨ TEMPORAL CADENCE ANALYSIS
+    - Detects human walking rhythm (1.5-2.5 steps per second)
+    - Detects human running rhythm (3.0-4.5 steps per second)
+    - Real-time step interval tracking
+    - Pattern regularity scoring
 
-FEATURES FROM v2.3.1-Claude-001:
-  ✓ Independent Radar window (works when main window minimized)
-  ✓ Independent LED window (works when main window minimized)
-  ✓ Independent opacity controls for Radar and LED
-  ✓ Frameless window mode (for both Radar and LED)
-  ✓ Language switcher: English / Polish (EN/PL button)
-  ✓ Drag support for frameless windows
-  ✓ Version naming with Claude designation
+  ✨ L-R PATTERN DETECTION
+    - Left-Right-Left-Right foot classification
+    - Stereo channel analysis for weight distribution
+    - Automatic foot identification (Left/Right/Center)
+    - Pattern consistency verification
+
+  ✨ SURFACE TYPE DETECTION
+    - HARD surfaces: concrete, metal (high detail frequencies)
+    - MEDIUM surfaces: wood, tile (moderate detail)
+    - SOFT surfaces: carpet, grass, dirt (low detail)
+    - Frequency signature analysis
+
+  ✨ DISTANCE ESTIMATION
+    - Audio loudness-based distance calculation
+    - Range: 1m - 100m
+    - Real-time distance updates
+    - Rough approximation (improves with calibration)
+
+  ✨ CONFIDENCE SCORING
+    - 0-100% confidence based on pattern regularity
+    - Higher score = more certain it's a human
+    - Green (75-100%), Orange (50-75%), Yellow (0-50%)
+
+  ✨ GAIT CLASSIFICATION
+    - WALK: slower, regular rhythm
+    - RUN: faster, higher intensity
+    - Real-time classification
+
+  📊 NEW UI PANEL: "Human Footstep Analysis (v3.0)"
+    - Live confidence percentage
+    - Cadence display (steps/second)
+    - Foot indicator (L/R with icons)
+    - Surface type
+    - Distance estimate
+    - Gait type (walk/run icons)
+
+FIXES FROM v2.3.2-Claude-001:
+  ✓ Complete translation system (EN/PL)
+  ✓ Radar target clearing on detection events only
+
+FEATURES FROM v2.3.x:
+  ✓ Independent Radar/LED windows
+  ✓ Frameless window mode
+  ✓ Language switcher EN/PL
+  ✓ Opacity controls
 
 ═══════════════════════════════════════════════════════════════════════════════
   DESCRIPTION

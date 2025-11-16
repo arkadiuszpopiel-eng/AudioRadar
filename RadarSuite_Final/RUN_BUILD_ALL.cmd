@@ -141,13 +141,23 @@ echo.
 echo [STEP 5/7] Verifying installation...
 echo [%date% %time%] [STEP 5/7] Verifying installation... >> "%LOG_FILE%"
 
-python -c "import PyQt5; import pyqtgraph; import numpy; import scipy; import sounddevice; import soundcard; import pyinstaller; print('All modules OK')" >> "%LOG_FILE%" 2>&1
+REM Verify Python modules
+python -c "import PyQt5; import pyqtgraph; import numpy; import scipy; import sounddevice; import soundcard; print('All modules OK')" >> "%LOG_FILE%" 2>&1
 if errorlevel 1 (
     echo [ERROR] Module verification failed!
     echo [%date% %time%] [ERROR] Module verification failed >> "%LOG_FILE%"
     echo.
     echo Some required modules could not be imported.
     echo Please check super_log.txt for details.
+    pause
+    exit /b 1
+)
+
+REM Verify PyInstaller command
+pyinstaller --version >> "%LOG_FILE%" 2>&1
+if errorlevel 1 (
+    echo [ERROR] PyInstaller not available!
+    echo [%date% %time%] [ERROR] PyInstaller command not found >> "%LOG_FILE%"
     pause
     exit /b 1
 )

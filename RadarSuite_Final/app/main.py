@@ -32,6 +32,7 @@ from datetime import datetime
 
 import numpy as np
 from scipy import signal as sp_signal
+import psutil
 
 try:
     import sounddevice as sd
@@ -823,6 +824,54 @@ class DevicePanel(QWidget):
         preset_group.setLayout(preset_layout)
         layout.addWidget(preset_group)
 
+        # Game Detection (v3.0)
+        self.game_group = QGroupBox("🎮 Game Detection")
+        game_layout = QVBoxLayout()
+
+        self.detected_games_label = QLabel("No games detected")
+        self.detected_games_label.setStyleSheet("font-size: 9pt; color: #888888;")
+        self.detected_games_label.setWordWrap(True)
+        game_layout.addWidget(self.detected_games_label)
+
+        self.detected_engines_label = QLabel("No engines detected")
+        self.detected_engines_label.setStyleSheet("font-size: 9pt; color: #888888;")
+        self.detected_engines_label.setWordWrap(True)
+        game_layout.addWidget(self.detected_engines_label)
+
+        self.game_group.setLayout(game_layout)
+        layout.addWidget(self.game_group)
+
+        # Audio Sources (v3.0)
+        self.sources_group = QGroupBox("🔊 Audio Sources")
+        sources_layout = QVBoxLayout()
+
+        # Active sources label
+        self.active_sources_label = QLabel("Active: 0")
+        self.active_sources_label.setStyleSheet("font-size: 9pt; font-weight: bold; color: #00FF00;")
+        sources_layout.addWidget(self.active_sources_label)
+
+        # Active sources list (compact)
+        self.active_sources_list = QLabel("—")
+        self.active_sources_list.setStyleSheet("font-size: 8pt; color: #00DD00;")
+        self.active_sources_list.setWordWrap(True)
+        self.active_sources_list.setMaximumHeight(60)
+        sources_layout.addWidget(self.active_sources_list)
+
+        # Inactive sources label
+        self.inactive_sources_label = QLabel("Inactive: 0")
+        self.inactive_sources_label.setStyleSheet("font-size: 9pt; font-weight: bold; color: #FF6666;")
+        sources_layout.addWidget(self.inactive_sources_label)
+
+        # Inactive sources list (compact)
+        self.inactive_sources_list = QLabel("—")
+        self.inactive_sources_list.setStyleSheet("font-size: 8pt; color: #DD6666;")
+        self.inactive_sources_list.setWordWrap(True)
+        self.inactive_sources_list.setMaximumHeight(40)
+        sources_layout.addWidget(self.inactive_sources_list)
+
+        self.sources_group.setLayout(sources_layout)
+        layout.addWidget(self.sources_group)
+
         # Status
         status_group = QGroupBox(tr('status'))
         status_layout = QVBoxLayout()
@@ -886,6 +935,74 @@ class DevicePanel(QWidget):
         else:
             self.audio.use_loopback = False
             self.backend_label.setText(f"{tr('backend')} sounddevice")
+
+    def update_game_detection(self, game_data):
+        """Update game detection UI with scan results (v3.0)"""
+        try:
+            if game_data['has_games']:
+                games_text = ", ".join(game_data['games'][:3])  # Show up to 3 games
+                if len(game_data['games']) > 3:
+                    games_text += f" (+{len(game_data['games']) - 3} more)"
+                self.detected_games_label.setText(f"🎮 {games_text}")
+                self.detected_games_label.setStyleSheet("font-size: 9pt; color: #00FF00; font-weight: bold;")
+            else:
+                self.detected_games_label.setText("No games detected")
+                self.detected_games_label.setStyleSheet("font-size: 9pt; color: #888888;")
+
+            if game_data['engines']:
+                engines_text = ", ".join(game_data['engines'][:2])  # Show up to 2 engines
+                if len(game_data['engines']) > 2:
+                    engines_text += f" (+{len(game_data['engines']) - 2} more)"
+                self.detected_engines_label.setText(f"⚙️ {engines_text}")
+                self.detected_engines_label.setStyleSheet("font-size: 9pt; color: #00DDFF;")
+            else:
+                self.detected_engines_label.setText("No engines detected")
+                self.detected_engines_label.setStyleSheet("font-size: 9pt; color: #888888;")
+
+        except Exception as e:
+            log(f"Error updating game detection UI: {e}", "ERROR")
+
+    def update_audio_sources(self, sources_data):
+        """Update audio sources UI with scan results (v3.0)"""
+        try:
+            # Update active sources (green)
+            active_count = len(sources_data['active'])
+            self.active_sources_label.setText(f"Active: {active_count}")
+
+            if active_count > 0:
+                # Show up to 3 active sources
+                active_list = []
+                for i, src in enumerate(sources_data['active'][:3]):
+                    name = src['name'][:35] + "..." if len(src['name']) > 35 else src['name']
+                    active_list.append(f"🟢 {name}")
+
+                if len(sources_data['active']) > 3:
+                    active_list.append(f"   (+{len(sources_data['active']) - 3} more)")
+
+                self.active_sources_list.setText("\n".join(active_list))
+            else:
+                self.active_sources_list.setText("—")
+
+            # Update inactive sources (red)
+            inactive_count = len(sources_data['inactive'])
+            self.inactive_sources_label.setText(f"Inactive: {inactive_count}")
+
+            if inactive_count > 0:
+                # Show up to 2 inactive sources
+                inactive_list = []
+                for i, src in enumerate(sources_data['inactive'][:2]):
+                    name = src['name'][:35] + "..." if len(src['name']) > 35 else src['name']
+                    inactive_list.append(f"🔴 {name}")
+
+                if len(sources_data['inactive']) > 2:
+                    inactive_list.append(f"   (+{len(sources_data['inactive']) - 2} more)")
+
+                self.inactive_sources_list.setText("\n".join(inactive_list))
+            else:
+                self.inactive_sources_list.setText("—")
+
+        except Exception as e:
+            log(f"Error updating audio sources UI: {e}", "ERROR")
 
     def update_translations(self):
         """Update UI translations"""
@@ -1159,6 +1276,226 @@ class HumanFootstepDetector:
                 lr_quality = (alternations / expected_alternations) * 50.0
 
         return temporal_quality + lr_quality
+
+
+# ============================================================================
+# GAME PROCESS DETECTOR (v3.0 - Module 3)
+# ============================================================================
+
+class GameProcessDetector:
+    """
+    Detects running games and game engines
+    Identifies Unreal Engine 5, Unity, Source, CryEngine, and other games
+    Auto-detects audio sources from game processes
+    """
+
+    def __init__(self):
+        log("GameProcessDetector.__init__", "INFO")
+
+        # Known game engines and their process patterns
+        self.game_engines = {
+            'Unreal Engine 5': ['UE5-', '-Win64-Shipping', 'UnrealEditor'],
+            'Unreal Engine 4': ['UE4-', '-Win64-Shipping', 'UnrealEditor'],
+            'Unity': ['Unity.exe', 'UnityPlayer.dll'],
+            'Source Engine': ['hl2.exe', 'csgo.exe', 'tf2.exe'],
+            'CryEngine': ['CryEngine', 'CRYENGINE'],
+            'Frostbite': ['bf', 'Battlefield'],
+            'id Tech': ['Doom', 'Quake'],
+            'RE Engine': ['re_chunk'],
+        }
+
+        # Known games by exe name
+        self.known_games = {
+            'ARC Raiders': ['ARCRaiders', 'ARC-Win64'],
+            'Escape from Tarkov': ['EscapeFromTarkov'],
+            'Call of Duty': ['cod', 'ModernWarfare', 'Warzone'],
+            'CS2': ['cs2.exe'],
+            'Valorant': ['VALORANT', 'RiotClient'],
+            'Apex Legends': ['r5apex.exe'],
+            'PUBG': ['TslGame', 'PUBG'],
+            'Fortnite': ['FortniteClient-Win64-Shipping'],
+            'Overwatch': ['Overwatch.exe'],
+            'Rainbow Six Siege': ['RainbowSix'],
+        }
+
+        # Currently detected games/processes
+        self.active_games = []
+        self.active_engines = []
+        self.last_scan_time = 0.0
+        self.scan_interval = 5.0  # Scan every 5 seconds
+
+    def scan_processes(self):
+        """
+        Scan for running game processes
+        Returns: dict with detected games and engines
+        """
+        try:
+            current_time = time.time()
+
+            # Don't scan too frequently
+            if current_time - self.last_scan_time < self.scan_interval:
+                return {
+                    'games': self.active_games,
+                    'engines': self.active_engines,
+                    'has_games': len(self.active_games) > 0
+                }
+
+            self.last_scan_time = current_time
+
+            detected_games = []
+            detected_engines = []
+
+            # Scan all running processes
+            for proc in psutil.process_iter(['name', 'exe']):
+                try:
+                    proc_name = proc.info['name']
+                    proc_exe = proc.info['exe']
+
+                    if not proc_name:
+                        continue
+
+                    # Check for known games
+                    for game_name, patterns in self.known_games.items():
+                        for pattern in patterns:
+                            if pattern.lower() in proc_name.lower() or (proc_exe and pattern.lower() in proc_exe.lower()):
+                                if game_name not in detected_games:
+                                    detected_games.append(game_name)
+                                    log(f"Detected game: {game_name} ({proc_name})", "INFO")
+
+                    # Check for game engines
+                    for engine_name, patterns in self.game_engines.items():
+                        for pattern in patterns:
+                            if pattern.lower() in proc_name.lower() or (proc_exe and pattern.lower() in proc_exe.lower()):
+                                if engine_name not in detected_engines:
+                                    detected_engines.append(engine_name)
+                                    log(f"Detected engine: {engine_name} ({proc_name})", "INFO")
+
+                except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
+                    continue
+
+            self.active_games = detected_games
+            self.active_engines = detected_engines
+
+            return {
+                'games': self.active_games,
+                'engines': self.active_engines,
+                'has_games': len(self.active_games) > 0
+            }
+
+        except Exception as e:
+            log(f"Error in GameProcessDetector.scan_processes: {e}", "ERROR")
+            return {
+                'games': [],
+                'engines': [],
+                'has_games': False
+            }
+
+
+# ============================================================================
+# AUDIO SOURCE SCANNER (v3.0 - Module 3)
+# ============================================================================
+
+class AudioSourceScanner:
+    """
+    Scans system for active and inactive audio sources
+    Provides visualization: green = active, red = inactive
+    Lists all available audio devices with real-time status
+    """
+
+    def __init__(self):
+        log("AudioSourceScanner.__init__", "INFO")
+
+        self.active_sources = []
+        self.inactive_sources = []
+        self.last_scan_time = 0.0
+        self.scan_interval = 2.0  # Scan every 2 seconds
+
+    def scan_audio_sources(self):
+        """
+        Scan for active and inactive audio sources
+        Returns: dict with active/inactive lists and status
+        """
+        try:
+            current_time = time.time()
+
+            # Don't scan too frequently
+            if current_time - self.last_scan_time < self.scan_interval:
+                return {
+                    'active': self.active_sources,
+                    'inactive': self.inactive_sources,
+                    'total': len(self.active_sources) + len(self.inactive_sources)
+                }
+
+            self.last_scan_time = current_time
+
+            active = []
+            inactive = []
+
+            # Scan sounddevice sources
+            if sd:
+                try:
+                    devices = sd.query_devices()
+                    for i, dev in enumerate(devices):
+                        dev_info = {
+                            'name': dev['name'],
+                            'index': i,
+                            'channels': dev['max_input_channels'],
+                            'samplerate': int(dev['default_samplerate']),
+                            'backend': 'sounddevice',
+                            'type': 'input' if dev['max_input_channels'] > 0 else 'output'
+                        }
+
+                        # Check if device is default (likely active)
+                        try:
+                            default_device = sd.query_devices(kind='input')
+                            is_active = (dev['name'] == default_device['name'])
+                        except:
+                            is_active = False
+
+                        if is_active or dev['max_input_channels'] > 0:
+                            active.append(dev_info)
+                        else:
+                            inactive.append(dev_info)
+
+                except Exception as e:
+                    log(f"Error scanning sounddevice: {e}", "ERROR")
+
+            # Scan soundcard loopback sources
+            if sc:
+                try:
+                    speakers = sc.all_speakers()
+                    for speaker in speakers:
+                        dev_info = {
+                            'name': speaker.name,
+                            'index': speaker.id,
+                            'channels': speaker.channels,
+                            'samplerate': 48000,  # Default
+                            'backend': 'soundcard',
+                            'type': 'loopback'
+                        }
+
+                        # Loopback devices are considered active if they exist
+                        active.append(dev_info)
+
+                except Exception as e:
+                    log(f"Error scanning soundcard: {e}", "ERROR")
+
+            self.active_sources = active
+            self.inactive_sources = inactive
+
+            return {
+                'active': self.active_sources,
+                'inactive': self.inactive_sources,
+                'total': len(active) + len(inactive)
+            }
+
+        except Exception as e:
+            log(f"Error in AudioSourceScanner.scan_audio_sources: {e}", "ERROR")
+            return {
+                'active': [],
+                'inactive': [],
+                'total': 0
+            }
 
 
 # ============================================================================
@@ -2038,11 +2375,30 @@ class MainWindow(QMainWindow):
         self.detached_radar = None
         self.detached_led = None
 
+        # Advanced scanners (v3.0)
+        self.game_detector = GameProcessDetector()
+        self.audio_scanner = AudioSourceScanner()
+
         self.create_ui()
 
+        # Main update timer (20 FPS)
         self.timer = QTimer()
         self.timer.timeout.connect(self.tick)
         self.timer.start(50)
+
+        # Game detection timer (scan every 5 seconds)
+        self.game_scan_timer = QTimer()
+        self.game_scan_timer.timeout.connect(self.scan_games)
+        self.game_scan_timer.start(5000)
+
+        # Audio source scan timer (scan every 2 seconds)
+        self.audio_scan_timer = QTimer()
+        self.audio_scan_timer.timeout.connect(self.scan_audio_sources)
+        self.audio_scan_timer.start(2000)
+
+        # Initial scans (v3.0)
+        QTimer.singleShot(500, self.scan_games)  # Scan games after 0.5s
+        QTimer.singleShot(1000, self.scan_audio_sources)  # Scan audio after 1s
 
     def create_ui(self):
         """Create main UI"""
@@ -2399,6 +2755,22 @@ class MainWindow(QMainWindow):
         stereo = np.column_stack([left, right]).astype(np.float32)
 
         return stereo
+
+    def scan_games(self):
+        """Scan for running games and update UI (v3.0)"""
+        try:
+            game_data = self.game_detector.scan_processes()
+            self.dev_panel.update_game_detection(game_data)
+        except Exception as e:
+            log(f"Error in scan_games: {e}", "ERROR")
+
+    def scan_audio_sources(self):
+        """Scan audio sources and update UI (v3.0)"""
+        try:
+            sources_data = self.audio_scanner.scan_audio_sources()
+            self.dev_panel.update_audio_sources(sources_data)
+        except Exception as e:
+            log(f"Error in scan_audio_sources: {e}", "ERROR")
 
     def closeEvent(self, event):
         """Handle window close"""

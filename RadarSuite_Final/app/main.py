@@ -1,30 +1,24 @@
 """
-RadarSuite Final v3.0.1-Claude-001
+RadarSuite Final v3.0.2-Claude-001
 Advanced audio radar and detection system for gaming with AI-powered human detection
 Supports: sounddevice, soundcard loopback, pyqtgraph visualization
 Optimized for: ARC Raiders + Sound Blaster Z SE + HyperX Cloud II
 
-NEW IN v3.0.1-Claude-001 - "Human Hunter" - Phase 2:
-✨ HUMAN VOICE DETECTION (FORMANT ANALYSIS) ✨
-- Formant frequency analysis (F1: 300-1000Hz, F2: 800-2500Hz, F3: 2000-3500Hz)
-- Pitch detection and classification (male 85-180Hz, female 165-255Hz, child 250-400Hz)
-- Voice intensity detection (whisper/normal/shout based on dB levels)
-- Breathing pattern recognition (heavy breathing detection during running)
-- Communication pattern detection (sustained speech > 1 second)
-- Voice activity rate tracking (detections per minute)
-- Confidence scoring (0-100% based on formant strength)
+NEW IN v3.0.2-Claude-001 - UI OPTIMIZATION:
+🎨 RADAR-FOCUSED INTERFACE 🎨
+- Radar as MAIN CENTRAL WIDGET (largest, most prominent)
+- Spectrum & Waterfall moved to compact bottom dock (max 180px height)
+- Device panel compact width (280px)
+- Detection panel optimized width (320px)
+- LED alert compact height (120px)
+- 70%+ screen space dedicated to RADAR visualization
 
-✨ HUMAN FOOTSTEP PATTERN RECOGNITION ✨ (from v3.0.0)
-- Temporal cadence analysis (1.5-2.5 steps/s walk, 3-4.5 steps/s run)
-- L-R pattern detection (foot classification)
-- Weight distribution analysis (stereo)
-- Surface type detection (hard/medium/soft)
-- Distance estimation (1-100m)
-- Gait classification (walk/run)
+FEATURES FROM v3.0.1:
+✨ HUMAN VOICE DETECTION (formant analysis, pitch, breathing, communication)
+✨ HUMAN FOOTSTEP PATTERN RECOGNITION (cadence, L-R, surface, distance, gait)
 
 Previous features:
 - Translation system EN/PL
-- Radar clearing on detection only
 - Independent windows
 """
 
@@ -63,7 +57,7 @@ from PyQt5.QtGui import QPainter, QColor, QPen, QBrush, QPalette
 # VERSION
 # ============================================================================
 
-VERSION = "v3.0.1-Claude-001"
+VERSION = "v3.0.2-Claude-001"
 
 # ============================================================================
 # TRANSLATIONS
@@ -2052,39 +2046,52 @@ class MainWindow(QMainWindow):
 
     def create_ui(self):
         """Create main UI"""
-        # Central widget
-        self.central = QTabWidget()
+        # MAIN CENTRAL WIDGET: RADAR (largest, most important)
+        self.radar_widget = RadarWidget()
+        self.setCentralWidget(self.radar_widget)
+
+        # Spectrum & Waterfall as small bottom-left dock (compact)
+        self.spectrum_dock = QDockWidget("Spectrum & Waterfall", self)
+        spectrum_waterfall_widget = QWidget()
+        spectrum_waterfall_layout = QVBoxLayout()
+        spectrum_waterfall_layout.setContentsMargins(2, 2, 2, 2)
+        spectrum_waterfall_layout.setSpacing(2)
+
+        # Small tabs for spectrum and waterfall
+        self.spectrum_waterfall_tabs = QTabWidget()
+        self.spectrum_waterfall_tabs.setMaximumHeight(180)  # Compact height
 
         self.spectrum = SpectrumWidget()
-        self.central.addTab(self.spectrum, tr('spectrum'))
+        self.spectrum_waterfall_tabs.addTab(self.spectrum, tr('spectrum'))
 
         self.waterfall = WaterfallWidget()
-        self.central.addTab(self.waterfall, tr('waterfall'))
+        self.spectrum_waterfall_tabs.addTab(self.waterfall, tr('waterfall'))
 
-        self.setCentralWidget(self.central)
+        spectrum_waterfall_layout.addWidget(self.spectrum_waterfall_tabs)
+        spectrum_waterfall_widget.setLayout(spectrum_waterfall_layout)
 
-        # Radar dock
-        self.radar_dock = QDockWidget(tr('radar'), self)
-        self.radar_widget = RadarWidget()
-        self.radar_dock.setWidget(self.radar_widget)
-        self.addDockWidget(Qt.TopDockWidgetArea, self.radar_dock)
+        self.spectrum_dock.setWidget(spectrum_waterfall_widget)
+        self.addDockWidget(Qt.BottomDockWidgetArea, self.spectrum_dock)
 
-        # Device panel dock
+        # Device panel dock (left side, compact)
         self.device_dock = QDockWidget(tr('device_settings'), self)
         self.dev_panel = DevicePanel(self.audio)
         self.device_dock.setWidget(self.dev_panel)
+        self.device_dock.setMaximumWidth(280)  # Compact width
         self.addDockWidget(Qt.LeftDockWidgetArea, self.device_dock)
 
-        # Detection panel dock
+        # Detection panel dock (right side, scrollable if needed)
         self.detection_dock = QDockWidget(tr('detection'), self)
         self.det_panel = DetectionPanel()
         self.detection_dock.setWidget(self.det_panel)
+        self.detection_dock.setMaximumWidth(320)  # Slightly wider for all detection info
         self.addDockWidget(Qt.RightDockWidgetArea, self.detection_dock)
 
-        # LED dock
+        # LED dock (bottom right)
         self.led_dock = QDockWidget(tr('led_alert'), self)
         self.led_widget = LedOverlayWidget()
         self.led_dock.setWidget(self.led_widget)
+        self.led_dock.setMaximumHeight(120)  # Compact height
         self.addDockWidget(Qt.BottomDockWidgetArea, self.led_dock)
 
         # Toolbar
@@ -2180,14 +2187,14 @@ class MainWindow(QMainWindow):
         self.led_frameless_btn.setText(tr('frameless_mode'))
 
         # Dock widget titles
-        self.radar_dock.setWindowTitle(tr('radar'))
+        self.spectrum_dock.setWindowTitle("Spectrum & Waterfall")
         self.device_dock.setWindowTitle(tr('device_settings'))
         self.detection_dock.setWindowTitle(tr('detection'))
         self.led_dock.setWindowTitle(tr('led_alert'))
 
-        # Central widget tabs
-        self.central.setTabText(0, tr('spectrum'))
-        self.central.setTabText(1, tr('waterfall'))
+        # Spectrum/Waterfall tabs
+        self.spectrum_waterfall_tabs.setTabText(0, tr('spectrum'))
+        self.spectrum_waterfall_tabs.setTabText(1, tr('waterfall'))
 
         # Status bar
         self.status_bar.showMessage(tr('ready') if not self.is_running else tr('running'))

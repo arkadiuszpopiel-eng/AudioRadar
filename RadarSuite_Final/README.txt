@@ -1,5 +1,5 @@
 ╔══════════════════════════════════════════════════════════════════════════════╗
-║                      RadarSuite Final v3.0.0-Claude-001                        ║
+║                      RadarSuite Final v3.0.1-Claude-001                        ║
 ║       Advanced Audio Radar with AI-Powered Human Detection System             ║
 ╚══════════════════════════════════════════════════════════════════════════════╝
 
@@ -7,11 +7,52 @@
   VERSION INFO
 ═══════════════════════════════════════════════════════════════════════════════
 
-Version: v3.0.0-Claude-001 - "HUMAN HUNTER"
+Version: v3.0.1-Claude-001 - "HUMAN HUNTER" Phase 2
 Release Date: 2025-11-16
-Build: Production - Major Update
+Build: Production - Major Update (Modules 2/16)
 
-🎯 NEW IN v3.0.0 - HUMAN FOOTSTEP PATTERN RECOGNITION:
+🎯 NEW IN v3.0.1 - HUMAN VOICE DETECTION (FORMANT ANALYSIS):
+  ✨ FORMANT FREQUENCY ANALYSIS
+    - F1 detection (300-1000 Hz): jaw opening
+    - F2 detection (800-2500 Hz): tongue position
+    - F3 detection (2000-3500 Hz): lip rounding
+    - Peak detection in each formant range
+    - Formant strength analysis vs. total power
+
+  ✨ PITCH DETECTION & CLASSIFICATION
+    - Male voice: 85-180 Hz
+    - Female voice: 165-255 Hz
+    - Child voice: 250-400 Hz
+    - Automatic gender/age classification
+    - Fundamental frequency extraction
+
+  ✨ VOICE INTENSITY DETECTION
+    - WHISPER: < -35 dB (quiet, stealthy)
+    - NORMAL: -35 to -15 dB (regular speech)
+    - SHOUT: > -15 dB (yelling, commands, panic)
+    - Real-time intensity classification
+
+  ✨ BREATHING PATTERN RECOGNITION
+    - Heavy breathing detection (100-300 Hz modulation)
+    - Distinguishes breathing from voice
+    - Indicates player running/exertion
+    - Independent detection when not talking
+
+  ✨ COMMUNICATION PATTERN DETECTION
+    - Sustained speech detection (> 1 second continuous)
+    - Differentiates single sounds vs. conversation
+    - Voice activity rate (detections per minute)
+    - Speech duration tracking
+
+  📊 NEW UI PANEL: "Human Voice Analysis (v3.0)"
+    - Confidence percentage (formant-based scoring)
+    - Voice type (male/female/child with icons)
+    - Pitch frequency (Hz)
+    - Intensity level (whisper/normal/shout)
+    - Communication status (TALKING indicator)
+    - Breathing detection (heavy breathing alert)
+
+🎯 FROM v3.0.0 - HUMAN FOOTSTEP PATTERN RECOGNITION:
   ✨ TEMPORAL CADENCE ANALYSIS
     - Detects human walking rhythm (1.5-2.5 steps per second)
     - Detects human running rhythm (3.0-4.5 steps per second)

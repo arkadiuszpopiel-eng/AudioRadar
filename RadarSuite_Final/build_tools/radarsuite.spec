@@ -1,7 +1,8 @@
 # -*- mode: python ; coding: utf-8 -*-
 """
-PyInstaller spec file for RadarSuite Final v2.3.0
+PyInstaller spec file for RadarSuite Final v3.0.5
 Builds standalone EXE with all dependencies
+Includes: PyQt5, pyqtgraph, PyOpenGL (3D radar), psutil (game detection)
 """
 
 import os
@@ -18,8 +19,10 @@ entry_script = os.path.join(BASE, 'app', 'main.py')
 hiddenimports = []
 hiddenimports += collect_submodules('PyQt5')
 hiddenimports += collect_submodules('pyqtgraph')
+hiddenimports += collect_submodules('OpenGL')  # Required for 3D radar (Module 4)
 hiddenimports += ['numpy', 'scipy', 'scipy.signal']
 hiddenimports += ['sounddevice', 'soundcard']
+hiddenimports += ['psutil']  # Required for game detection (Module 3)
 hiddenimports += ['queue', 'math', 'pathlib', 'datetime']
 
 # Collect data files for PyQt5 and pyqtgraph

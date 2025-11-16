@@ -109,6 +109,10 @@ echo    - Installing pyqtgraph...
 echo [%date% %time%] Installing pyqtgraph... >> "%LOG_FILE%"
 pip install pyqtgraph >> "%LOG_FILE%" 2>&1
 
+echo    - Installing PyOpenGL (for 3D radar)...
+echo [%date% %time%] Installing PyOpenGL... >> "%LOG_FILE%"
+pip install PyOpenGL PyOpenGL_accelerate >> "%LOG_FILE%" 2>&1
+
 echo    - Installing numpy...
 echo [%date% %time%] Installing numpy... >> "%LOG_FILE%"
 pip install numpy >> "%LOG_FILE%" 2>&1
@@ -142,7 +146,7 @@ echo [STEP 5/7] Verifying installation...
 echo [%date% %time%] [STEP 5/7] Verifying installation... >> "%LOG_FILE%"
 
 REM Verify Python modules (check if installed, don't initialize native libraries)
-python -c "import sys; modules=['PyQt5', 'pyqtgraph', 'numpy', 'scipy', 'sounddevice', 'soundcard', 'psutil', 'PyInstaller']; [__import__(m.split('.')[0]) for m in modules]; print('All modules installed OK')" >> "%LOG_FILE%" 2>&1
+python -c "import sys; modules=['PyQt5', 'pyqtgraph', 'OpenGL', 'numpy', 'scipy', 'sounddevice', 'soundcard', 'psutil', 'PyInstaller']; [__import__(m.split('.')[0]) for m in modules]; print('All modules installed OK')" >> "%LOG_FILE%" 2>&1
 if errorlevel 1 (
     echo [ERROR] Module verification failed!
     echo [%date% %time%] [ERROR] Module verification failed >> "%LOG_FILE%"

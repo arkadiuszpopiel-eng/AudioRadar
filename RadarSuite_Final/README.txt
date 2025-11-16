@@ -1,15 +1,41 @@
 ╔══════════════════════════════════════════════════════════════════════════════╗
-║                      RadarSuite Final v3.0.2-Claude-001                        ║
-║       Advanced Audio Radar with AI-Powered Human Detection System             ║
+║                      RadarSuite Final v3.0.5-Claude-001                        ║
+║    Advanced 3D Audio Radar with Multi-Target Tracking & Human Detection       ║
 ╚══════════════════════════════════════════════════════════════════════════════╝
 
 ═══════════════════════════════════════════════════════════════════════════════
   VERSION INFO
 ═══════════════════════════════════════════════════════════════════════════════
 
-Version: v3.0.2-Claude-001 - "HUMAN HUNTER" + Radar-Focused UI
+Version: v3.0.5-Claude-001 - "3D TACTICAL AWARENESS"
 Release Date: 2025-11-16
-Build: Production - Major Update (Modules 2/16 + UI Optimization)
+Build: Production - Major Update (Modules 5/16 Complete)
+
+🚀 NEW IN v3.0.5 - MULTI-TARGET TRACKING (MODULE 5):
+  ✨ SIMULTANEOUS TARGET TRACKING
+    - Track up to 3 targets at once
+    - Intelligent target matching and merging
+    - Confidence-based persistence (targets fade over time)
+    - Color-coded by type: Green=footsteps, Cyan=voice, Red=shots
+    - Movement history tracking (10 positions per target)
+
+🌐 NEW IN v3.0.4 - 3D SPHERE RADAR (MODULE 4):
+  ✨ FULL 3D SPATIAL AWARENESS
+    - Interactive 3D OpenGL radar visualization
+    - Spherical distance grid (25m, 50m, 75m, 100m)
+    - Elevation tracking: -45° to +45°
+    - Color-coded axes: Red=X, Green=Y, Blue=Z
+    - Frequency-based elevation estimation
+    - Camera rotation and zoom controls
+    - Tab switching between 2D and 3D radar
+
+🎮 NEW IN v3.0.3 - GAME & AUDIO DETECTION (MODULE 3):
+  ✨ AUTOMATIC GAME PROCESS DETECTION
+    - Detects Unreal Engine 5, Unity, Source Engine, CryEngine
+    - Specific games: ARC Raiders, Tarkov, CS2, Valorant, Apex, PUBG
+    - Real-time audio source monitoring
+    - Active/Inactive source visualization (green/red)
+    - Scans every 2-5 seconds
 
 🎨 NEW IN v3.0.2 - RADAR-FOCUSED INTERFACE REDESIGN:
   ✨ OPTIMIZED LAYOUT FOR MAXIMUM RADAR VISIBILITY
@@ -262,6 +288,11 @@ Build Steps:
   3. Find EXE in: dist\RadarSuite_Final\RadarSuite_Final.exe
 
 Troubleshooting Build Errors:
+  - ERROR "No module named 'OpenGL'"
+    → The build script now auto-installs PyOpenGL
+    → If still failing, manually install: pip install PyOpenGL PyOpenGL_accelerate
+    → Required for 3D radar visualization (Module 4)
+
   - ERROR "cannot load library libportaudio64bit.dll error 0xce"
     → Install Visual C++ Redistributable (see Prerequisites #2)
     → Try running RUN_BUILD_ALL.cmd as Administrator

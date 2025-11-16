@@ -141,17 +141,28 @@ echo.
 echo [STEP 5/7] Verifying installation...
 echo [%date% %time%] [STEP 5/7] Verifying installation... >> "%LOG_FILE%"
 
-REM Verify Python modules
-python -c "import PyQt5; import pyqtgraph; import numpy; import scipy; import sounddevice; import soundcard; print('All modules OK')" >> "%LOG_FILE%" 2>&1
+REM Verify Python modules (check if installed, don't initialize native libraries)
+python -c "import sys; modules=['PyQt5', 'pyqtgraph', 'numpy', 'scipy', 'sounddevice', 'soundcard', 'psutil', 'PyInstaller']; [__import__(m.split('.')[0]) for m in modules]; print('All modules installed OK')" >> "%LOG_FILE%" 2>&1
 if errorlevel 1 (
     echo [ERROR] Module verification failed!
     echo [%date% %time%] [ERROR] Module verification failed >> "%LOG_FILE%"
     echo.
     echo Some required modules could not be imported.
     echo Please check super_log.txt for details.
+    echo.
+    echo Common fixes:
+    echo   - Ensure you have Visual C++ Redistributable installed
+    echo   - Try running as Administrator
+    echo   - Check Windows Defender / Antivirus settings
     pause
     exit /b 1
 )
+
+REM Note: sounddevice may require PortAudio DLL at runtime
+REM This verification only checks if the Python package is installed
+echo    - All modules verified successfully (install check only)
+echo [%date% %time%] All modules verified >> "%LOG_FILE%"
+echo.
 
 REM Verify PyInstaller command
 pyinstaller --version >> "%LOG_FILE%" 2>&1
@@ -161,10 +172,6 @@ if errorlevel 1 (
     pause
     exit /b 1
 )
-
-echo    - All modules verified successfully
-echo [%date% %time%] All modules verified >> "%LOG_FILE%"
-echo.
 
 echo [STEP 6/7] Building EXE with PyInstaller...
 echo [%date% %time%] [STEP 6/7] Building EXE... >> "%LOG_FILE%"

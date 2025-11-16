@@ -244,12 +244,33 @@ Recommended:
 
 Prerequisites:
   1. Install Python 3.11 from https://www.python.org/
-  2. Make sure "Add Python to PATH" is checked during installation
+     - Make sure "Add Python to PATH" is checked during installation
+
+  2. Install Microsoft Visual C++ Redistributable (REQUIRED!)
+     - Download from: https://aka.ms/vs/17/release/vc_redist.x64.exe
+     - Required for PortAudio (sounddevice/soundcard audio backend)
+     - Without this, you'll get "cannot load library" error 0xce
+
+  3. Disable Antivirus temporarily (optional but recommended)
+     - Some antivirus software may block PortAudio DLL during build
+     - Windows Defender SmartScreen may also interfere
+     - Re-enable after build completes
 
 Build Steps:
   1. Double-click: RUN_BUILD_ALL.cmd
   2. Wait for build to complete (~5-10 minutes)
   3. Find EXE in: dist\RadarSuite_Final\RadarSuite_Final.exe
+
+Troubleshooting Build Errors:
+  - ERROR "cannot load library libportaudio64bit.dll error 0xce"
+    → Install Visual C++ Redistributable (see Prerequisites #2)
+    → Try running RUN_BUILD_ALL.cmd as Administrator
+    → Disable Windows Defender / Antivirus temporarily
+
+  - ERROR "Module verification failed"
+    → Check super_log.txt for details
+    → Ensure Python 3.11 is installed correctly
+    → Try deleting .venv folder and rebuild
   4. Optionally, extract the generated ZIP file
 
 The build script will:

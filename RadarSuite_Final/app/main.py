@@ -45,6 +45,7 @@ except ImportError:
     sc = None
 
 import pyqtgraph as pg
+import pyqtgraph.opengl as gl
 from PyQt5.QtWidgets import (
     QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
     QDockWidget, QTabWidget, QPushButton, QLabel, QComboBox,
@@ -58,7 +59,7 @@ from PyQt5.QtGui import QPainter, QColor, QPen, QBrush, QPalette
 # VERSION
 # ============================================================================
 
-VERSION = "v3.0.2-Claude-001"
+VERSION = "v3.0.4-Claude-001"
 
 # ============================================================================
 # TRANSLATIONS
@@ -573,6 +574,207 @@ class RadarWidget(pg.PlotWidget):
 
         self.echo.setData([x], [y])
         self.target_pos = (x, y)
+
+
+# ============================================================================
+# 3D SPHERE RADAR WIDGET (v3.0.4 - Module 4)
+# ============================================================================
+
+class Radar3DWidget(gl.GLViewWidget):
+    """
+    3D Sphere Radar visualization using OpenGL
+    Provides full 3D spatial awareness with azimuth, elevation, and distance
+    Interactive rotation and zoom for better threat assessment
+    """
+
+    def __init__(self):
+        super().__init__()
+        log("Radar3DWidget.__init__", "INFO")
+
+        # Visual settings
+        self.setBackgroundColor('#050505')
+        self.setCameraPosition(distance=150, elevation=20, azimuth=45)
+
+        # Create sphere grid (distance rings at 25m, 50m, 75m, 100m)
+        self.sphere_items = []
+        for radius in [25, 50, 75, 100]:
+            # Create wireframe sphere
+            md = gl.MeshData.sphere(rows=20, cols=20, radius=radius)
+            sphere = gl.GLMeshItem(
+                meshdata=md,
+                color=(0, 0.4, 0.8, 0.15),
+                shader='balloon',
+                drawEdges=True,
+                edgeColor=(0, 0.4, 0.8, 0.3),
+                smooth=False
+            )
+            self.addItem(sphere)
+            self.sphere_items.append(sphere)
+
+        # Create coordinate axes
+        axis_length = 110
+        axis_width = 2
+
+        # X axis (red) - Left/Right
+        x_axis = gl.GLLinePlotItem(
+            pos=np.array([[0, 0, 0], [axis_length, 0, 0]]),
+            color=(1, 0, 0, 0.8),
+            width=axis_width,
+            antialias=True
+        )
+        self.addItem(x_axis)
+
+        # Y axis (green) - Forward/Backward
+        y_axis = gl.GLLinePlotItem(
+            pos=np.array([[0, 0, 0], [0, axis_length, 0]]),
+            color=(0, 1, 0, 0.8),
+            width=axis_width,
+            antialias=True
+        )
+        self.addItem(y_axis)
+
+        # Z axis (blue) - Up/Down
+        z_axis = gl.GLLinePlotItem(
+            pos=np.array([[0, 0, 0], [0, 0, axis_length]]),
+            color=(0, 0, 1, 0.8),
+            width=axis_width,
+            antialias=True
+        )
+        self.addItem(z_axis)
+
+        # Create horizontal grid at z=0
+        grid = gl.GLGridItem()
+        grid.scale(10, 10, 1)
+        grid.setColor((0.3, 0.3, 0.3, 0.5))
+        self.addItem(grid)
+
+        # Target scatter plot (multiple targets support)
+        self.targets = []
+        self.target_scatter = gl.GLScatterPlotItem(
+            pos=np.array([[0, 0, 0]]),
+            color=(1, 0, 0, 0),  # Initially invisible
+            size=12,
+            pxMode=True
+        )
+        self.addItem(self.target_scatter)
+
+        # Sweep indicator (rotating line on horizontal plane)
+        self.sweep_line_3d = gl.GLLinePlotItem(
+            pos=np.array([[0, 0, 0], [0, 100, 0]]),
+            color=(0, 1, 0, 0.6),
+            width=2,
+            antialias=True
+        )
+        self.addItem(self.sweep_line_3d)
+        self.sweep_angle = 0
+
+    def update_sweep(self, angle_deg):
+        """Update 3D sweep line angle (rotates on horizontal plane)"""
+        self.sweep_angle = angle_deg
+        angle_rad = math.radians(angle_deg - 90)
+
+        # Sweep on XY plane
+        x = 100 * math.cos(angle_rad)
+        y = 100 * math.sin(angle_rad)
+
+        self.sweep_line_3d.setData(
+            pos=np.array([[0, 0, 0], [x, y, 0]]),
+            color=(0, 1, 0, 0.6),
+            width=2
+        )
+
+    def update_target(self, angle_deg, distance, elevation_deg=0):
+        """
+        Update target position in 3D space
+
+        Args:
+            angle_deg: Horizontal angle (azimuth) in degrees (0-360)
+            distance: Distance in meters (0-100)
+            elevation_deg: Vertical angle in degrees (-90 to +90)
+                          Negative = below, Positive = above, 0 = horizontal
+        """
+        if angle_deg is None or distance is None:
+            # Clear targets
+            self.target_scatter.setData(
+                pos=np.array([[0, 0, 0]]),
+                color=(1, 0, 0, 0)  # Invisible
+            )
+            self.targets = []
+            return
+
+        # Clamp values
+        distance = max(5, min(100, distance))
+        elevation_deg = max(-90, min(90, elevation_deg))
+
+        # Convert spherical to Cartesian coordinates
+        # Azimuth: angle_deg (0° = forward/+Y, 90° = right/+X)
+        # Elevation: elevation_deg (positive = up/+Z, negative = down/-Z)
+        angle_rad = math.radians(angle_deg - 90)
+        elevation_rad = math.radians(elevation_deg)
+
+        # Calculate 3D position
+        # horizontal_distance is the projection on the XY plane
+        horizontal_distance = distance * math.cos(elevation_rad)
+        x = horizontal_distance * math.cos(angle_rad)
+        y = horizontal_distance * math.sin(angle_rad)
+        z = distance * math.sin(elevation_rad)
+
+        # Update target (single target for now, multi-target in Module 5)
+        self.targets = [(x, y, z)]
+
+        # Set target color based on elevation
+        if elevation_deg > 15:
+            color = (1, 0.5, 0, 1)  # Orange for above
+        elif elevation_deg < -15:
+            color = (0.5, 0, 1, 1)  # Purple for below
+        else:
+            color = (1, 0, 0, 1)  # Red for horizontal
+
+        self.target_scatter.setData(
+            pos=np.array([[x, y, z]]),
+            color=color,
+            size=12
+        )
+
+    def add_target(self, angle_deg, distance, elevation_deg=0, color=None):
+        """
+        Add a target to the 3D radar (for multi-target support in Module 5)
+
+        Args:
+            angle_deg: Horizontal angle (azimuth)
+            distance: Distance in meters
+            elevation_deg: Vertical angle (elevation)
+            color: RGBA tuple (optional)
+        """
+        # Convert to 3D coordinates
+        angle_rad = math.radians(angle_deg - 90)
+        elevation_rad = math.radians(elevation_deg)
+
+        horizontal_distance = distance * math.cos(elevation_rad)
+        x = horizontal_distance * math.cos(angle_rad)
+        y = horizontal_distance * math.sin(angle_rad)
+        z = distance * math.sin(elevation_rad)
+
+        self.targets.append((x, y, z))
+
+        # Update scatter plot with all targets
+        if self.targets:
+            positions = np.array(self.targets)
+            colors = np.array([(1, 0, 0, 1)] * len(self.targets)) if color is None else np.array([color] * len(self.targets))
+
+            self.target_scatter.setData(
+                pos=positions,
+                color=colors,
+                size=12
+            )
+
+    def clear_targets(self):
+        """Clear all targets from the radar"""
+        self.targets = []
+        self.target_scatter.setData(
+            pos=np.array([[0, 0, 0]]),
+            color=(1, 0, 0, 0)
+        )
 
 
 # ============================================================================
@@ -2402,9 +2604,19 @@ class MainWindow(QMainWindow):
 
     def create_ui(self):
         """Create main UI"""
-        # MAIN CENTRAL WIDGET: RADAR (largest, most important)
+        # MAIN CENTRAL WIDGET: RADAR TABS (2D & 3D) (largest, most important)
+        self.radar_tabs = QTabWidget()
+        self.radar_tabs.setStyleSheet("QTabWidget::pane { border: 1px solid #222; }")
+
+        # 2D Radar (classic)
         self.radar_widget = RadarWidget()
-        self.setCentralWidget(self.radar_widget)
+        self.radar_tabs.addTab(self.radar_widget, "📡 2D Radar")
+
+        # 3D Radar (new in v3.0.4)
+        self.radar_3d_widget = Radar3DWidget()
+        self.radar_tabs.addTab(self.radar_3d_widget, "🌐 3D Sphere Radar")
+
+        self.setCentralWidget(self.radar_tabs)
 
         # Spectrum & Waterfall as small bottom-left dock (compact)
         self.spectrum_dock = QDockWidget("Spectrum & Waterfall", self)
@@ -2655,8 +2867,9 @@ class MainWindow(QMainWindow):
         # Update radar sweep
         self.radar_angle = (self.radar_angle + 4.0) % 360.0
 
-        # Update both radars
+        # Update all radars (2D and 3D)
         self.radar_widget.update_sweep(self.radar_angle)
+        self.radar_3d_widget.update_sweep(self.radar_angle)
         if self.detached_radar:
             self.detached_radar.radar.update_sweep(self.radar_angle)
 
@@ -2698,12 +2911,20 @@ class MainWindow(QMainWindow):
             angle = 90.0 + balance * 75.0
             distance = min(100.0, max(10.0, energy * 4000.0))
 
+            # Estimate elevation from frequency content (v3.0.4)
+            elevation = self.compute_elevation(block, self.audio.sample_rate)
+
+            # Update 2D radar (classic)
             self.radar_widget.update_target(angle, distance)
             if self.detached_radar:
                 self.detached_radar.radar.update_target(angle, distance)
+
+            # Update 3D radar with elevation
+            self.radar_3d_widget.update_target(angle, distance, elevation)
         else:
-            # Clear radar when no detection
+            # Clear all radars when no detection
             self.radar_widget.update_target(None, None)
+            self.radar_3d_widget.update_target(None, None)
             if self.detached_radar:
                 self.detached_radar.radar.update_target(None, None)
 
@@ -2733,6 +2954,58 @@ class MainWindow(QMainWindow):
         except Exception as e:
             log(f"Error in compute_orientation: {e}", "ERROR")
             return 0.0, 0.0
+
+    def compute_elevation(self, block, sample_rate):
+        """
+        Estimate elevation angle from frequency content (v3.0.4 - Module 4)
+
+        High frequencies (>2000 Hz) suggest sound from above (positive elevation)
+        Low frequencies (<500 Hz) suggest sound from below (negative elevation)
+        Mid frequencies suggest horizontal plane (0 elevation)
+
+        Returns: Elevation angle in degrees (-45 to +45)
+        """
+        try:
+            # Convert to mono if stereo
+            if block.ndim == 2:
+                mono = np.mean(block, axis=1)
+            else:
+                mono = block.ravel()
+
+            # Compute FFT
+            fft_data = np.fft.rfft(mono * np.hanning(len(mono)))
+            freqs = np.fft.rfftfreq(len(mono), 1.0 / sample_rate)
+            power = np.abs(fft_data) ** 2
+
+            # Define frequency bands
+            low_mask = (freqs >= 50) & (freqs < 500)    # Low freq = below
+            mid_mask = (freqs >= 500) & (freqs < 2000)  # Mid freq = horizontal
+            high_mask = (freqs >= 2000) & (freqs < 8000) # High freq = above
+
+            # Compute energy in each band
+            low_energy = np.sum(power[low_mask]) if np.any(low_mask) else 0
+            mid_energy = np.sum(power[mid_mask]) if np.any(mid_mask) else 0
+            high_energy = np.sum(power[high_mask]) if np.any(high_mask) else 0
+
+            total_energy = low_energy + mid_energy + high_energy
+
+            if total_energy < 1e-10:
+                return 0.0
+
+            # Calculate elevation bias (-1 = below, 0 = horizontal, +1 = above)
+            elevation_bias = (high_energy - low_energy) / total_energy
+
+            # Map to elevation angle (-45° to +45°)
+            elevation_deg = elevation_bias * 45.0
+
+            # Clamp to reasonable range
+            elevation_deg = max(-45.0, min(45.0, elevation_deg))
+
+            return elevation_deg
+
+        except Exception as e:
+            log(f"Error in compute_elevation: {e}", "ERROR")
+            return 0.0
 
     def generate_test_block(self):
         """Generate synthetic test audio"""

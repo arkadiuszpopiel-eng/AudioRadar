@@ -59,7 +59,7 @@ from PyQt5.QtGui import QPainter, QColor, QPen, QBrush, QPalette
 # VERSION
 # ============================================================================
 
-VERSION = "v3.0.5-Claude-001"
+VERSION = "v3.1.0-Claude-001"
 
 # ============================================================================
 # TRANSLATIONS
@@ -2785,78 +2785,256 @@ class MainWindow(QMainWindow):
         QTimer.singleShot(1000, self.scan_audio_sources)  # Scan audio after 1s
 
     def create_ui(self):
-        """Create main UI"""
-        # MAIN CENTRAL WIDGET: RADAR TABS (2D & 3D) (largest, most important)
+        """Create modern tabbed UI (v3.1.0 - Complete redesign)"""
+
+        # ====================================================================
+        # MODERN TABBED INTERFACE - Clean & Organized
+        # ====================================================================
+
+        # Main tab widget (center)
+        self.main_tabs = QTabWidget()
+        self.main_tabs.setStyleSheet("""
+            QTabWidget::pane {
+                border: 1px solid #333;
+                background: #0a0a0a;
+            }
+            QTabBar::tab {
+                background: #1a1a1a;
+                color: #aaa;
+                padding: 10px 20px;
+                margin: 2px;
+                border: 1px solid #333;
+                border-bottom: none;
+                border-top-left-radius: 4px;
+                border-top-right-radius: 4px;
+            }
+            QTabBar::tab:selected {
+                background: #2a2a2a;
+                color: #0ff;
+                border-bottom: 2px solid #0ff;
+            }
+            QTabBar::tab:hover {
+                background: #252525;
+                color: #0dd;
+            }
+        """)
+
+        self.setCentralWidget(self.main_tabs)
+
+        # ====================================================================
+        # TAB 1: 🎯 RADAR VIEW (Main tactical display)
+        # ====================================================================
+        radar_tab = QWidget()
+        radar_layout = QVBoxLayout()
+        radar_layout.setContentsMargins(5, 5, 5, 5)
+
+        # Radar sub-tabs (2D/3D)
         self.radar_tabs = QTabWidget()
         self.radar_tabs.setStyleSheet("QTabWidget::pane { border: 1px solid #222; }")
 
-        # 2D Radar (classic)
+        # 2D Radar
         self.radar_widget = RadarWidget()
-        self.radar_tabs.addTab(self.radar_widget, "📡 2D Radar")
+        self.radar_tabs.addTab(self.radar_widget, "📡 2D Tactical")
 
-        # 3D Radar (new in v3.0.4)
+        # 3D Radar
         self.radar_3d_widget = Radar3DWidget()
-        self.radar_tabs.addTab(self.radar_3d_widget, "🌐 3D Sphere Radar")
+        self.radar_tabs.addTab(self.radar_3d_widget, "🌐 3D Sphere")
 
-        self.setCentralWidget(self.radar_tabs)
+        radar_layout.addWidget(self.radar_tabs)
 
-        # Spectrum & Waterfall as small bottom-left dock (compact)
-        self.spectrum_dock = QDockWidget("Spectrum & Waterfall", self)
-        spectrum_waterfall_widget = QWidget()
-        spectrum_waterfall_layout = QVBoxLayout()
-        spectrum_waterfall_layout.setContentsMargins(2, 2, 2, 2)
-        spectrum_waterfall_layout.setSpacing(2)
+        # Radar controls (compact bottom panel)
+        radar_controls = QHBoxLayout()
+        self.detach_radar_btn = QPushButton("⬜ Detach Window")
+        self.detach_radar_btn.setCheckable(True)
+        self.detach_radar_btn.clicked.connect(self.toggle_detach_radar)
+        radar_controls.addWidget(self.detach_radar_btn)
 
-        # Small tabs for spectrum and waterfall
-        self.spectrum_waterfall_tabs = QTabWidget()
-        self.spectrum_waterfall_tabs.setMaximumHeight(180)  # Compact height
+        self.radar_frameless_btn = QCheckBox("Frameless")
+        self.radar_frameless_btn.toggled.connect(self.toggle_radar_frameless)
+        radar_controls.addWidget(self.radar_frameless_btn)
 
+        radar_controls.addWidget(QLabel("Opacity:"))
+        self.radar_alpha = QSlider(Qt.Horizontal)
+        self.radar_alpha.setRange(0, 100)
+        self.radar_alpha.setValue(100)
+        self.radar_alpha.setMaximumWidth(150)
+        self.radar_alpha.valueChanged.connect(self.update_radar_alpha)
+        radar_controls.addWidget(self.radar_alpha)
+        radar_controls.addStretch()
+
+        radar_layout.addLayout(radar_controls)
+        radar_tab.setLayout(radar_layout)
+        self.main_tabs.addTab(radar_tab, "🎯 Radar View")
+
+        # ====================================================================
+        # TAB 2: 🔊 DETECTION & AUDIO (Detection + Device settings)
+        # ====================================================================
+        detection_tab = QWidget()
+        detection_layout = QHBoxLayout()
+        detection_layout.setContentsMargins(5, 5, 5, 5)
+
+        # Left: Detection panel
+        self.det_panel = DetectionPanel()
+        detection_layout.addWidget(self.det_panel, 3)
+
+        # Right: Device/Audio panel
+        self.dev_panel = DevicePanel(self.audio)
+        detection_layout.addWidget(self.dev_panel, 2)
+
+        detection_tab.setLayout(detection_layout)
+        self.main_tabs.addTab(detection_tab, "🔊 Detection & Audio")
+
+        # ====================================================================
+        # TAB 3: 🎮 GAME DETECTION (Games + Audio Sources)
+        # ====================================================================
+        game_tab = QWidget()
+        game_layout = QVBoxLayout()
+        game_layout.setContentsMargins(10, 10, 10, 10)
+
+        # Game detection section (from DevicePanel)
+        game_group = QGroupBox("🎮 Active Games & Engines")
+        game_group_layout = QVBoxLayout()
+
+        self.detected_games_label = QLabel("Scanning for games...")
+        self.detected_games_label.setStyleSheet("font-size: 11pt; color: #888888; padding: 10px;")
+        self.detected_games_label.setWordWrap(True)
+        game_group_layout.addWidget(self.detected_games_label)
+
+        self.detected_engines_label = QLabel("No engines detected")
+        self.detected_engines_label.setStyleSheet("font-size: 10pt; color: #888888; padding: 5px;")
+        self.detected_engines_label.setWordWrap(True)
+        game_group_layout.addWidget(self.detected_engines_label)
+
+        game_group.setLayout(game_group_layout)
+        game_layout.addWidget(game_group)
+
+        # Audio sources section
+        sources_group = QGroupBox("🔊 Audio Sources Monitor")
+        sources_layout = QVBoxLayout()
+
+        # Active sources
+        active_label = QLabel("ACTIVE SOURCES:")
+        active_label.setStyleSheet("font-weight: bold; color: #00FF00; font-size: 10pt;")
+        sources_layout.addWidget(active_label)
+
+        self.active_sources_label = QLabel("Scanning: 0")
+        self.active_sources_label.setStyleSheet("font-size: 9pt; color: #00DD00; padding: 5px;")
+        sources_layout.addWidget(self.active_sources_label)
+
+        self.active_sources_list = QLabel("—")
+        self.active_sources_list.setStyleSheet("font-size: 8pt; color: #00DD00; padding: 5px;")
+        self.active_sources_list.setWordWrap(True)
+        self.active_sources_list.setMaximumHeight(120)
+        sources_layout.addWidget(self.active_sources_list)
+
+        # Inactive sources
+        inactive_label = QLabel("INACTIVE SOURCES:")
+        inactive_label.setStyleSheet("font-weight: bold; color: #FF6666; font-size: 10pt; margin-top: 10px;")
+        sources_layout.addWidget(inactive_label)
+
+        self.inactive_sources_label = QLabel("Inactive: 0")
+        self.inactive_sources_label.setStyleSheet("font-size: 9pt; color: #DD6666; padding: 5px;")
+        sources_layout.addWidget(self.inactive_sources_label)
+
+        self.inactive_sources_list = QLabel("—")
+        self.inactive_sources_list.setStyleSheet("font-size: 8pt; color: #DD6666; padding: 5px;")
+        self.inactive_sources_list.setWordWrap(True)
+        self.inactive_sources_list.setMaximumHeight(80)
+        sources_layout.addWidget(self.inactive_sources_list)
+
+        sources_group.setLayout(sources_layout)
+        game_layout.addWidget(sources_group)
+
+        game_layout.addStretch()
+        game_tab.setLayout(game_layout)
+        self.main_tabs.addTab(game_tab, "🎮 Game Detection")
+
+        # ====================================================================
+        # TAB 4: 📊 ANALYSIS (Spectrum + Waterfall + LED)
+        # ====================================================================
+        analysis_tab = QWidget()
+        analysis_layout = QVBoxLayout()
+        analysis_layout.setContentsMargins(5, 5, 5, 5)
+
+        # Spectrum & Waterfall (larger now)
+        spectrum_waterfall_tabs = QTabWidget()
         self.spectrum = SpectrumWidget()
-        self.spectrum_waterfall_tabs.addTab(self.spectrum, tr('spectrum'))
+        spectrum_waterfall_tabs.addTab(self.spectrum, "📈 Live Spectrum")
 
         self.waterfall = WaterfallWidget()
-        self.spectrum_waterfall_tabs.addTab(self.waterfall, tr('waterfall'))
+        spectrum_waterfall_tabs.addTab(self.waterfall, "🌊 Waterfall")
 
-        spectrum_waterfall_layout.addWidget(self.spectrum_waterfall_tabs)
-        spectrum_waterfall_widget.setLayout(spectrum_waterfall_layout)
+        analysis_layout.addWidget(spectrum_waterfall_tabs, 3)
 
-        self.spectrum_dock.setWidget(spectrum_waterfall_widget)
-        self.addDockWidget(Qt.BottomDockWidgetArea, self.spectrum_dock)
-
-        # Device panel dock (left side, compact)
-        self.device_dock = QDockWidget(tr('device_settings'), self)
-        self.dev_panel = DevicePanel(self.audio)
-        self.device_dock.setWidget(self.dev_panel)
-        self.device_dock.setMaximumWidth(280)  # Compact width
-        self.addDockWidget(Qt.LeftDockWidgetArea, self.device_dock)
-
-        # Detection panel dock (right side, scrollable if needed)
-        self.detection_dock = QDockWidget(tr('detection'), self)
-        self.det_panel = DetectionPanel()
-        self.detection_dock.setWidget(self.det_panel)
-        self.detection_dock.setMaximumWidth(320)  # Slightly wider for all detection info
-        self.addDockWidget(Qt.RightDockWidgetArea, self.detection_dock)
-
-        # LED dock (bottom right)
-        self.led_dock = QDockWidget(tr('led_alert'), self)
+        # LED Alert at bottom
+        led_group = QGroupBox("⚡ LED Edge Alert")
+        led_layout = QVBoxLayout()
         self.led_widget = LedOverlayWidget()
-        self.led_dock.setWidget(self.led_widget)
-        self.led_dock.setMaximumHeight(120)  # Compact height
-        self.addDockWidget(Qt.BottomDockWidgetArea, self.led_dock)
+        self.led_widget.setMinimumHeight(100)
+        led_layout.addWidget(self.led_widget)
 
-        # Toolbar
+        # LED controls
+        led_controls = QHBoxLayout()
+        self.detach_led_btn = QPushButton("⬜ Detach LED")
+        self.detach_led_btn.setCheckable(True)
+        self.detach_led_btn.clicked.connect(self.toggle_detach_led)
+        led_controls.addWidget(self.detach_led_btn)
+
+        self.led_frameless_btn = QCheckBox("Frameless")
+        self.led_frameless_btn.toggled.connect(self.toggle_led_frameless)
+        led_controls.addWidget(self.led_frameless_btn)
+
+        led_controls.addWidget(QLabel("Opacity:"))
+        self.led_alpha = QSlider(Qt.Horizontal)
+        self.led_alpha.setRange(0, 100)
+        self.led_alpha.setValue(80)
+        self.led_alpha.setMaximumWidth(150)
+        self.led_alpha.valueChanged.connect(self.update_led_alpha)
+        led_controls.addWidget(self.led_alpha)
+        led_controls.addStretch()
+
+        led_layout.addLayout(led_controls)
+        led_group.setLayout(led_layout)
+        analysis_layout.addWidget(led_group, 1)
+
+        analysis_tab.setLayout(analysis_layout)
+        self.main_tabs.addTab(analysis_tab, "📊 Analysis")
+
+        # ====================================================================
+        # TOOLBAR (Compact - only essentials)
+        # ====================================================================
         toolbar = QToolBar()
+        toolbar.setStyleSheet("""
+            QToolBar {
+                background: #1a1a1a;
+                border-bottom: 1px solid #333;
+                padding: 5px;
+            }
+        """)
         self.addToolBar(toolbar)
 
-        self.start_btn = QPushButton(tr('start'))
+        # Start/Stop button (prominent)
+        self.start_btn = QPushButton("▶ START")
+        self.start_btn.setStyleSheet("""
+            QPushButton {
+                background: #00aa00;
+                color: white;
+                font-weight: bold;
+                padding: 8px 20px;
+                border-radius: 4px;
+                font-size: 11pt;
+            }
+            QPushButton:hover {
+                background: #00cc00;
+            }
+        """)
         self.start_btn.clicked.connect(self.toggle_start_stop)
         toolbar.addWidget(self.start_btn)
 
         toolbar.addSeparator()
 
         # Language switcher
-        self.language_label = QLabel(tr('language'))
-        toolbar.addWidget(self.language_label)
+        toolbar.addWidget(QLabel("🌍"))
         self.lang_btn = QPushButton("EN/PL")
         self.lang_btn.setCheckable(True)
         self.lang_btn.clicked.connect(self.toggle_language)
@@ -2864,50 +3042,31 @@ class MainWindow(QMainWindow):
 
         toolbar.addSeparator()
 
-        # Radar controls
-        self.radar_alpha_label = QLabel(tr('radar_alpha'))
-        toolbar.addWidget(self.radar_alpha_label)
-        self.radar_alpha = QSlider(Qt.Horizontal)
-        self.radar_alpha.setRange(0, 100)
-        self.radar_alpha.setValue(100)
-        self.radar_alpha.setMaximumWidth(150)
-        self.radar_alpha.valueChanged.connect(self.update_radar_alpha)
-        toolbar.addWidget(self.radar_alpha)
+        # Quick stats
+        self.toolbar_stats_label = QLabel("Targets: 0 | FPS: 20")
+        self.toolbar_stats_label.setStyleSheet("color: #0dd; padding: 5px; font-family: monospace;")
+        toolbar.addWidget(self.toolbar_stats_label)
 
-        self.detach_radar_btn = QPushButton(tr('detach_radar'))
-        self.detach_radar_btn.setCheckable(True)
-        self.detach_radar_btn.clicked.connect(self.toggle_detach_radar)
-        toolbar.addWidget(self.detach_radar_btn)
+        toolbar.addStretch()
 
-        self.radar_frameless_btn = QCheckBox(tr('frameless_mode'))
-        self.radar_frameless_btn.toggled.connect(self.toggle_radar_frameless)
-        toolbar.addWidget(self.radar_frameless_btn)
+        # Version label
+        version_label = QLabel(f"v{VERSION}")
+        version_label.setStyleSheet("color: #666; padding: 5px; font-size: 9pt;")
+        toolbar.addWidget(version_label)
 
-        toolbar.addSeparator()
-
-        # LED controls
-        self.led_alpha_label = QLabel(tr('led_alpha'))
-        toolbar.addWidget(self.led_alpha_label)
-        self.led_alpha = QSlider(Qt.Horizontal)
-        self.led_alpha.setRange(0, 100)
-        self.led_alpha.setValue(80)
-        self.led_alpha.setMaximumWidth(150)
-        self.led_alpha.valueChanged.connect(self.update_led_alpha)
-        toolbar.addWidget(self.led_alpha)
-
-        self.detach_led_btn = QPushButton(tr('detach_led'))
-        self.detach_led_btn.setCheckable(True)
-        self.detach_led_btn.clicked.connect(self.toggle_detach_led)
-        toolbar.addWidget(self.detach_led_btn)
-
-        self.led_frameless_btn = QCheckBox(tr('frameless_mode'))
-        self.led_frameless_btn.toggled.connect(self.toggle_led_frameless)
-        toolbar.addWidget(self.led_frameless_btn)
-
-        # Status bar
+        # ====================================================================
+        # STATUS BAR
+        # ====================================================================
         self.status_bar = QStatusBar()
+        self.status_bar.setStyleSheet("""
+            QStatusBar {
+                background: #1a1a1a;
+                color: #aaa;
+                border-top: 1px solid #333;
+            }
+        """)
         self.setStatusBar(self.status_bar)
-        self.status_bar.showMessage(tr('ready'))
+        self.status_bar.showMessage("✓ Ready - All systems operational")
 
     def toggle_language(self):
         """Toggle between EN and PL"""
@@ -2922,32 +3081,21 @@ class MainWindow(QMainWindow):
         self.update_ui_translations()
 
     def update_ui_translations(self):
-        """Update all UI text with current language"""
+        """Update all UI text with current language (v3.1.0)"""
         # Main window
         self.setWindowTitle(f"{tr('app_title')} {VERSION}")
 
-        # Toolbar buttons and labels
-        self.start_btn.setText(tr('start') if not self.is_running else tr('stop'))
-        self.language_label.setText(tr('language'))
-        self.radar_alpha_label.setText(tr('radar_alpha'))
-        self.led_alpha_label.setText(tr('led_alpha'))
-        self.detach_radar_btn.setText(tr('detach_radar'))
-        self.detach_led_btn.setText(tr('detach_led'))
-        self.radar_frameless_btn.setText(tr('frameless_mode'))
-        self.led_frameless_btn.setText(tr('frameless_mode'))
-
-        # Dock widget titles
-        self.spectrum_dock.setWindowTitle("Spectrum & Waterfall")
-        self.device_dock.setWindowTitle(tr('device_settings'))
-        self.detection_dock.setWindowTitle(tr('detection'))
-        self.led_dock.setWindowTitle(tr('led_alert'))
-
-        # Spectrum/Waterfall tabs
-        self.spectrum_waterfall_tabs.setTabText(0, tr('spectrum'))
-        self.spectrum_waterfall_tabs.setTabText(1, tr('waterfall'))
+        # Start/Stop button
+        if not self.is_running:
+            self.start_btn.setText("▶ START" if current_language == 'en' else "▶ START")
+        else:
+            self.start_btn.setText("⏹ STOP" if current_language == 'en' else "⏹ STOP")
 
         # Status bar
-        self.status_bar.showMessage(tr('ready') if not self.is_running else tr('running'))
+        if not self.is_running:
+            self.status_bar.showMessage("✓ Ready - All systems operational" if current_language == 'en' else "✓ Gotowy - Wszystkie systemy sprawne")
+        else:
+            self.status_bar.showMessage("● RUNNING - Detection active" if current_language == 'en' else "● DZIAŁA - Detekcja aktywna")
 
         # Update panels
         self.dev_panel.update_translations()
@@ -3031,8 +3179,21 @@ class MainWindow(QMainWindow):
         self.audio.start()
 
         self.is_running = True
-        self.start_btn.setText(tr('stop'))
-        self.status_bar.showMessage(tr('running'))
+        self.start_btn.setText("⏹ STOP")
+        self.start_btn.setStyleSheet("""
+            QPushButton {
+                background: #aa0000;
+                color: white;
+                font-weight: bold;
+                padding: 8px 20px;
+                border-radius: 4px;
+                font-size: 11pt;
+            }
+            QPushButton:hover {
+                background: #cc0000;
+            }
+        """)
+        self.status_bar.showMessage("● RUNNING - Detection active" if current_language == 'en' else "● DZIAŁA - Detekcja aktywna")
 
     def stop(self):
         """Stop audio capture"""
@@ -3041,8 +3202,21 @@ class MainWindow(QMainWindow):
         self.audio.stop()
 
         self.is_running = False
-        self.start_btn.setText(tr('start'))
-        self.status_bar.showMessage(tr('stopped'))
+        self.start_btn.setText("▶ START")
+        self.start_btn.setStyleSheet("""
+            QPushButton {
+                background: #00aa00;
+                color: white;
+                font-weight: bold;
+                padding: 8px 20px;
+                border-radius: 4px;
+                font-size: 11pt;
+            }
+            QPushButton:hover {
+                background: #00cc00;
+            }
+        """)
+        self.status_bar.showMessage("✓ Stopped - Ready to start" if current_language == 'en' else "✓ Zatrzymano - Gotowy do startu")
 
     def tick(self):
         """Main update loop"""
@@ -3242,18 +3416,73 @@ class MainWindow(QMainWindow):
         return stereo
 
     def scan_games(self):
-        """Scan for running games and update UI (v3.0)"""
+        """Scan for running games and update UI (v3.1.0)"""
         try:
             game_data = self.game_detector.scan_processes()
-            self.dev_panel.update_game_detection(game_data)
+
+            # Update game detection labels in Tab 3
+            if game_data['has_games']:
+                games_text = ", ".join(game_data['games'][:5])
+                if len(game_data['games']) > 5:
+                    games_text += f" (+{len(game_data['games']) - 5} more)"
+                self.detected_games_label.setText(f"🎮 {games_text}")
+                self.detected_games_label.setStyleSheet("font-size: 11pt; color: #00FF00; font-weight: bold; padding: 10px;")
+            else:
+                self.detected_games_label.setText("No games detected")
+                self.detected_games_label.setStyleSheet("font-size: 11pt; color: #888888; padding: 10px;")
+
+            if game_data['engines']:
+                engines_text = ", ".join(game_data['engines'][:3])
+                if len(game_data['engines']) > 3:
+                    engines_text += f" (+{len(game_data['engines']) - 3} more)"
+                self.detected_engines_label.setText(f"⚙️ Engines: {engines_text}")
+                self.detected_engines_label.setStyleSheet("font-size: 10pt; color: #00DDFF; padding: 5px;")
+            else:
+                self.detected_engines_label.setText("No engines detected")
+                self.detected_engines_label.setStyleSheet("font-size: 10pt; color: #888888; padding: 5px;")
+
         except Exception as e:
             log(f"Error in scan_games: {e}", "ERROR")
 
     def scan_audio_sources(self):
-        """Scan audio sources and update UI (v3.0)"""
+        """Scan audio sources and update UI (v3.1.0)"""
         try:
             sources_data = self.audio_scanner.scan_audio_sources()
-            self.dev_panel.update_audio_sources(sources_data)
+
+            # Update active sources (Tab 3)
+            active_count = len(sources_data['active'])
+            self.active_sources_label.setText(f"Active: {active_count}")
+
+            if active_count > 0:
+                active_list = []
+                for i, src in enumerate(sources_data['active'][:5]):
+                    name = src['name'][:50] + "..." if len(src['name']) > 50 else src['name']
+                    active_list.append(f"🟢 {name}")
+
+                if len(sources_data['active']) > 5:
+                    active_list.append(f"   (+{len(sources_data['active']) - 5} more)")
+
+                self.active_sources_list.setText("\n".join(active_list))
+            else:
+                self.active_sources_list.setText("—")
+
+            # Update inactive sources
+            inactive_count = len(sources_data['inactive'])
+            self.inactive_sources_label.setText(f"Inactive: {inactive_count}")
+
+            if inactive_count > 0:
+                inactive_list = []
+                for i, src in enumerate(sources_data['inactive'][:3]):
+                    name = src['name'][:50] + "..." if len(src['name']) > 50 else src['name']
+                    inactive_list.append(f"🔴 {name}")
+
+                if len(sources_data['inactive']) > 3:
+                    inactive_list.append(f"   (+{len(sources_data['inactive']) - 3} more)")
+
+                self.inactive_sources_list.setText("\n".join(inactive_list))
+            else:
+                self.inactive_sources_list.setText("—")
+
         except Exception as e:
             log(f"Error in scan_audio_sources: {e}", "ERROR")
 

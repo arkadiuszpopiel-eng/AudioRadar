@@ -1,5 +1,5 @@
 ╔══════════════════════════════════════════════════════════════════════════════╗
-║                      RadarSuite Final v2.3.1-Claude-001                        ║
+║                      RadarSuite Final v2.3.2-Claude-001                        ║
 ║            Advanced Audio Radar and Detection System for Gaming                ║
 ╚══════════════════════════════════════════════════════════════════════════════╝
 
@@ -7,18 +7,23 @@
   VERSION INFO
 ═══════════════════════════════════════════════════════════════════════════════
 
-Version: v2.3.1-Claude-001
-Release Date: 2024-11-16
+Version: v2.3.2-Claude-001
+Release Date: 2025-11-16
 Build: Production
 
-NEW IN v2.3.1-Claude-001:
+FIXES IN v2.3.2-Claude-001:
+  ✓ FIXED: Complete translation system - all UI elements now update when switching EN/PL
+    (dock titles, toolbar labels, panel group boxes, checkboxes, detection status)
+  ✓ FIXED: Radar target clearing - now only shows on detection events (walk/run/shot)
+    (radar clears immediately when no threat detected, no more persistent ghosts)
+
+FEATURES FROM v2.3.1-Claude-001:
   ✓ Independent Radar window (works when main window minimized)
   ✓ Independent LED window (works when main window minimized)
   ✓ Independent opacity controls for Radar and LED
   ✓ Frameless window mode (for both Radar and LED)
   ✓ Language switcher: English / Polish (EN/PL button)
   ✓ Drag support for frameless windows
-  ✓ Complete translation system
   ✓ Version naming with Claude designation
 
 ═══════════════════════════════════════════════════════════════════════════════

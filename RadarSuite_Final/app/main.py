@@ -1,10 +1,12 @@
 """
-RadarSuite Final v2.3.1-Claude-001
+RadarSuite Final v2.3.2-Claude-001
 Advanced audio radar and detection system for gaming
 Supports: sounddevice, soundcard loopback, pyqtgraph visualization
 Optimized for: ARC Raiders + Sound Blaster Z SE + HyperX Cloud II
 
-New in v2.3.1-Claude-001:
+New in v2.3.2-Claude-001:
+- FIXED: Complete translation system - all UI elements update when switching EN/PL
+- FIXED: Radar target clearing - only shows on detection events (walk/run/shot)
 - Independent Radar and LED windows (work when main window minimized)
 - Independent opacity controls for Radar and LED
 - Frameless window mode
@@ -46,7 +48,7 @@ from PyQt5.QtGui import QPainter, QColor, QPen, QBrush, QPalette
 # VERSION
 # ============================================================================
 
-VERSION = "v2.3.1-Claude-001"
+VERSION = "v2.3.2-Claude-001"
 
 # ============================================================================
 # TRANSLATIONS
@@ -754,12 +756,13 @@ class DevicePanel(QWidget):
         device_layout = QVBoxLayout()
 
         self.device_combo = QComboBox()
-        device_layout.addWidget(QLabel(tr('select_device')))
+        self.select_device_label = QLabel(tr('select_device'))
+        device_layout.addWidget(self.select_device_label)
         device_layout.addWidget(self.device_combo)
 
-        refresh_btn = QPushButton(tr('refresh_devices'))
-        refresh_btn.clicked.connect(self.refresh_devices)
-        device_layout.addWidget(refresh_btn)
+        self.refresh_btn = QPushButton(tr('refresh_devices'))
+        self.refresh_btn.clicked.connect(self.refresh_devices)
+        device_layout.addWidget(self.refresh_btn)
 
         device_group.setLayout(device_layout)
         layout.addWidget(device_group)
@@ -804,9 +807,9 @@ class DevicePanel(QWidget):
         preset_group = QGroupBox(tr('presets'))
         preset_layout = QVBoxLayout()
 
-        sb_btn = QPushButton(tr('sb_preset'))
-        sb_btn.clicked.connect(self.apply_sb_preset)
-        preset_layout.addWidget(sb_btn)
+        self.sb_btn = QPushButton(tr('sb_preset'))
+        self.sb_btn.clicked.connect(self.apply_sb_preset)
+        preset_layout.addWidget(self.sb_btn)
 
         preset_group.setLayout(preset_layout)
         layout.addWidget(preset_group)
@@ -877,7 +880,35 @@ class DevicePanel(QWidget):
 
     def update_translations(self):
         """Update UI translations"""
-        self.refresh_devices()
+        # Update group box titles
+        for i in range(self.layout().count()):
+            item = self.layout().itemAt(i)
+            if item and isinstance(item.widget(), QGroupBox):
+                gb = item.widget()
+                # Get the translation key based on current title
+                if 'Audio Device' in gb.title() or 'Urządzenie Audio' in gb.title():
+                    gb.setTitle(tr('audio_device'))
+                elif 'Audio Settings' in gb.title() or 'Ustawienia Audio' in gb.title():
+                    gb.setTitle(tr('audio_settings'))
+                elif 'Mode' in gb.title() or 'Tryb' in gb.title():
+                    gb.setTitle(tr('mode'))
+                elif 'Presets' in gb.title() or 'Presety' in gb.title():
+                    gb.setTitle(tr('presets'))
+                elif 'Status' in gb.title():
+                    gb.setTitle(tr('status'))
+
+        # Update labels and buttons
+        self.select_device_label.setText(tr('select_device'))
+        self.refresh_btn.setText(tr('refresh_devices'))
+        self.test_mode.setText(tr('test_mode'))
+        self.loopback_mode.setText(tr('loopback_mode'))
+        self.sb_btn.setText(tr('sb_preset'))
+
+        # Update backend label
+        if self.audio.use_loopback:
+            self.backend_label.setText(f"{tr('backend')} soundcard (loopback)")
+        else:
+            self.backend_label.setText(f"{tr('backend')} sounddevice")
 
 
 # ============================================================================
@@ -894,7 +925,7 @@ class DetectionPanel(QWidget):
         layout = QVBoxLayout()
 
         # Profile selection
-        profile_group = QGroupBox(tr('detection_profile'))
+        self.profile_group = QGroupBox(tr('detection_profile'))
         profile_layout = QVBoxLayout()
 
         self.profile_combo = QComboBox()
@@ -906,11 +937,11 @@ class DetectionPanel(QWidget):
         self.profile_combo.setCurrentText('ARC Raiders + SB Z SE + Cloud II')
         profile_layout.addWidget(self.profile_combo)
 
-        profile_group.setLayout(profile_layout)
-        layout.addWidget(profile_group)
+        self.profile_group.setLayout(profile_layout)
+        layout.addWidget(self.profile_group)
 
         # Detection enables
-        enable_group = QGroupBox(tr('enable_detection'))
+        self.enable_group = QGroupBox(tr('enable_detection'))
         enable_layout = QVBoxLayout()
 
         self.walk_enable = QCheckBox(tr('detect_walk'))
@@ -925,16 +956,17 @@ class DetectionPanel(QWidget):
         self.shot_enable.setChecked(True)
         enable_layout.addWidget(self.shot_enable)
 
-        enable_group.setLayout(enable_layout)
-        layout.addWidget(enable_group)
+        self.enable_group.setLayout(enable_layout)
+        layout.addWidget(self.enable_group)
 
         # Sensitivity sliders
-        sens_group = QGroupBox(tr('sensitivity'))
+        self.sens_group = QGroupBox(tr('sensitivity'))
         sens_layout = QVBoxLayout()
 
         # Walk
         walk_layout = QHBoxLayout()
-        walk_layout.addWidget(QLabel(tr('walk')))
+        self.walk_label_sens = QLabel(tr('walk'))
+        walk_layout.addWidget(self.walk_label_sens)
         self.walk_sens = QSlider(Qt.Horizontal)
         self.walk_sens.setRange(1, 100)
         self.walk_sens.setValue(55)
@@ -946,7 +978,8 @@ class DetectionPanel(QWidget):
 
         # Run
         run_layout = QHBoxLayout()
-        run_layout.addWidget(QLabel(tr('run')))
+        self.run_label_sens = QLabel(tr('run'))
+        run_layout.addWidget(self.run_label_sens)
         self.run_sens = QSlider(Qt.Horizontal)
         self.run_sens.setRange(1, 100)
         self.run_sens.setValue(55)
@@ -958,7 +991,8 @@ class DetectionPanel(QWidget):
 
         # Shot
         shot_layout = QHBoxLayout()
-        shot_layout.addWidget(QLabel(tr('shot')))
+        self.shot_label_sens = QLabel(tr('shot'))
+        shot_layout.addWidget(self.shot_label_sens)
         self.shot_sens = QSlider(Qt.Horizontal)
         self.shot_sens.setRange(1, 100)
         self.shot_sens.setValue(65)
@@ -968,11 +1002,11 @@ class DetectionPanel(QWidget):
         shot_layout.addWidget(self.shot_sens_label)
         sens_layout.addLayout(shot_layout)
 
-        sens_group.setLayout(sens_layout)
-        layout.addWidget(sens_group)
+        self.sens_group.setLayout(sens_layout)
+        layout.addWidget(self.sens_group)
 
         # Detection status
-        status_group = QGroupBox(tr('detection_status'))
+        self.status_group = QGroupBox(tr('detection_status'))
         status_layout = QVBoxLayout()
 
         self.walk_label = QLabel(tr('walk_none'))
@@ -987,8 +1021,8 @@ class DetectionPanel(QWidget):
         self.shot_label.setStyleSheet("font-size: 14pt; font-weight: bold;")
         status_layout.addWidget(self.shot_label)
 
-        status_group.setLayout(status_layout)
-        layout.addWidget(status_group)
+        self.status_group.setLayout(status_layout)
+        layout.addWidget(self.status_group)
 
         layout.addStretch()
         self.setLayout(layout)
@@ -1095,6 +1129,41 @@ class DetectionPanel(QWidget):
             return 0.0
 
         return min(1.0, (ratio - thr) / (1.0 - thr))
+
+    def update_translations(self):
+        """Update UI translations"""
+        # Update group boxes
+        self.profile_group.setTitle(tr('detection_profile'))
+        self.enable_group.setTitle(tr('enable_detection'))
+        self.sens_group.setTitle(tr('sensitivity'))
+        self.status_group.setTitle(tr('detection_status'))
+
+        # Update checkboxes
+        self.walk_enable.setText(tr('detect_walk'))
+        self.run_enable.setText(tr('detect_run'))
+        self.shot_enable.setText(tr('detect_shot'))
+
+        # Update sensitivity labels
+        self.walk_label_sens.setText(tr('walk'))
+        self.run_label_sens.setText(tr('run'))
+        self.shot_label_sens.setText(tr('shot'))
+
+        # Update detection status labels (preserve current state)
+        # We need to check current text to determine state
+        if 'DETECTED' in self.walk_label.text() or 'WYKRYTO' in self.walk_label.text():
+            self.walk_label.setText(tr('walk_detected'))
+        else:
+            self.walk_label.setText(tr('walk_none'))
+
+        if 'DETECTED' in self.run_label.text() or 'WYKRYTO' in self.run_label.text():
+            self.run_label.setText(tr('run_detected'))
+        else:
+            self.run_label.setText(tr('run_none'))
+
+        if 'DETECTED' in self.shot_label.text() or 'WYKRYTO' in self.shot_label.text():
+            self.shot_label.setText(tr('shot_detected'))
+        else:
+            self.shot_label.setText(tr('shot_none'))
 
 
 # ============================================================================
@@ -1265,39 +1334,39 @@ class MainWindow(QMainWindow):
     def create_ui(self):
         """Create main UI"""
         # Central widget
-        central = QTabWidget()
+        self.central = QTabWidget()
 
         self.spectrum = SpectrumWidget()
-        central.addTab(self.spectrum, tr('spectrum'))
+        self.central.addTab(self.spectrum, tr('spectrum'))
 
         self.waterfall = WaterfallWidget()
-        central.addTab(self.waterfall, tr('waterfall'))
+        self.central.addTab(self.waterfall, tr('waterfall'))
 
-        self.setCentralWidget(central)
+        self.setCentralWidget(self.central)
 
         # Radar dock
-        radar_dock = QDockWidget(tr('radar'), self)
+        self.radar_dock = QDockWidget(tr('radar'), self)
         self.radar_widget = RadarWidget()
-        radar_dock.setWidget(self.radar_widget)
-        self.addDockWidget(Qt.TopDockWidgetArea, radar_dock)
+        self.radar_dock.setWidget(self.radar_widget)
+        self.addDockWidget(Qt.TopDockWidgetArea, self.radar_dock)
 
         # Device panel dock
-        device_dock = QDockWidget(tr('device_settings'), self)
+        self.device_dock = QDockWidget(tr('device_settings'), self)
         self.dev_panel = DevicePanel(self.audio)
-        device_dock.setWidget(self.dev_panel)
-        self.addDockWidget(Qt.LeftDockWidgetArea, device_dock)
+        self.device_dock.setWidget(self.dev_panel)
+        self.addDockWidget(Qt.LeftDockWidgetArea, self.device_dock)
 
         # Detection panel dock
-        detection_dock = QDockWidget(tr('detection'), self)
+        self.detection_dock = QDockWidget(tr('detection'), self)
         self.det_panel = DetectionPanel()
-        detection_dock.setWidget(self.det_panel)
-        self.addDockWidget(Qt.RightDockWidgetArea, detection_dock)
+        self.detection_dock.setWidget(self.det_panel)
+        self.addDockWidget(Qt.RightDockWidgetArea, self.detection_dock)
 
         # LED dock
-        led_dock = QDockWidget(tr('led_alert'), self)
+        self.led_dock = QDockWidget(tr('led_alert'), self)
         self.led_widget = LedOverlayWidget()
-        led_dock.setWidget(self.led_widget)
-        self.addDockWidget(Qt.BottomDockWidgetArea, led_dock)
+        self.led_dock.setWidget(self.led_widget)
+        self.addDockWidget(Qt.BottomDockWidgetArea, self.led_dock)
 
         # Toolbar
         toolbar = QToolBar()
@@ -1310,7 +1379,8 @@ class MainWindow(QMainWindow):
         toolbar.addSeparator()
 
         # Language switcher
-        toolbar.addWidget(QLabel(tr('language')))
+        self.language_label = QLabel(tr('language'))
+        toolbar.addWidget(self.language_label)
         self.lang_btn = QPushButton("EN/PL")
         self.lang_btn.setCheckable(True)
         self.lang_btn.clicked.connect(self.toggle_language)
@@ -1319,7 +1389,8 @@ class MainWindow(QMainWindow):
         toolbar.addSeparator()
 
         # Radar controls
-        toolbar.addWidget(QLabel(tr('radar_alpha')))
+        self.radar_alpha_label = QLabel(tr('radar_alpha'))
+        toolbar.addWidget(self.radar_alpha_label)
         self.radar_alpha = QSlider(Qt.Horizontal)
         self.radar_alpha.setRange(0, 100)
         self.radar_alpha.setValue(100)
@@ -1339,7 +1410,8 @@ class MainWindow(QMainWindow):
         toolbar.addSeparator()
 
         # LED controls
-        toolbar.addWidget(QLabel(tr('led_alpha')))
+        self.led_alpha_label = QLabel(tr('led_alpha'))
+        toolbar.addWidget(self.led_alpha_label)
         self.led_alpha = QSlider(Qt.Horizontal)
         self.led_alpha.setRange(0, 100)
         self.led_alpha.setValue(80)
@@ -1375,13 +1447,35 @@ class MainWindow(QMainWindow):
 
     def update_ui_translations(self):
         """Update all UI text with current language"""
+        # Main window
         self.setWindowTitle(f"{tr('app_title')} {VERSION}")
+
+        # Toolbar buttons and labels
         self.start_btn.setText(tr('start') if not self.is_running else tr('stop'))
+        self.language_label.setText(tr('language'))
+        self.radar_alpha_label.setText(tr('radar_alpha'))
+        self.led_alpha_label.setText(tr('led_alpha'))
         self.detach_radar_btn.setText(tr('detach_radar'))
         self.detach_led_btn.setText(tr('detach_led'))
         self.radar_frameless_btn.setText(tr('frameless_mode'))
         self.led_frameless_btn.setText(tr('frameless_mode'))
+
+        # Dock widget titles
+        self.radar_dock.setWindowTitle(tr('radar'))
+        self.device_dock.setWindowTitle(tr('device_settings'))
+        self.detection_dock.setWindowTitle(tr('detection'))
+        self.led_dock.setWindowTitle(tr('led_alert'))
+
+        # Central widget tabs
+        self.central.setTabText(0, tr('spectrum'))
+        self.central.setTabText(1, tr('waterfall'))
+
+        # Status bar
         self.status_bar.showMessage(tr('ready') if not self.is_running else tr('running'))
+
+        # Update panels
+        self.dev_panel.update_translations()
+        self.det_panel.update_translations()
 
         # Update detached windows titles
         if self.detached_radar:
@@ -1512,8 +1606,13 @@ class MainWindow(QMainWindow):
             rms_db = 20 * np.log10(energy)
             self.dev_panel.rms_label.setText(f"{tr('rms')} {rms_db:.1f} dBFS")
 
-        # Update radar target
-        if energy > 0.0003:
+        # Detection
+        events, bands = self.det_panel.analyze(block, self.audio.sample_rate)
+
+        # Update radar target - only show when detection occurs
+        has_detection = events.get('walk', False) or events.get('run', False) or events.get('shot', False)
+
+        if has_detection and energy > 0.0001:
             angle = 90.0 + balance * 75.0
             distance = min(100.0, max(10.0, energy * 4000.0))
 
@@ -1521,12 +1620,10 @@ class MainWindow(QMainWindow):
             if self.detached_radar:
                 self.detached_radar.radar.update_target(angle, distance)
         else:
+            # Clear radar when no detection
             self.radar_widget.update_target(None, None)
             if self.detached_radar:
                 self.detached_radar.radar.update_target(None, None)
-
-        # Detection
-        events, bands = self.det_panel.analyze(block, self.audio.sample_rate)
 
         # Update LED overlays
         self.led_widget.update_from_events(events, bands, energy, balance)

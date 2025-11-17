@@ -1,17 +1,24 @@
 """
-RadarSuite Final v3.1.1-Claude-001
+RadarSuite Final v3.1.2-Claude-001
 Advanced audio radar and detection system for gaming with AI-powered human detection
 Supports: sounddevice, soundcard loopback, pyqtgraph visualization
 Optimized for: ARC Raiders + Sound Blaster Z SE + HyperX Cloud II
 
-NEW IN v3.1.1-Claude-001 - CRITICAL BUG FIXES:
+NEW IN v3.1.2-Claude-001 - AUDIO ENHANCEMENTS:
+🎚️ AUDIO PROCESSING & DEBUGGING 🎚️
+- NEW: Waveform Widget - Visual audio signal display for debugging input issues
+- NEW: Auto-Gain - Automatically amplify quiet audio (target -20 dBFS)
+- NEW: Manual Gain - 1x to 100x amplification slider for precise control
+- NEW: Noise Gate - Block audio below threshold to reduce background noise
+- IMPROVED: Audio processing pipeline with gain and noise reduction
+
+FEATURES FROM v3.1.1:
 🐛 STABILITY & RELIABILITY 🐛
 - CRITICAL FIX: Added error handling to tick() method to prevent application freezes
 - FIXED: Quick Setup now properly restarts audio stream when settings change
 - FIXED: .gitignore now preserves build_tools/*.spec file
 - IMPROVED: More sensitive default detection thresholds (35, 35, 45)
 - IMPROVED: Energy detection threshold lowered 10x for better sensitivity
-- REMOVED: Dead code from DevicePanel (duplicate update methods)
 
 FEATURES FROM v3.1.0:
 🎨 MODERN TABBED INTERFACE 🎨
@@ -66,7 +73,7 @@ from PyQt5.QtGui import QPainter, QColor, QPen, QBrush, QPalette
 # VERSION
 # ============================================================================
 
-VERSION = "v3.1.1-Claude-001"
+VERSION = "v3.1.2-Claude-001"
 
 # ============================================================================
 # TRANSLATIONS
@@ -1136,6 +1143,100 @@ class WaterfallWidget(pg.PlotWidget):
 
 
 # ============================================================================
+# WAVEFORM WIDGET (v3.1.2 - Audio Input Visualization)
+# ============================================================================
+
+class WaveformWidget(pg.PlotWidget):
+    """
+    Real-time audio waveform display
+    Shows raw audio signal to help debug input issues
+    Displays both left and right channels with RMS envelope
+    """
+
+    def __init__(self):
+        super().__init__()
+        log("WaveformWidget.__init__", "INFO")
+
+        self.setBackground("#050505")
+        self.setLabel('left', 'Amplitude')
+        self.setLabel('bottom', 'Samples')
+        self.setYRange(-1.0, 1.0, padding=0)
+        self.showGrid(x=True, y=True, alpha=0.25)
+
+        # Waveform curves
+        self.left_curve = self.plot(pen=pg.mkPen(color=(0, 200, 255), width=1))
+        self.right_curve = self.plot(pen=pg.mkPen(color=(255, 100, 0), width=1))
+        self.rms_curve = self.plot(pen=pg.mkPen(color=(0, 255, 0), width=2, style=Qt.DashLine))
+
+        # Buffer for display
+        self.buffer_size = 2048
+        self.x_data = np.arange(self.buffer_size)
+
+        # Add legend
+        legend = self.addLegend()
+        legend.addItem(self.left_curve, "Left Channel")
+        legend.addItem(self.right_curve, "Right Channel")
+        legend.addItem(self.rms_curve, "RMS Level")
+
+    def update_waveform(self, data):
+        """Update waveform display from audio data"""
+        try:
+            if data is None or len(data) == 0:
+                return
+
+            # Handle stereo/mono data
+            if data.ndim == 2 and data.shape[1] >= 2:
+                left = data[:, 0]
+                right = data[:, 1]
+
+                # Downsample if needed for display
+                if len(left) > self.buffer_size:
+                    step = len(left) // self.buffer_size
+                    left = left[::step][:self.buffer_size]
+                    right = right[::step][:self.buffer_size]
+                elif len(left) < self.buffer_size:
+                    # Pad with zeros
+                    left = np.pad(left, (0, self.buffer_size - len(left)), 'constant')
+                    right = np.pad(right, (0, self.buffer_size - len(right)), 'constant')
+
+                # Calculate RMS envelope (moving average)
+                window_size = 50
+                rms_left = np.sqrt(np.convolve(left**2, np.ones(window_size)/window_size, mode='same'))
+                rms_right = np.sqrt(np.convolve(right**2, np.ones(window_size)/window_size, mode='same'))
+                rms_avg = (rms_left + rms_right) / 2.0
+
+                # Update curves
+                self.left_curve.setData(self.x_data[:len(left)], left)
+                self.right_curve.setData(self.x_data[:len(right)], right)
+                self.rms_curve.setData(self.x_data[:len(rms_avg)], rms_avg)
+
+            else:
+                # Mono data
+                mono = data.ravel()
+
+                if len(mono) > self.buffer_size:
+                    step = len(mono) // self.buffer_size
+                    mono = mono[::step][:self.buffer_size]
+                elif len(mono) < self.buffer_size:
+                    mono = np.pad(mono, (0, self.buffer_size - len(mono)), 'constant')
+
+                # Calculate RMS
+                window_size = 50
+                rms = np.sqrt(np.convolve(mono**2, np.ones(window_size)/window_size, mode='same'))
+
+                self.left_curve.setData(self.x_data[:len(mono)], mono)
+                self.right_curve.setData([], [])  # Hide right channel for mono
+                self.rms_curve.setData(self.x_data[:len(rms)], rms)
+
+            # Auto-scale Y axis based on data
+            max_val = max(np.max(np.abs(data)), 0.1)  # Minimum 0.1 for visibility
+            self.setYRange(-max_val * 1.1, max_val * 1.1)
+
+        except Exception as e:
+            log(f"Error in update_waveform: {e}", "ERROR")
+
+
+# ============================================================================
 # DEVICE PANEL
 # ============================================================================
 
@@ -1200,6 +1301,50 @@ class DevicePanel(QWidget):
 
         mode_group.setLayout(mode_layout)
         layout.addWidget(mode_group)
+
+        # Audio Enhancements (v3.1.2 - Auto-gain for quiet audio)
+        enhance_group = QGroupBox("🎚️ Audio Enhancements")
+        enhance_layout = QVBoxLayout()
+
+        # Auto-gain checkbox
+        self.auto_gain_enable = QCheckBox("Enable Auto-Gain (boost quiet audio)")
+        self.auto_gain_enable.setToolTip("Automatically amplify quiet audio signals for better detection")
+        self.auto_gain_enable.setChecked(False)
+        enhance_layout.addWidget(self.auto_gain_enable)
+
+        # Manual gain slider
+        gain_slider_layout = QHBoxLayout()
+        gain_slider_layout.addWidget(QLabel("Manual Gain:"))
+        self.gain_slider = QSlider(Qt.Horizontal)
+        self.gain_slider.setRange(1, 100)  # 1x to 100x gain
+        self.gain_slider.setValue(1)  # Default 1x (no gain)
+        self.gain_slider.setEnabled(True)  # Enabled by default (auto-gain is off)
+        gain_slider_layout.addWidget(self.gain_slider)
+        self.gain_label = QLabel("1x")
+        self.gain_slider.valueChanged.connect(lambda v: self.gain_label.setText(f"{v}x"))
+        gain_slider_layout.addWidget(self.gain_label)
+        enhance_layout.addLayout(gain_slider_layout)
+
+        # Connect auto-gain checkbox to disable manual slider
+        self.auto_gain_enable.toggled.connect(lambda checked: self.gain_slider.setEnabled(not checked))
+
+        # Noise gate threshold
+        noise_gate_layout = QHBoxLayout()
+        noise_gate_layout.addWidget(QLabel("Noise Gate:"))
+        self.noise_gate_slider = QSlider(Qt.Horizontal)
+        self.noise_gate_slider.setRange(0, 100)
+        self.noise_gate_slider.setValue(5)  # Default -60 dB
+        self.noise_gate_slider.setToolTip("Block audio below this level (reduces noise)")
+        noise_gate_layout.addWidget(self.noise_gate_slider)
+        self.noise_gate_label = QLabel("-60dB")
+        self.noise_gate_slider.valueChanged.connect(
+            lambda v: self.noise_gate_label.setText(f"-{80-v}dB")
+        )
+        noise_gate_layout.addWidget(self.noise_gate_label)
+        enhance_layout.addLayout(noise_gate_layout)
+
+        enhance_group.setLayout(enhance_layout)
+        layout.addWidget(enhance_group)
 
         # Presets
         preset_group = QGroupBox(tr('presets'))
@@ -2914,13 +3059,18 @@ class MainWindow(QMainWindow):
         analysis_layout = QVBoxLayout()
         analysis_layout.setContentsMargins(5, 5, 5, 5)
 
-        # Spectrum & Waterfall (larger now)
+        # Spectrum & Waterfall & Waveform (v3.1.2 - Added waveform for debugging)
         spectrum_waterfall_tabs = QTabWidget()
+
         self.spectrum = SpectrumWidget()
         spectrum_waterfall_tabs.addTab(self.spectrum, "📈 Live Spectrum")
 
         self.waterfall = WaterfallWidget()
         spectrum_waterfall_tabs.addTab(self.waterfall, "🌊 Waterfall")
+
+        # NEW: Waveform display for audio debugging
+        self.waveform = WaveformWidget()
+        spectrum_waterfall_tabs.addTab(self.waveform, "〰️ Waveform")
 
         analysis_layout.addWidget(spectrum_waterfall_tabs, 3)
 
@@ -3197,8 +3347,12 @@ class MainWindow(QMainWindow):
             if block is None:
                 return
 
-            # Update spectrum and waterfall
+            # Apply audio processing (auto-gain, noise gate) (v3.1.2)
+            block = self.apply_audio_processing(block)
+
+            # Update spectrum, waterfall, and waveform (v3.1.2)
             self.spectrum.update_fft(block)
+            self.waveform.update_waveform(block)  # NEW: Visual audio debugging
 
             if block.ndim == 2:
                 mono = np.mean(block, axis=1)
@@ -3318,6 +3472,62 @@ class MainWindow(QMainWindow):
             import traceback
             log(traceback.format_exc(), "ERROR")
             # Don't crash - just skip this frame and continue running
+
+    def apply_audio_processing(self, block):
+        """
+        Apply audio enhancements: auto-gain, manual gain, noise gate (v3.1.2)
+
+        Args:
+            block: Audio data (numpy array)
+
+        Returns:
+            Processed audio block
+        """
+        try:
+            if block is None or len(block) == 0:
+                return block
+
+            processed = block.copy()
+
+            # Apply noise gate (remove audio below threshold)
+            noise_gate_value = self.dev_panel.noise_gate_slider.value()
+            noise_gate_db = -80 + noise_gate_value  # Convert slider (0-100) to dB (-80 to -20)
+            noise_gate_linear = 10 ** (noise_gate_db / 20.0)
+
+            # Calculate RMS for noise gate
+            rms = np.sqrt(np.mean(processed ** 2))
+            if rms < noise_gate_linear:
+                # Below noise gate - mute
+                return np.zeros_like(processed)
+
+            # Apply gain (auto or manual)
+            if self.dev_panel.auto_gain_enable.isChecked():
+                # Auto-gain: target -20 dBFS RMS
+                target_rms = 0.1  # -20 dBFS
+                current_rms = np.sqrt(np.mean(processed ** 2)) + 1e-10
+                auto_gain = target_rms / current_rms
+
+                # Limit auto-gain to reasonable range (1x to 100x)
+                auto_gain = np.clip(auto_gain, 1.0, 100.0)
+                processed *= auto_gain
+
+                # Update gain label to show actual gain applied
+                self.dev_panel.gain_label.setText(f"AUTO: {auto_gain:.1f}x")
+            else:
+                # Manual gain
+                manual_gain = self.dev_panel.gain_slider.value()
+                processed *= manual_gain
+
+            # Prevent clipping - normalize if over ±1.0
+            max_val = np.max(np.abs(processed))
+            if max_val > 1.0:
+                processed /= max_val
+
+            return processed
+
+        except Exception as e:
+            log(f"Error in apply_audio_processing: {e}", "ERROR")
+            return block  # Return original on error
 
     def compute_orientation(self, block):
         """Compute energy and L/R balance"""

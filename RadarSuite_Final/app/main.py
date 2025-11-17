@@ -1,25 +1,32 @@
 """
-RadarSuite Final v3.0.2-Claude-001
+RadarSuite Final v3.1.1-Claude-001
 Advanced audio radar and detection system for gaming with AI-powered human detection
 Supports: sounddevice, soundcard loopback, pyqtgraph visualization
 Optimized for: ARC Raiders + Sound Blaster Z SE + HyperX Cloud II
 
-NEW IN v3.0.2-Claude-001 - UI OPTIMIZATION:
-🎨 RADAR-FOCUSED INTERFACE 🎨
-- Radar as MAIN CENTRAL WIDGET (largest, most prominent)
-- Spectrum & Waterfall moved to compact bottom dock (max 180px height)
-- Device panel compact width (280px)
-- Detection panel optimized width (320px)
-- LED alert compact height (120px)
-- 70%+ screen space dedicated to RADAR visualization
+NEW IN v3.1.1-Claude-001 - CRITICAL BUG FIXES:
+🐛 STABILITY & RELIABILITY 🐛
+- CRITICAL FIX: Added error handling to tick() method to prevent application freezes
+- FIXED: Quick Setup now properly restarts audio stream when settings change
+- FIXED: .gitignore now preserves build_tools/*.spec file
+- IMPROVED: More sensitive default detection thresholds (35, 35, 45)
+- IMPROVED: Energy detection threshold lowered 10x for better sensitivity
+- REMOVED: Dead code from DevicePanel (duplicate update methods)
 
-FEATURES FROM v3.0.1:
-✨ HUMAN VOICE DETECTION (formant analysis, pitch, breathing, communication)
-✨ HUMAN FOOTSTEP PATTERN RECOGNITION (cadence, L-R, surface, distance, gait)
+FEATURES FROM v3.1.0:
+🎨 MODERN TABBED INTERFACE 🎨
+- Clean 4-tab layout: Radar View, Detection & Audio, Game Detection, Analysis
+- Real-time audio level monitoring with color-coded feedback
+- Quick Setup button for one-click game audio configuration
+- Auto-suggestion for loopback mode when games detected
+- Live stats in toolbar (Targets, Audio Level, FPS)
 
-Previous features:
-- Translation system EN/PL
-- Independent windows
+FEATURES FROM v3.0.5:
+✨ MULTI-TARGET TRACKING (up to 3 simultaneous targets)
+✨ 3D SPHERE RADAR with elevation detection
+✨ GAME DETECTION (ARC Raiders, Tarkov, CS2, Valorant, etc.)
+✨ HUMAN VOICE DETECTION (formant analysis, pitch, breathing)
+✨ HUMAN FOOTSTEP PATTERN RECOGNITION (cadence, L-R, surface, gait)
 """
 
 import sys
@@ -59,7 +66,7 @@ from PyQt5.QtGui import QPainter, QColor, QPen, QBrush, QPalette
 # VERSION
 # ============================================================================
 
-VERSION = "v3.1.0-Claude-001"
+VERSION = "v3.1.1-Claude-001"
 
 # ============================================================================
 # TRANSLATIONS
@@ -1317,74 +1324,6 @@ class DevicePanel(QWidget):
             self.audio.use_loopback = False
             self.backend_label.setText(f"{tr('backend')} sounddevice")
 
-    def update_game_detection(self, game_data):
-        """Update game detection UI with scan results (v3.0)"""
-        try:
-            if game_data['has_games']:
-                games_text = ", ".join(game_data['games'][:3])  # Show up to 3 games
-                if len(game_data['games']) > 3:
-                    games_text += f" (+{len(game_data['games']) - 3} more)"
-                self.detected_games_label.setText(f"🎮 {games_text}")
-                self.detected_games_label.setStyleSheet("font-size: 9pt; color: #00FF00; font-weight: bold;")
-            else:
-                self.detected_games_label.setText("No games detected")
-                self.detected_games_label.setStyleSheet("font-size: 9pt; color: #888888;")
-
-            if game_data['engines']:
-                engines_text = ", ".join(game_data['engines'][:2])  # Show up to 2 engines
-                if len(game_data['engines']) > 2:
-                    engines_text += f" (+{len(game_data['engines']) - 2} more)"
-                self.detected_engines_label.setText(f"⚙️ {engines_text}")
-                self.detected_engines_label.setStyleSheet("font-size: 9pt; color: #00DDFF;")
-            else:
-                self.detected_engines_label.setText("No engines detected")
-                self.detected_engines_label.setStyleSheet("font-size: 9pt; color: #888888;")
-
-        except Exception as e:
-            log(f"Error updating game detection UI: {e}", "ERROR")
-
-    def update_audio_sources(self, sources_data):
-        """Update audio sources UI with scan results (v3.0)"""
-        try:
-            # Update active sources (green)
-            active_count = len(sources_data['active'])
-            self.active_sources_label.setText(f"Active: {active_count}")
-
-            if active_count > 0:
-                # Show up to 3 active sources
-                active_list = []
-                for i, src in enumerate(sources_data['active'][:3]):
-                    name = src['name'][:35] + "..." if len(src['name']) > 35 else src['name']
-                    active_list.append(f"🟢 {name}")
-
-                if len(sources_data['active']) > 3:
-                    active_list.append(f"   (+{len(sources_data['active']) - 3} more)")
-
-                self.active_sources_list.setText("\n".join(active_list))
-            else:
-                self.active_sources_list.setText("—")
-
-            # Update inactive sources (red)
-            inactive_count = len(sources_data['inactive'])
-            self.inactive_sources_label.setText(f"Inactive: {inactive_count}")
-
-            if inactive_count > 0:
-                # Show up to 2 inactive sources
-                inactive_list = []
-                for i, src in enumerate(sources_data['inactive'][:2]):
-                    name = src['name'][:35] + "..." if len(src['name']) > 35 else src['name']
-                    inactive_list.append(f"🔴 {name}")
-
-                if len(sources_data['inactive']) > 2:
-                    inactive_list.append(f"   (+{len(sources_data['inactive']) - 2} more)")
-
-                self.inactive_sources_list.setText("\n".join(inactive_list))
-            else:
-                self.inactive_sources_list.setText("—")
-
-        except Exception as e:
-            log(f"Error updating audio sources UI: {e}", "ERROR")
-
     def update_translations(self):
         """Update UI translations"""
         # Update group box titles
@@ -2187,9 +2126,9 @@ class DetectionPanel(QWidget):
         walk_layout.addWidget(self.walk_label_sens)
         self.walk_sens = QSlider(Qt.Horizontal)
         self.walk_sens.setRange(1, 100)
-        self.walk_sens.setValue(55)
+        self.walk_sens.setValue(35)  # More sensitive (was 55)
         walk_layout.addWidget(self.walk_sens)
-        self.walk_sens_label = QLabel("55")
+        self.walk_sens_label = QLabel("35")
         self.walk_sens.valueChanged.connect(lambda v: self.walk_sens_label.setText(str(v)))
         walk_layout.addWidget(self.walk_sens_label)
         sens_layout.addLayout(walk_layout)
@@ -2200,9 +2139,9 @@ class DetectionPanel(QWidget):
         run_layout.addWidget(self.run_label_sens)
         self.run_sens = QSlider(Qt.Horizontal)
         self.run_sens.setRange(1, 100)
-        self.run_sens.setValue(55)
+        self.run_sens.setValue(35)  # More sensitive (was 55)
         run_layout.addWidget(self.run_sens)
-        self.run_sens_label = QLabel("55")
+        self.run_sens_label = QLabel("35")
         self.run_sens.valueChanged.connect(lambda v: self.run_sens_label.setText(str(v)))
         run_layout.addWidget(self.run_sens_label)
         sens_layout.addLayout(run_layout)
@@ -2213,9 +2152,9 @@ class DetectionPanel(QWidget):
         shot_layout.addWidget(self.shot_label_sens)
         self.shot_sens = QSlider(Qt.Horizontal)
         self.shot_sens.setRange(1, 100)
-        self.shot_sens.setValue(65)
+        self.shot_sens.setValue(45)  # More sensitive (was 65)
         shot_layout.addWidget(self.shot_sens)
-        self.shot_sens_label = QLabel("65")
+        self.shot_sens_label = QLabel("45")
         self.shot_sens.valueChanged.connect(lambda v: self.shot_sens_label.setText(str(v)))
         shot_layout.addWidget(self.shot_sens_label)
         sens_layout.addLayout(shot_layout)
@@ -3238,139 +3177,147 @@ class MainWindow(QMainWindow):
         self.status_bar.showMessage("✓ Stopped - Ready to start" if current_language == 'en' else "✓ Zatrzymano - Gotowy do startu")
 
     def tick(self):
-        """Main update loop"""
-        # Update radar sweep
-        self.radar_angle = (self.radar_angle + 4.0) % 360.0
+        """Main update loop (wrapped in error handling to prevent freezes)"""
+        try:
+            # Update radar sweep
+            self.radar_angle = (self.radar_angle + 4.0) % 360.0
 
-        # Update all radars (2D and 3D)
-        self.radar_widget.update_sweep(self.radar_angle)
-        self.radar_3d_widget.update_sweep(self.radar_angle)
-        if self.detached_radar:
-            self.detached_radar.radar.update_sweep(self.radar_angle)
-
-        # Get audio block
-        if self.dev_panel.test_mode.isChecked():
-            block = self.generate_test_block()
-        else:
-            block = self.audio.read_block(0.0) or self.audio.last_block
-
-        if block is None:
-            return
-
-        # Update spectrum and waterfall
-        self.spectrum.update_fft(block)
-
-        if block.ndim == 2:
-            mono = np.mean(block, axis=1)
-        else:
-            mono = block.ravel()
-
-        fft_data = np.fft.rfft(mono * np.hanning(len(mono)))
-        power = 20 * np.log10(np.abs(fft_data) + 1e-10)
-        self.waterfall.push_row(power)
-
-        # Compute energy and balance
-        energy, balance = self.compute_orientation(block)
-
-        # AUDIO LEVEL MONITORING (v3.1.0 - Debug audio issues)
-        if energy > 0:
-            rms_db = 20 * np.log10(energy + 1e-10)
-            self.dev_panel.rms_label.setText(f"{tr('rms')} {rms_db:.1f} dBFS")
-
-            # Color-coded audio level indicator
-            if rms_db > -20:
-                level_color = "#00FF00"  # Green - loud
-                level_status = "🔊 LOUD"
-            elif rms_db > -40:
-                level_color = "#FFFF00"  # Yellow - medium
-                level_status = "🔉 OK"
-            elif rms_db > -60:
-                level_color = "#FF8800"  # Orange - quiet
-                level_status = "🔈 LOW"
-            else:
-                level_color = "#FF0000"  # Red - very quiet
-                level_status = "🔇 SILENT"
-
-            self.dev_panel.rms_label.setStyleSheet(f"color: {level_color}; font-weight: bold; font-size: 10pt;")
-        else:
-            self.dev_panel.rms_label.setText(f"{tr('rms')} --- dBFS (NO AUDIO!)")
-            self.dev_panel.rms_label.setStyleSheet("color: #FF0000; font-weight: bold; font-size: 10pt;")
-
-        # Detection
-        events, bands = self.det_panel.analyze(block, self.audio.sample_rate)
-
-        # Multi-target tracking (v3.0.5 - Module 5)
-        has_detection = events.get('walk', False) or events.get('run', False) or events.get('shot', False)
-
-        # Prepare detections for tracker
-        # OBNIŻONY PRÓG: 0.0001 -> 0.00001 (10x bardziej czuły!)
-        detections = []
-        if has_detection and energy > 0.00001:
-            angle = 90.0 + balance * 75.0
-            distance = min(100.0, max(10.0, energy * 4000.0))
-            elevation = self.compute_elevation(block, self.audio.sample_rate)
-
-            # Determine detection type
-            if events.get('shot', False):
-                target_type = 'shot'
-            elif events.get('run', False):
-                target_type = 'footstep'
-            elif events.get('walk', False):
-                target_type = 'footstep'
-            else:
-                target_type = 'unknown'
-
-            detections.append({
-                'angle': angle,
-                'distance': distance,
-                'elevation': elevation,
-                'type': target_type
-            })
-
-        # Update tracker
-        active_targets = self.target_tracker.update(detections)
-
-        # Update radars with all active targets
-        if active_targets:
-            # Update 3D radar (supports multiple targets natively)
-            self.radar_3d_widget.clear_targets()
-            for target in active_targets:
-                self.radar_3d_widget.add_target(
-                    target['angle'],
-                    target['distance'],
-                    target['elevation'],
-                    target['color']
-                )
-
-            # Update 2D radar (show primary target only - highest confidence)
-            primary_target = max(active_targets, key=lambda t: t['confidence'])
-            self.radar_widget.update_target(primary_target['angle'], primary_target['distance'])
+            # Update all radars (2D and 3D)
+            self.radar_widget.update_sweep(self.radar_angle)
+            self.radar_3d_widget.update_sweep(self.radar_angle)
             if self.detached_radar:
-                self.detached_radar.radar.update_target(primary_target['angle'], primary_target['distance'])
-        else:
-            # Clear all radars when no targets
-            self.radar_widget.update_target(None, None)
-            self.radar_3d_widget.clear_targets()
-            if self.detached_radar:
-                self.detached_radar.radar.update_target(None, None)
+                self.detached_radar.radar.update_sweep(self.radar_angle)
 
-        # Update LED overlays
-        self.led_widget.update_from_events(events, bands, energy, balance)
-        if self.detached_led:
-            self.detached_led.led_overlay.update_from_events(events, bands, energy, balance)
+            # Get audio block
+            if self.dev_panel.test_mode.isChecked():
+                block = self.generate_test_block()
+            else:
+                block = self.audio.read_block(0.0) or self.audio.last_block
 
-        # Update toolbar stats (v3.1.0)
-        target_count = len(active_targets) if active_targets else 0
-        if energy > 0:
-            rms_db = 20 * np.log10(energy + 1e-10)
-            audio_indicator = "🔊" if rms_db > -40 else "🔉" if rms_db > -60 else "🔇"
-        else:
-            audio_indicator = "❌"
-            rms_db = -100
+            if block is None:
+                return
 
-        self.toolbar_stats_label.setText(
-            f"Targets: {target_count} | Audio: {audio_indicator} {rms_db:.0f}dB | FPS: 20"
-        )
+            # Update spectrum and waterfall
+            self.spectrum.update_fft(block)
+
+            if block.ndim == 2:
+                mono = np.mean(block, axis=1)
+            else:
+                mono = block.ravel()
+
+            fft_data = np.fft.rfft(mono * np.hanning(len(mono)))
+            power = 20 * np.log10(np.abs(fft_data) + 1e-10)
+            self.waterfall.push_row(power)
+
+            # Compute energy and balance
+            energy, balance = self.compute_orientation(block)
+
+            # AUDIO LEVEL MONITORING (v3.1.0 - Debug audio issues)
+            if energy > 0:
+                rms_db = 20 * np.log10(energy + 1e-10)
+                self.dev_panel.rms_label.setText(f"{tr('rms')} {rms_db:.1f} dBFS")
+
+                # Color-coded audio level indicator
+                if rms_db > -20:
+                    level_color = "#00FF00"  # Green - loud
+                    level_status = "🔊 LOUD"
+                elif rms_db > -40:
+                    level_color = "#FFFF00"  # Yellow - medium
+                    level_status = "🔉 OK"
+                elif rms_db > -60:
+                    level_color = "#FF8800"  # Orange - quiet
+                    level_status = "🔈 LOW"
+                else:
+                    level_color = "#FF0000"  # Red - very quiet
+                    level_status = "🔇 SILENT"
+
+                self.dev_panel.rms_label.setStyleSheet(f"color: {level_color}; font-weight: bold; font-size: 10pt;")
+            else:
+                self.dev_panel.rms_label.setText(f"{tr('rms')} --- dBFS (NO AUDIO!)")
+                self.dev_panel.rms_label.setStyleSheet("color: #FF0000; font-weight: bold; font-size: 10pt;")
+
+            # Detection
+            events, bands = self.det_panel.analyze(block, self.audio.sample_rate)
+
+            # Multi-target tracking (v3.0.5 - Module 5)
+            has_detection = events.get('walk', False) or events.get('run', False) or events.get('shot', False)
+
+            # Prepare detections for tracker
+            # OBNIŻONY PRÓG: 0.0001 -> 0.00001 (10x bardziej czuły!)
+            detections = []
+            if has_detection and energy > 0.00001:
+                angle = 90.0 + balance * 75.0
+                distance = min(100.0, max(10.0, energy * 4000.0))
+                elevation = self.compute_elevation(block, self.audio.sample_rate)
+
+                # Determine detection type
+                if events.get('shot', False):
+                    target_type = 'shot'
+                elif events.get('run', False):
+                    target_type = 'footstep'
+                elif events.get('walk', False):
+                    target_type = 'footstep'
+                else:
+                    target_type = 'unknown'
+
+                detections.append({
+                    'angle': angle,
+                    'distance': distance,
+                    'elevation': elevation,
+                    'type': target_type
+                })
+
+            # Update tracker
+            active_targets = self.target_tracker.update(detections)
+
+            # Update radars with all active targets
+            if active_targets:
+                # Update 3D radar (supports multiple targets natively)
+                self.radar_3d_widget.clear_targets()
+                for target in active_targets:
+                    self.radar_3d_widget.add_target(
+                        target['angle'],
+                        target['distance'],
+                        target['elevation'],
+                        target['color']
+                    )
+
+                # Update 2D radar (show primary target only - highest confidence)
+                primary_target = max(active_targets, key=lambda t: t['confidence'])
+                self.radar_widget.update_target(primary_target['angle'], primary_target['distance'])
+                if self.detached_radar:
+                    self.detached_radar.radar.update_target(primary_target['angle'], primary_target['distance'])
+            else:
+                # Clear all radars when no targets
+                self.radar_widget.update_target(None, None)
+                self.radar_3d_widget.clear_targets()
+                if self.detached_radar:
+                    self.detached_radar.radar.update_target(None, None)
+
+            # Update LED overlays
+            self.led_widget.update_from_events(events, bands, energy, balance)
+            if self.detached_led:
+                self.detached_led.led_overlay.update_from_events(events, bands, energy, balance)
+
+            # Update toolbar stats (v3.1.0)
+            target_count = len(active_targets) if active_targets else 0
+            if energy > 0:
+                rms_db = 20 * np.log10(energy + 1e-10)
+                audio_indicator = "🔊" if rms_db > -40 else "🔉" if rms_db > -60 else "🔇"
+            else:
+                audio_indicator = "❌"
+                rms_db = -100
+
+            self.toolbar_stats_label.setText(
+                f"Targets: {target_count} | Audio: {audio_indicator} {rms_db:.0f}dB | FPS: 20"
+            )
+
+        except Exception as e:
+            # CRITICAL ERROR HANDLING: Prevent application freeze if tick() crashes
+            log(f"CRITICAL ERROR in tick(): {e}", "ERROR")
+            import traceback
+            log(traceback.format_exc(), "ERROR")
+            # Don't crash - just skip this frame and continue running
 
     def compute_orientation(self, block):
         """Compute energy and L/R balance"""
@@ -3469,36 +3416,58 @@ class MainWindow(QMainWindow):
         return stereo
 
     def quick_setup_game_audio(self):
-        """Quick setup for game audio capture (v3.1.0)"""
+        """Quick setup for game audio capture (v3.1.0 - Fixed to restart audio when running)"""
         log("Quick Setup: Enabling game audio capture", "INFO")
 
         try:
+            # Remember if we were running
+            was_running = self.is_running
+
+            # Stop audio if running (to apply new settings)
+            if self.is_running:
+                log("Quick Setup: Stopping audio to apply new settings", "INFO")
+                self.stop()
+
             # Enable loopback mode
             self.dev_panel.loopback_mode.setChecked(True)
 
             # Try to find and select a loopback device
+            found_loopback = False
             for i in range(self.dev_panel.device_combo.count()):
                 device_name = self.dev_panel.device_combo.itemText(i).lower()
                 if 'loopback' in device_name or 'speaker' in device_name or 'output' in device_name:
                     self.dev_panel.device_combo.setCurrentIndex(i)
                     log(f"Quick Setup: Selected device: {self.dev_panel.device_combo.itemText(i)}", "INFO")
+                    found_loopback = True
                     break
 
-            # Apply settings if running
-            if self.is_running:
-                self.dev_panel.apply_settings()
+            # Apply settings
+            self.dev_panel.apply_settings()
+
+            # Restart audio if it was running before
+            if was_running:
+                log("Quick Setup: Restarting audio with new settings", "INFO")
+                self.start()
 
             # Show success message
-            self.status_bar.showMessage(
-                "✓ Quick Setup Complete! Loopback mode enabled for game audio." if current_language == 'en'
-                else "✓ Szybka konfiguracja zakończona! Tryb loopback włączony dla audio z gry."
-            )
+            if found_loopback:
+                self.status_bar.showMessage(
+                    "✓ Quick Setup Complete! Loopback mode enabled. Press START to capture game audio." if current_language == 'en'
+                    else "✓ Szybka konfiguracja zakończona! Tryb loopback włączony. Naciśnij START aby przechwycić dźwięk."
+                )
+            else:
+                self.status_bar.showMessage(
+                    "⚠ Loopback mode enabled, but no loopback device found. Check Tab 2 settings." if current_language == 'en'
+                    else "⚠ Tryb loopback włączony, ale nie znaleziono urządzenia. Sprawdź ustawienia w Zakładce 2."
+                )
 
             # Switch to Detection & Audio tab to see settings
             self.main_tabs.setCurrentIndex(1)
 
         except Exception as e:
             log(f"Error in quick_setup_game_audio: {e}", "ERROR")
+            import traceback
+            log(traceback.format_exc(), "ERROR")
             self.status_bar.showMessage(
                 "❌ Quick Setup failed - please configure manually (Tab 2)" if current_language == 'en'
                 else "❌ Szybka konfiguracja nie powiodła się - skonfiguruj ręcznie (Zakładka 2)"

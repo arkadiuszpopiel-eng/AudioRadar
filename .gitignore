@@ -28,6 +28,7 @@ env/
 # PyInstaller
 *.manifest
 *.spec
+!RadarSuite_Final/build_tools/*.spec
 
 # Logs
 *.log

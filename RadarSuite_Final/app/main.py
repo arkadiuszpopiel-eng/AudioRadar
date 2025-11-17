@@ -1,10 +1,28 @@
 """
-RadarSuite Final v3.1.2-Claude-001
+RadarSuite Final v3.2.0-Claude-001
 Advanced audio radar and detection system for gaming with AI-powered human detection
 Supports: sounddevice, soundcard loopback, pyqtgraph visualization
 Optimized for: ARC Raiders + Sound Blaster Z SE + HyperX Cloud II
 
-NEW IN v3.1.2-Claude-001 - AUDIO ENHANCEMENTS:
+NEW IN v3.2.0-Claude-001 - ADVANCED DETECTION (Modules 6-7):
+🎯 PRECISION LOCALIZATION & CLASSIFICATION 🎯
+- Module 6: Advanced 3D Sound Localization (ITD + ILD analysis)
+  * ITD (Interaural Time Difference): Cross-correlation for precise azimuth
+  * ILD (Interaural Level Difference): Volume difference for angle estimation
+  * Combined 70% ITD + 30% ILD for robust positioning
+  * Confidence scoring based on signal strength and correlation
+
+- Module 7: Sound Classification System (weapon/vehicle identification)
+  * 8 sound types: rifle, pistol, shotgun, sniper, car, helicopter, explosion, grenade
+  * Spectral fingerprinting: frequency peaks, sharpness, attack time
+  * Automatic classification with confidence scoring
+  * Classification history tracking for pattern analysis
+
+- INTEGRATION: Detection now uses precise 3D localization + sound classification
+- ACCURACY: Much more precise angle/distance/elevation estimation
+- INTELLIGENCE: Auto-detect weapon types and vehicles
+
+FEATURES FROM v3.1.2:
 🎚️ AUDIO PROCESSING & DEBUGGING 🎚️
 - NEW: Waveform Widget - Visual audio signal display for debugging input issues
 - NEW: Auto-Gain - Automatically amplify quiet audio (target -20 dBFS)
@@ -73,7 +91,7 @@ from PyQt5.QtGui import QPainter, QColor, QPen, QBrush, QPalette
 # VERSION
 # ============================================================================
 
-VERSION = "v3.1.2-Claude-001"
+VERSION = "v3.2.0-Claude-001"
 
 # ============================================================================
 # TRANSLATIONS
@@ -1503,6 +1521,198 @@ class DevicePanel(QWidget):
 
 
 # ============================================================================
+# SOUND CLASSIFIER (Module 7 - v3.2.0)
+# ============================================================================
+
+class SoundClassifier:
+    """
+    Advanced sound classification system
+    Identifies weapon types, vehicles, environmental sounds
+    Uses spectral fingerprinting and pattern matching
+    """
+
+    def __init__(self):
+        log("SoundClassifier.__init__", "INFO")
+
+        # Sound signatures (frequency patterns and characteristics)
+        self.signatures = {
+            # Weapons
+            'rifle': {
+                'freq_peak': (1500, 4000),
+                'duration': (0.05, 0.15),
+                'sharpness': 'high',
+                'decay': 'fast'
+            },
+            'pistol': {
+                'freq_peak': (2000, 5000),
+                'duration': (0.03, 0.1),
+                'sharpness': 'very_high',
+                'decay': 'very_fast'
+            },
+            'shotgun': {
+                'freq_peak': (500, 2000),
+                'duration': (0.1, 0.25),
+                'sharpness': 'medium',
+                'decay': 'medium'
+            },
+            'sniper': {
+                'freq_peak': (3000, 6000),
+                'duration': (0.08, 0.2),
+                'sharpness': 'very_high',
+                'decay': 'fast'
+            },
+            # Vehicles
+            'car_engine': {
+                'freq_peak': (80, 250),
+                'duration': (1.0, 10.0),
+                'sharpness': 'low',
+                'decay': 'sustained'
+            },
+            'helicopter': {
+                'freq_peak': (50, 150),
+                'duration': (2.0, 20.0),
+                'sharpness': 'low',
+                'decay': 'sustained'
+            },
+            # Explosions
+            'explosion': {
+                'freq_peak': (30, 500),
+                'duration': (0.2, 1.0),
+                'sharpness': 'very_low',
+                'decay': 'slow'
+            },
+            'grenade': {
+                'freq_peak': (50, 800),
+                'duration': (0.15, 0.5),
+                'sharpness': 'low',
+                'decay': 'medium'
+            }
+        }
+
+        # Classification history
+        self.recent_classifications = []
+        self.max_history = 20
+
+    def classify_sound(self, block, sample_rate):
+        """
+        Classify sound type based on spectral characteristics
+
+        Returns: dict with type, confidence, details
+        """
+        try:
+            if block is None or len(block) == 0:
+                return {'type': 'unknown', 'confidence': 0, 'details': {}}
+
+            # Convert to mono
+            if block.ndim == 2:
+                mono = np.mean(block, axis=1)
+            else:
+                mono = block.ravel()
+
+            # FFT analysis
+            fft_data = np.fft.rfft(mono * np.hanning(len(mono)))
+            freqs = np.fft.rfftfreq(len(mono), d=1.0/sample_rate)
+            power = np.abs(fft_data)
+
+            # Find dominant frequency
+            peak_idx = np.argmax(power)
+            dominant_freq = freqs[peak_idx] if peak_idx < len(freqs) else 0
+
+            # Calculate spectral characteristics
+            total_power = np.sum(power)
+            if total_power < 1e-10:
+                return {'type': 'silence', 'confidence': 100, 'details': {}}
+
+            # Spectral centroid (brightness)
+            spectral_centroid = np.sum(freqs * power) / total_power
+
+            # Spectral spread (bandwidth)
+            spectral_spread = np.sqrt(np.sum(((freqs - spectral_centroid) ** 2) * power) / total_power)
+
+            # Attack time (how quickly sound starts)
+            envelope = np.abs(sp_signal.hilbert(mono))
+            attack_time = self._estimate_attack_time(envelope, sample_rate)
+
+            # Match against signatures
+            best_match = 'unknown'
+            best_confidence = 0
+
+            for sound_type, sig in self.signatures.items():
+                confidence = 0
+
+                # Check frequency peak match
+                if sig['freq_peak'][0] <= dominant_freq <= sig['freq_peak'][1]:
+                    confidence += 40
+
+                # Check sharpness (high frequency content)
+                high_freq_mask = freqs > 2000
+                high_freq_ratio = np.sum(power[high_freq_mask]) / total_power
+
+                if sig['sharpness'] == 'very_high' and high_freq_ratio > 0.3:
+                    confidence += 30
+                elif sig['sharpness'] == 'high' and high_freq_ratio > 0.2:
+                    confidence += 25
+                elif sig['sharpness'] == 'medium' and 0.1 < high_freq_ratio < 0.3:
+                    confidence += 20
+                elif sig['sharpness'] == 'low' and high_freq_ratio < 0.1:
+                    confidence += 20
+
+                # Check attack time for decay type
+                if sig['decay'] == 'very_fast' and attack_time < 0.05:
+                    confidence += 30
+                elif sig['decay'] == 'fast' and attack_time < 0.1:
+                    confidence += 25
+                elif sig['decay'] == 'medium' and 0.1 < attack_time < 0.3:
+                    confidence += 20
+
+                if confidence > best_confidence:
+                    best_confidence = confidence
+                    best_match = sound_type
+
+            # Add to history
+            classification = {
+                'type': best_match,
+                'confidence': best_confidence,
+                'details': {
+                    'dominant_freq': dominant_freq,
+                    'centroid': spectral_centroid,
+                    'spread': spectral_spread,
+                    'attack_time': attack_time
+                }
+            }
+
+            self.recent_classifications.append(classification)
+            if len(self.recent_classifications) > self.max_history:
+                self.recent_classifications.pop(0)
+
+            return classification
+
+        except Exception as e:
+            log(f"Error in classify_sound: {e}", "ERROR")
+            return {'type': 'unknown', 'confidence': 0, 'details': {}}
+
+    def _estimate_attack_time(self, envelope, sample_rate):
+        """Estimate how quickly sound reaches peak amplitude"""
+        try:
+            max_val = np.max(envelope)
+            if max_val < 1e-10:
+                return 0.0
+
+            # Find time to reach 90% of maximum
+            threshold = max_val * 0.9
+            above_threshold = np.where(envelope >= threshold)[0]
+
+            if len(above_threshold) > 0:
+                attack_samples = above_threshold[0]
+                attack_time = attack_samples / sample_rate
+                return attack_time
+            return 0.0
+
+        except:
+            return 0.0
+
+
+# ============================================================================
 # HUMAN FOOTSTEP DETECTOR (v3.0)
 # ============================================================================
 
@@ -2844,6 +3054,9 @@ class MainWindow(QMainWindow):
         self.game_detector = GameProcessDetector()
         self.audio_scanner = AudioSourceScanner()
 
+        # Sound classifier (Module 7 - v3.2.0)
+        self.sound_classifier = SoundClassifier()
+
         # Multi-target tracker (v3.0.5 - Module 5)
         self.target_tracker = TargetTracker(max_targets=3)
 
@@ -3400,12 +3613,21 @@ class MainWindow(QMainWindow):
             # OBNIŻONY PRÓG: 0.0001 -> 0.00001 (10x bardziej czuły!)
             detections = []
             if has_detection and energy > 0.00001:
-                angle = 90.0 + balance * 75.0
-                distance = min(100.0, max(10.0, energy * 4000.0))
-                elevation = self.compute_elevation(block, self.audio.sample_rate)
+                # Use precise 3D localization (Module 6 - v3.2.0)
+                location_3d = self.compute_precise_location_3d(block, self.audio.sample_rate)
 
-                # Determine detection type
-                if events.get('shot', False):
+                angle = location_3d['angle']
+                distance = location_3d['distance']
+                elevation = location_3d['elevation']
+
+                # Classify sound type (Module 7 - v3.2.0)
+                sound_class = self.sound_classifier.classify_sound(block, self.audio.sample_rate)
+
+                # Determine detection type (prioritize classification over simple detection)
+                if sound_class['confidence'] > 50:
+                    # High confidence classification - use it
+                    target_type = sound_class['type']
+                elif events.get('shot', False):
                     target_type = 'shot'
                 elif events.get('run', False):
                     target_type = 'footstep'
@@ -3418,7 +3640,9 @@ class MainWindow(QMainWindow):
                     'angle': angle,
                     'distance': distance,
                     'elevation': elevation,
-                    'type': target_type
+                    'type': target_type,
+                    'sound_class': sound_class['type'],  # Always include classification
+                    'class_confidence': sound_class['confidence']
                 })
 
             # Update tracker
@@ -3550,6 +3774,112 @@ class MainWindow(QMainWindow):
         except Exception as e:
             log(f"Error in compute_orientation: {e}", "ERROR")
             return 0.0, 0.0
+
+    def compute_precise_location_3d(self, block, sample_rate):
+        """
+        Advanced 3D sound localization using ITD and ILD (Module 6 - v3.2.0)
+
+        Uses:
+        - ITD (Interaural Time Difference): Cross-correlation between L/R channels
+        - ILD (Interaural Level Difference): Volume difference between L/R channels
+        - Frequency analysis for elevation
+
+        Returns: dict with angle, distance, elevation, confidence
+        """
+        try:
+            if block is None or len(block) == 0:
+                return {'angle': 0, 'distance': 50, 'elevation': 0, 'confidence': 0}
+
+            # Ensure stereo
+            if block.ndim != 2 or block.shape[1] < 2:
+                return {'angle': 0, 'distance': 50, 'elevation': 0, 'confidence': 0}
+
+            left = block[:, 0]
+            right = block[:, 1]
+
+            # === ITD (Time Difference) using Cross-Correlation ===
+            # Cross-correlate left and right channels
+            correlation = np.correlate(left, right, mode='full')
+            center = len(correlation) // 2
+
+            # Find peak correlation (time delay)
+            # Limit search to ±1ms (realistic head size)
+            max_delay_samples = int(0.001 * sample_rate)  # 1ms
+            search_range = slice(center - max_delay_samples, center + max_delay_samples)
+            local_corr = correlation[search_range]
+
+            if len(local_corr) > 0:
+                peak_idx = np.argmax(np.abs(local_corr))
+                time_delay_samples = peak_idx - max_delay_samples
+
+                # Convert time delay to azimuth angle
+                # Speed of sound: 343 m/s, head diameter: ~0.18m
+                # Max ITD: ~0.52ms (90° left/right)
+                max_itd_seconds = 0.00052
+                max_itd_samples = max_itd_seconds * sample_rate
+
+                if max_itd_samples > 0:
+                    # Normalize time delay to angle (-90° to +90°)
+                    angle_from_itd = (time_delay_samples / max_itd_samples) * 90.0
+                    angle_from_itd = np.clip(angle_from_itd, -90, 90)
+                else:
+                    angle_from_itd = 0
+            else:
+                angle_from_itd = 0
+
+            # === ILD (Level Difference) ===
+            rms_left = np.sqrt(np.mean(left ** 2)) + 1e-10
+            rms_right = np.sqrt(np.mean(right ** 2)) + 1e-10
+
+            # ILD in dB
+            ild_db = 20 * np.log10(rms_right / rms_left)
+
+            # Typical ILD range: ±20 dB for ±90°
+            angle_from_ild = (ild_db / 20.0) * 90.0
+            angle_from_ild = np.clip(angle_from_ild, -90, 90)
+
+            # === Combine ITD and ILD for robust angle estimation ===
+            # ITD is more reliable for low frequencies, ILD for high frequencies
+            # Weight: 70% ITD, 30% ILD (ITD is generally more accurate)
+            angle_combined = 0.7 * angle_from_itd + 0.3 * angle_from_ild
+
+            # Convert to radar coordinates (0° = forward, 90° = right, 180° = back, 270° = left)
+            angle_radar = 90.0 + angle_combined  # Center at front (90°)
+            angle_radar = angle_radar % 360.0
+
+            # === Distance Estimation ===
+            total_energy = (rms_left + rms_right) / 2.0
+
+            # Inverse square law approximation
+            # Reference: 0.1 RMS = 10m, 0.01 RMS = 100m
+            if total_energy > 0:
+                distance = np.clip(10.0 / total_energy, 5.0, 100.0)
+            else:
+                distance = 50.0
+
+            # === Elevation from frequency content ===
+            elevation = self.compute_elevation(block, sample_rate)
+
+            # === Confidence Score ===
+            # Based on signal strength and stereo correlation
+            signal_strength = total_energy / 0.1  # Normalized to 0.1 = 100%
+            correlation_quality = np.max(np.abs(local_corr)) if len(local_corr) > 0 else 0
+
+            confidence = min(100.0, signal_strength * 50 + correlation_quality * 50)
+
+            return {
+                'angle': angle_radar,
+                'distance': distance,
+                'elevation': elevation,
+                'confidence': confidence,
+                'itd_angle': angle_from_itd,
+                'ild_angle': angle_from_ild,
+                'ild_db': ild_db
+            }
+
+        except Exception as e:
+            log(f"Error in compute_precise_location_3d: {e}", "ERROR")
+            return {'angle': 0, 'distance': 50, 'elevation': 0, 'confidence': 0}
 
     def compute_elevation(self, block, sample_rate):
         """

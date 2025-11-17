@@ -1,10 +1,20 @@
 """
-RadarSuite Final v3.3.0-Claude-001
+RadarSuite Final v3.3.1-Claude-001
 Advanced audio radar and detection system for gaming with AI-powered human detection
 Supports: sounddevice, soundcard loopback, pyqtgraph visualization
 Optimized for: ARC Raiders + Sound Blaster Z SE + HyperX Cloud II
 
-NEW IN v3.3.0-Claude-001 - THREAT ASSESSMENT & RECORDING (Modules 8-9):
+NEW IN v3.3.1-Claude-001 - ENHANCED GAME DETECTION:
+🎮 IMPROVED ARC RAIDERS & MULTI-GAME DETECTION 🎮
+- FIXED: ARC Raiders detection (now detects PioneerGame.exe!)
+- ENHANCED: Process detection algorithm
+  * Scans process name (e.g., "PioneerGame.exe")
+  * Scans full exe path (e.g., "C:\Games\ARC Raiders\...")
+  * Scans command line arguments (catches display names)
+- ADDED: 6 new games (Destiny 2, Hunt Showdown, The Cycle, Marauders, etc.)
+- IMPROVED: More patterns per game for better detection accuracy
+
+FEATURES FROM v3.3.0:
 🎯 INTELLIGENT THREAT RANKING & SESSION RECORDING 🎯
 - Module 8: Threat Priority System (rank targets by danger level)
   * Scoring: weapon type + distance + direction + confidence
@@ -113,7 +123,7 @@ from PyQt5.QtGui import QPainter, QColor, QPen, QBrush, QPalette
 # VERSION
 # ============================================================================
 
-VERSION = "v3.3.0-Claude-001"
+VERSION = "v3.3.1-Claude-001"
 
 # ============================================================================
 # TRANSLATIONS
@@ -2293,18 +2303,51 @@ class GameProcessDetector:
             'RE Engine': ['re_chunk'],
         }
 
-        # Known games by exe name
+        # Known games by exe name and process names
+        # Multiple patterns per game to catch different process names
+        # Format: 'Display Name': ['process1', 'process2', 'folder_name', 'cmdline_arg']
         self.known_games = {
-            'ARC Raiders': ['ARCRaiders', 'ARC-Win64'],
-            'Escape from Tarkov': ['EscapeFromTarkov'],
-            'Call of Duty': ['cod', 'ModernWarfare', 'Warzone'],
-            'CS2': ['cs2.exe'],
-            'Valorant': ['VALORANT', 'RiotClient'],
-            'Apex Legends': ['r5apex.exe'],
-            'PUBG': ['TslGame', 'PUBG'],
-            'Fortnite': ['FortniteClient-Win64-Shipping'],
-            'Overwatch': ['Overwatch.exe'],
-            'Rainbow Six Siege': ['RainbowSix'],
+            # ARC Raiders uses PioneerGame.exe (Unreal Engine 5)
+            'ARC Raiders': ['ARCRaiders', 'ARC-Win64', 'PioneerGame', 'Pioneer', 'ARC Raiders'],
+
+            # Tarkov
+            'Escape from Tarkov': ['EscapeFromTarkov', 'Tarkov', 'EFT'],
+
+            # Call of Duty series
+            'Call of Duty': ['cod', 'ModernWarfare', 'Warzone', 'BlackOps'],
+
+            # Counter-Strike 2
+            'CS2': ['cs2.exe', 'cs2', 'Counter-Strike 2'],
+
+            # Valorant
+            'Valorant': ['VALORANT', 'RiotClient', 'VALORANT-Win64-Shipping'],
+
+            # Apex Legends
+            'Apex Legends': ['r5apex.exe', 'r5apex', 'Apex'],
+
+            # PUBG
+            'PUBG': ['TslGame', 'PUBG', 'TslGame-Win64-Shipping'],
+
+            # Fortnite
+            'Fortnite': ['FortniteClient-Win64-Shipping', 'Fortnite', 'FortniteLauncher'],
+
+            # Overwatch
+            'Overwatch': ['Overwatch.exe', 'Overwatch'],
+
+            # Rainbow Six Siege
+            'Rainbow Six Siege': ['RainbowSix', 'RainbowSixGame', 'R6'],
+
+            # Destiny 2
+            'Destiny 2': ['destiny2.exe', 'Destiny2'],
+
+            # Hunt: Showdown
+            'Hunt Showdown': ['HuntGame', 'Hunt'],
+
+            # The Cycle: Frontier
+            'The Cycle': ['Prospect', 'TheCycle'],
+
+            # Marauders
+            'Marauders': ['Marauders', 'MaraudersGame'],
         }
 
         # Currently detected games/processes
@@ -2334,32 +2377,43 @@ class GameProcessDetector:
             detected_games = []
             detected_engines = []
 
-            # Scan all running processes
-            for proc in psutil.process_iter(['name', 'exe']):
+            # Scan all running processes (enhanced detection with cmdline)
+            for proc in psutil.process_iter(['name', 'exe', 'cmdline']):
                 try:
-                    proc_name = proc.info['name']
-                    proc_exe = proc.info['exe']
+                    proc_name = proc.info['name'] or ''
+                    proc_exe = proc.info['exe'] or ''
+                    proc_cmdline = ' '.join(proc.info['cmdline']) if proc.info.get('cmdline') else ''
 
                     if not proc_name:
                         continue
 
+                    # Build searchable text from all sources
+                    # This catches:
+                    # - Process name (e.g., "PioneerGame.exe")
+                    # - Full exe path (e.g., "C:\Games\ARC Raiders\PioneerGame.exe")
+                    # - Command line args (e.g., "PioneerGame.exe -windowed ARC Raiders")
+                    search_text = f"{proc_name} {proc_exe} {proc_cmdline}".lower()
+
                     # Check for known games
                     for game_name, patterns in self.known_games.items():
                         for pattern in patterns:
-                            if pattern.lower() in proc_name.lower() or (proc_exe and pattern.lower() in proc_exe.lower()):
+                            if pattern.lower() in search_text:
                                 if game_name not in detected_games:
                                     detected_games.append(game_name)
-                                    log(f"Detected game: {game_name} ({proc_name})", "INFO")
+                                    log(f"Detected game: {game_name} (process: {proc_name})", "INFO")
+                                break  # Found this game, check next game
 
                     # Check for game engines
                     for engine_name, patterns in self.game_engines.items():
                         for pattern in patterns:
-                            if pattern.lower() in proc_name.lower() or (proc_exe and pattern.lower() in proc_exe.lower()):
+                            if pattern.lower() in search_text:
                                 if engine_name not in detected_engines:
                                     detected_engines.append(engine_name)
-                                    log(f"Detected engine: {engine_name} ({proc_name})", "INFO")
+                                    log(f"Detected engine: {engine_name} (process: {proc_name})", "INFO")
+                                break  # Found this engine, check next engine
 
                 except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
+                    # Process ended or no access - skip it
                     continue
 
             self.active_games = detected_games

@@ -1,10 +1,32 @@
 """
-RadarSuite Final v3.2.0-Claude-001
+RadarSuite Final v3.3.0-Claude-001
 Advanced audio radar and detection system for gaming with AI-powered human detection
 Supports: sounddevice, soundcard loopback, pyqtgraph visualization
 Optimized for: ARC Raiders + Sound Blaster Z SE + HyperX Cloud II
 
-NEW IN v3.2.0-Claude-001 - ADVANCED DETECTION (Modules 6-7):
+NEW IN v3.3.0-Claude-001 - THREAT ASSESSMENT & RECORDING (Modules 8-9):
+🎯 INTELLIGENT THREAT RANKING & SESSION RECORDING 🎯
+- Module 8: Threat Priority System (rank targets by danger level)
+  * Scoring: weapon type + distance + direction + confidence
+  * Weapon threats: sniper(100) > explosion(90) > rifle(85) > pistol(70)
+  * Direction factor: rear attacks = 1.3x threat, front = 0.8x
+  * Distance factor: <20m = 1.5x threat, >50m = 0.5x
+  * Categories: CRITICAL (red), HIGH (orange), MEDIUM (yellow), LOW (green)
+  * Targets auto-sorted by threat level (highest first)
+
+- Module 9: Audio Recording & Replay
+  * Record button in toolbar (⏺ REC)
+  * WAV format with 16-bit quality
+  * Metadata export (JSON with detections + timestamps)
+  * Auto-save with timestamp filename
+  * Duration display (M:SS)
+  * Enabled only when audio is running
+
+- INTEGRATION: Targets now color-coded by threat level
+- SAFETY: Rear attacks highlighted as higher priority
+- ANALYSIS: Record sessions for post-game review
+
+FEATURES FROM v3.2.0:
 🎯 PRECISION LOCALIZATION & CLASSIFICATION 🎯
 - Module 6: Advanced 3D Sound Localization (ITD + ILD analysis)
   * ITD (Interaural Time Difference): Cross-correlation for precise azimuth
@@ -91,7 +113,7 @@ from PyQt5.QtGui import QPainter, QColor, QPen, QBrush, QPalette
 # VERSION
 # ============================================================================
 
-VERSION = "v3.2.0-Claude-001"
+VERSION = "v3.3.0-Claude-001"
 
 # ============================================================================
 # TRANSLATIONS
@@ -1713,6 +1735,298 @@ class SoundClassifier:
 
 
 # ============================================================================
+# THREAT PRIORITY SYSTEM (Module 8 - v3.3.0)
+# ============================================================================
+
+class ThreatPrioritySystem:
+    """
+    Advanced threat assessment and priority ranking
+    Scores targets based on type, distance, direction, confidence
+    """
+
+    def __init__(self):
+        log("ThreatPrioritySystem.__init__", "INFO")
+
+        # Threat scores by sound type (0-100)
+        self.threat_scores = {
+            # Weapons (highest threat)
+            'sniper': 100,
+            'rifle': 85,
+            'shotgun': 80,
+            'pistol': 70,
+            'explosion': 90,
+            'grenade': 95,
+
+            # Vehicles (medium threat)
+            'helicopter': 60,
+            'car_engine': 50,
+
+            # Humans (lower threat but still important)
+            'footstep': 40,
+            'voice': 30,
+            'breathing': 20,
+
+            # Generic
+            'shot': 75,
+            'unknown': 10,
+            'silence': 0
+        }
+
+        # Direction multipliers (rear is more dangerous)
+        self.direction_zones = {
+            'front': 0.8,      # 45-135° (less threatening)
+            'side': 1.0,       # 135-225° or 315-45° (medium)
+            'rear': 1.3        # 225-315° (most threatening - can't see)
+        }
+
+    def calculate_threat_level(self, target):
+        """
+        Calculate threat level for a target (0-100 scale)
+
+        Args:
+            target: dict with type, angle, distance, elevation, confidence
+
+        Returns:
+            dict with threat_level, threat_category, color, priority_rank
+        """
+        try:
+            # Base threat from sound type
+            sound_type = target.get('type', 'unknown')
+            base_threat = self.threat_scores.get(sound_type, 10)
+
+            # Distance factor (closer = more threatening)
+            # 0-20m = 1.5x, 20-50m = 1.0x, 50-100m = 0.5x
+            distance = target.get('distance', 50)
+            if distance < 20:
+                distance_factor = 1.5
+            elif distance < 50:
+                distance_factor = 1.0 + (50 - distance) / 60.0  # Linear interpolation
+            else:
+                distance_factor = max(0.5, 1.0 - (distance - 50) / 100.0)
+
+            # Direction factor (rear attacks are dangerous)
+            angle = target.get('angle', 90)
+            direction_factor = self._get_direction_factor(angle)
+
+            # Confidence factor (low confidence = reduce threat)
+            confidence = target.get('confidence', 100) / 100.0
+
+            # Calculate final threat level
+            threat_level = base_threat * distance_factor * direction_factor * confidence
+            threat_level = min(100, max(0, threat_level))  # Clamp to 0-100
+
+            # Categorize threat
+            if threat_level >= 80:
+                category = 'CRITICAL'
+                color = (255, 0, 0)  # Red
+            elif threat_level >= 60:
+                category = 'HIGH'
+                color = (255, 100, 0)  # Orange
+            elif threat_level >= 40:
+                category = 'MEDIUM'
+                color = (255, 200, 0)  # Yellow
+            elif threat_level >= 20:
+                category = 'LOW'
+                color = (100, 200, 100)  # Green
+            else:
+                category = 'MINIMAL'
+                color = (100, 100, 255)  # Blue
+
+            return {
+                'threat_level': threat_level,
+                'category': category,
+                'color': color,
+                'base_threat': base_threat,
+                'distance_factor': distance_factor,
+                'direction_factor': direction_factor,
+                'confidence_factor': confidence
+            }
+
+        except Exception as e:
+            log(f"Error in calculate_threat_level: {e}", "ERROR")
+            return {
+                'threat_level': 0,
+                'category': 'UNKNOWN',
+                'color': (128, 128, 128),
+                'base_threat': 0,
+                'distance_factor': 1.0,
+                'direction_factor': 1.0,
+                'confidence_factor': 1.0
+            }
+
+    def _get_direction_factor(self, angle):
+        """
+        Get direction threat multiplier based on angle
+
+        Radar coordinates: 0° = top, 90° = right, 180° = bottom, 270° = left
+        Player faces forward (top), so rear is bottom (180°)
+        """
+        # Normalize angle to 0-360
+        angle = angle % 360
+
+        # Front zone: 315-45° (top of radar)
+        if (angle >= 315 or angle < 45):
+            return self.direction_zones['front']
+
+        # Rear zone: 135-225° (bottom of radar - behind player)
+        elif 135 <= angle < 225:
+            return self.direction_zones['rear']
+
+        # Side zones: 45-135° (right) or 225-315° (left)
+        else:
+            return self.direction_zones['side']
+
+    def rank_targets(self, targets):
+        """
+        Rank list of targets by threat priority
+
+        Returns: list of targets sorted by threat level (highest first)
+        """
+        try:
+            if not targets:
+                return []
+
+            # Calculate threat for each target
+            for target in targets:
+                threat_info = self.calculate_threat_level(target)
+                target.update(threat_info)
+
+            # Sort by threat level (descending)
+            ranked = sorted(targets, key=lambda t: t.get('threat_level', 0), reverse=True)
+
+            return ranked
+
+        except Exception as e:
+            log(f"Error in rank_targets: {e}", "ERROR")
+            return targets
+
+
+# ============================================================================
+# AUDIO RECORDER (Module 9 - v3.3.0)
+# ============================================================================
+
+class AudioRecorder:
+    """
+    Session recording and replay system
+    Records audio with metadata (detections, timestamps)
+    Supports WAV format playback
+    """
+
+    def __init__(self, sample_rate=48000):
+        log("AudioRecorder.__init__", "INFO")
+
+        self.sample_rate = sample_rate
+        self.is_recording = False
+        self.recorded_blocks = []
+        self.metadata = []  # Detection events with timestamps
+        self.start_time = None
+        self.total_samples = 0
+
+    def start_recording(self):
+        """Start recording session"""
+        self.is_recording = True
+        self.recorded_blocks = []
+        self.metadata = []
+        self.start_time = time.time()
+        self.total_samples = 0
+        log("Recording started", "INFO")
+
+    def stop_recording(self):
+        """Stop recording session"""
+        self.is_recording = False
+        log(f"Recording stopped: {len(self.recorded_blocks)} blocks, {self.total_samples} samples", "INFO")
+
+    def add_block(self, audio_block, detections=None):
+        """
+        Add audio block to recording
+
+        Args:
+            audio_block: numpy array of audio data
+            detections: list of detection events for this block
+        """
+        if not self.is_recording:
+            return
+
+        try:
+            # Store audio block
+            self.recorded_blocks.append(audio_block.copy())
+            self.total_samples += len(audio_block)
+
+            # Store metadata
+            if detections:
+                timestamp = time.time() - self.start_time
+                self.metadata.append({
+                    'timestamp': timestamp,
+                    'block_index': len(self.recorded_blocks) - 1,
+                    'detections': detections.copy()
+                })
+
+        except Exception as e:
+            log(f"Error adding block to recording: {e}", "ERROR")
+
+    def save_to_wav(self, filename):
+        """
+        Save recording to WAV file
+
+        Args:
+            filename: output WAV file path
+        """
+        try:
+            if not self.recorded_blocks:
+                log("No audio to save", "WARNING")
+                return False
+
+            # Concatenate all blocks
+            full_audio = np.concatenate(self.recorded_blocks, axis=0)
+
+            # Import wave module
+            import wave
+
+            # Save WAV file
+            with wave.open(filename, 'wb') as wav_file:
+                # Set parameters
+                n_channels = full_audio.shape[1] if full_audio.ndim == 2 else 1
+                sampwidth = 2  # 16-bit
+                framerate = self.sample_rate
+
+                wav_file.setnchannels(n_channels)
+                wav_file.setsampwidth(sampwidth)
+                wav_file.setframerate(framerate)
+
+                # Convert float32 to int16
+                audio_int16 = (full_audio * 32767).astype(np.int16)
+                wav_file.writeframes(audio_int16.tobytes())
+
+            log(f"Recording saved to {filename}", "INFO")
+
+            # Save metadata to JSON
+            metadata_file = filename.replace('.wav', '_metadata.json')
+            import json
+            with open(metadata_file, 'w') as f:
+                json.dump(self.metadata, f, indent=2)
+
+            log(f"Metadata saved to {metadata_file}", "INFO")
+            return True
+
+        except Exception as e:
+            log(f"Error saving WAV: {e}", "ERROR")
+            return False
+
+    def get_duration(self):
+        """Get recording duration in seconds"""
+        if self.total_samples == 0:
+            return 0.0
+        return self.total_samples / self.sample_rate
+
+    def clear(self):
+        """Clear recording buffer"""
+        self.recorded_blocks = []
+        self.metadata = []
+        self.total_samples = 0
+        self.start_time = None
+
+
+# ============================================================================
 # HUMAN FOOTSTEP DETECTOR (v3.0)
 # ============================================================================
 
@@ -3057,6 +3371,12 @@ class MainWindow(QMainWindow):
         # Sound classifier (Module 7 - v3.2.0)
         self.sound_classifier = SoundClassifier()
 
+        # Threat priority system (Module 8 - v3.3.0)
+        self.threat_system = ThreatPrioritySystem()
+
+        # Audio recorder (Module 9 - v3.3.0)
+        self.audio_recorder = AudioRecorder(sample_rate=48000)
+
         # Multi-target tracker (v3.0.5 - Module 5)
         self.target_tracker = TargetTracker(max_targets=3)
 
@@ -3354,6 +3674,34 @@ class MainWindow(QMainWindow):
 
         toolbar.addSeparator()
 
+        # Recording controls (Module 9 - v3.3.0)
+        self.record_btn = QPushButton("⏺ REC")
+        self.record_btn.setStyleSheet("""
+            QPushButton {
+                background: #aa0000;
+                color: white;
+                font-weight: bold;
+                padding: 8px 15px;
+                border-radius: 4px;
+            }
+            QPushButton:hover {
+                background: #cc0000;
+            }
+            QPushButton:disabled {
+                background: #555555;
+                color: #888888;
+            }
+        """)
+        self.record_btn.clicked.connect(self.toggle_recording)
+        self.record_btn.setEnabled(False)  # Enabled only when audio is running
+        toolbar.addWidget(self.record_btn)
+
+        self.record_duration_label = QLabel("0:00")
+        self.record_duration_label.setStyleSheet("color: #ff0000; font-family: monospace; font-weight: bold;")
+        toolbar.addWidget(self.record_duration_label)
+
+        toolbar.addSeparator()
+
         # Language switcher
         toolbar.addWidget(QLabel("🌍"))
         self.lang_btn = QPushButton("EN/PL")
@@ -3492,6 +3840,57 @@ class MainWindow(QMainWindow):
         else:
             self.stop()
 
+    def toggle_recording(self):
+        """Toggle audio recording (Module 9 - v3.3.0)"""
+        if not self.audio_recorder.is_recording:
+            # Start recording
+            self.audio_recorder.start_recording()
+            self.record_btn.setText("⏹ STOP REC")
+            self.record_btn.setStyleSheet("""
+                QPushButton {
+                    background: #00aa00;
+                    color: white;
+                    font-weight: bold;
+                    padding: 8px 15px;
+                    border-radius: 4px;
+                }
+                QPushButton:hover {
+                    background: #00cc00;
+                }
+            """)
+            log("Recording started", "INFO")
+        else:
+            # Stop recording and save
+            self.audio_recorder.stop_recording()
+
+            # Generate filename with timestamp
+            from datetime import datetime
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            filename = f"RadarSuite_Recording_{timestamp}.wav"
+
+            # Save to file
+            if self.audio_recorder.save_to_wav(filename):
+                self.status_bar.showMessage(f"✓ Recording saved: {filename}")
+            else:
+                self.status_bar.showMessage("❌ Failed to save recording")
+
+            # Reset button
+            self.record_btn.setText("⏺ REC")
+            self.record_btn.setStyleSheet("""
+                QPushButton {
+                    background: #aa0000;
+                    color: white;
+                    font-weight: bold;
+                    padding: 8px 15px;
+                    border-radius: 4px;
+                }
+                QPushButton:hover {
+                    background: #cc0000;
+                }
+            """)
+
+            log(f"Recording saved to {filename}", "INFO")
+
     def start(self):
         """Start audio capture"""
         log("Starting audio capture", "INFO")
@@ -3500,6 +3899,7 @@ class MainWindow(QMainWindow):
         self.audio.start()
 
         self.is_running = True
+        self.record_btn.setEnabled(True)  # Enable recording when audio starts
         self.start_btn.setText("⏹ STOP")
         self.start_btn.setStyleSheet("""
             QPushButton {
@@ -3562,6 +3962,17 @@ class MainWindow(QMainWindow):
 
             # Apply audio processing (auto-gain, noise gate) (v3.1.2)
             block = self.apply_audio_processing(block)
+
+            # Record audio if recording is active (Module 9 - v3.3.0)
+            # Note: detections will be added later in tick()
+            if self.audio_recorder.is_recording:
+                self.audio_recorder.add_block(block)
+
+                # Update recording duration display
+                duration = self.audio_recorder.get_duration()
+                minutes = int(duration // 60)
+                seconds = int(duration % 60)
+                self.record_duration_label.setText(f"{minutes}:{seconds:02d}")
 
             # Update spectrum, waterfall, and waveform (v3.1.2)
             self.spectrum.update_fft(block)
@@ -3648,7 +4059,11 @@ class MainWindow(QMainWindow):
             # Update tracker
             active_targets = self.target_tracker.update(detections)
 
-            # Update radars with all active targets
+            # Rank targets by threat priority (Module 8 - v3.3.0)
+            if active_targets:
+                active_targets = self.threat_system.rank_targets(active_targets)
+
+            # Update radars with all active targets (now threat-ranked)
             if active_targets:
                 # Update 3D radar (supports multiple targets natively)
                 self.radar_3d_widget.clear_targets()

@@ -2905,6 +2905,25 @@ class MainWindow(QMainWindow):
         self.detected_engines_label.setWordWrap(True)
         game_group_layout.addWidget(self.detected_engines_label)
 
+        # Quick Setup button for game audio
+        self.quick_setup_btn = QPushButton("⚡ QUICK SETUP - Enable Game Audio Capture")
+        self.quick_setup_btn.setStyleSheet("""
+            QPushButton {
+                background: #0066aa;
+                color: white;
+                font-weight: bold;
+                padding: 10px;
+                border-radius: 4px;
+                font-size: 10pt;
+                margin: 10px;
+            }
+            QPushButton:hover {
+                background: #0088cc;
+            }
+        """)
+        self.quick_setup_btn.clicked.connect(self.quick_setup_game_audio)
+        game_group_layout.addWidget(self.quick_setup_btn)
+
         game_group.setLayout(game_group_layout)
         game_layout.addWidget(game_group)
 
@@ -3253,9 +3272,29 @@ class MainWindow(QMainWindow):
         # Compute energy and balance
         energy, balance = self.compute_orientation(block)
 
+        # AUDIO LEVEL MONITORING (v3.1.0 - Debug audio issues)
         if energy > 0:
-            rms_db = 20 * np.log10(energy)
+            rms_db = 20 * np.log10(energy + 1e-10)
             self.dev_panel.rms_label.setText(f"{tr('rms')} {rms_db:.1f} dBFS")
+
+            # Color-coded audio level indicator
+            if rms_db > -20:
+                level_color = "#00FF00"  # Green - loud
+                level_status = "🔊 LOUD"
+            elif rms_db > -40:
+                level_color = "#FFFF00"  # Yellow - medium
+                level_status = "🔉 OK"
+            elif rms_db > -60:
+                level_color = "#FF8800"  # Orange - quiet
+                level_status = "🔈 LOW"
+            else:
+                level_color = "#FF0000"  # Red - very quiet
+                level_status = "🔇 SILENT"
+
+            self.dev_panel.rms_label.setStyleSheet(f"color: {level_color}; font-weight: bold; font-size: 10pt;")
+        else:
+            self.dev_panel.rms_label.setText(f"{tr('rms')} --- dBFS (NO AUDIO!)")
+            self.dev_panel.rms_label.setStyleSheet("color: #FF0000; font-weight: bold; font-size: 10pt;")
 
         # Detection
         events, bands = self.det_panel.analyze(block, self.audio.sample_rate)
@@ -3264,8 +3303,9 @@ class MainWindow(QMainWindow):
         has_detection = events.get('walk', False) or events.get('run', False) or events.get('shot', False)
 
         # Prepare detections for tracker
+        # OBNIŻONY PRÓG: 0.0001 -> 0.00001 (10x bardziej czuły!)
         detections = []
-        if has_detection and energy > 0.0001:
+        if has_detection and energy > 0.00001:
             angle = 90.0 + balance * 75.0
             distance = min(100.0, max(10.0, energy * 4000.0))
             elevation = self.compute_elevation(block, self.audio.sample_rate)
@@ -3318,6 +3358,19 @@ class MainWindow(QMainWindow):
         self.led_widget.update_from_events(events, bands, energy, balance)
         if self.detached_led:
             self.detached_led.led_overlay.update_from_events(events, bands, energy, balance)
+
+        # Update toolbar stats (v3.1.0)
+        target_count = len(active_targets) if active_targets else 0
+        if energy > 0:
+            rms_db = 20 * np.log10(energy + 1e-10)
+            audio_indicator = "🔊" if rms_db > -40 else "🔉" if rms_db > -60 else "🔇"
+        else:
+            audio_indicator = "❌"
+            rms_db = -100
+
+        self.toolbar_stats_label.setText(
+            f"Targets: {target_count} | Audio: {audio_indicator} {rms_db:.0f}dB | FPS: 20"
+        )
 
     def compute_orientation(self, block):
         """Compute energy and L/R balance"""
@@ -3415,6 +3468,42 @@ class MainWindow(QMainWindow):
 
         return stereo
 
+    def quick_setup_game_audio(self):
+        """Quick setup for game audio capture (v3.1.0)"""
+        log("Quick Setup: Enabling game audio capture", "INFO")
+
+        try:
+            # Enable loopback mode
+            self.dev_panel.loopback_mode.setChecked(True)
+
+            # Try to find and select a loopback device
+            for i in range(self.dev_panel.device_combo.count()):
+                device_name = self.dev_panel.device_combo.itemText(i).lower()
+                if 'loopback' in device_name or 'speaker' in device_name or 'output' in device_name:
+                    self.dev_panel.device_combo.setCurrentIndex(i)
+                    log(f"Quick Setup: Selected device: {self.dev_panel.device_combo.itemText(i)}", "INFO")
+                    break
+
+            # Apply settings if running
+            if self.is_running:
+                self.dev_panel.apply_settings()
+
+            # Show success message
+            self.status_bar.showMessage(
+                "✓ Quick Setup Complete! Loopback mode enabled for game audio." if current_language == 'en'
+                else "✓ Szybka konfiguracja zakończona! Tryb loopback włączony dla audio z gry."
+            )
+
+            # Switch to Detection & Audio tab to see settings
+            self.main_tabs.setCurrentIndex(1)
+
+        except Exception as e:
+            log(f"Error in quick_setup_game_audio: {e}", "ERROR")
+            self.status_bar.showMessage(
+                "❌ Quick Setup failed - please configure manually (Tab 2)" if current_language == 'en'
+                else "❌ Szybka konfiguracja nie powiodła się - skonfiguruj ręcznie (Zakładka 2)"
+            )
+
     def scan_games(self):
         """Scan for running games and update UI (v3.1.0)"""
         try:
@@ -3427,6 +3516,16 @@ class MainWindow(QMainWindow):
                     games_text += f" (+{len(game_data['games']) - 5} more)"
                 self.detected_games_label.setText(f"🎮 {games_text}")
                 self.detected_games_label.setStyleSheet("font-size: 11pt; color: #00FF00; font-weight: bold; padding: 10px;")
+
+                # AUTO-SUGGESTION: Enable loopback when game detected (v3.1.0)
+                if not self.dev_panel.loopback_mode.isChecked():
+                    log("Game detected! Auto-suggesting loopback mode for game audio capture", "INFO")
+                    # Show subtle hint in status bar
+                    if not self.is_running:
+                        self.status_bar.showMessage(
+                            "💡 Tip: Enable LOOPBACK mode (Tab 2) to capture game audio!" if current_language == 'en'
+                            else "💡 Wskazówka: Włącz tryb LOOPBACK (Zakładka 2) aby przechwycić dźwięk z gry!"
+                        )
             else:
                 self.detected_games_label.setText("No games detected")
                 self.detected_games_label.setStyleSheet("font-size: 11pt; color: #888888; padding: 10px;")

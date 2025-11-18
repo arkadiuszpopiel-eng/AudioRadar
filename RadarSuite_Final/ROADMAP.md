@@ -1,15 +1,15 @@
-# 🗺️ ROADMAP - RadarSuite Final v3.3.1 → v4.0.0
+# 🗺️ ROADMAP - RadarSuite Final v3.4.0 → v4.0.0
 
 ## 📊 AKTUALNY STATUS
 
-**Wersja:** v3.3.1-Claude-001
-**Ukończono:** 9/16 modułów (56%)
-**Do zrobienia:** 7 modułów (44%)
+**Wersja:** v3.4.0-Claude-001
+**Ukończono:** 10/16 modułów (62.5%)
+**Do zrobienia:** 6 modułów (37.5%)
 **Target:** v4.0.0-Claude-001 (100% complete)
 
 ---
 
-## ✅ UKOŃCZONE MODUŁY (1-9)
+## ✅ UKOŃCZONE MODUŁY (1-9, 12)
 
 ### **Phase 1: Core Detection (v3.0.0 - v3.0.5)**
 
@@ -73,11 +73,23 @@
   - Timestamp-based naming
   - Post-game analysis
 
+### **Phase 3: Performance Optimization (v3.4.0)**
+
+- ✅ **Module 12:** Performance Optimization (v3.4.0) 🚀
+  - **FFT Caching:** Eliminated 4x redundant FFT computations (1 per frame instead of 4)
+  - **Performance Monitoring:** Real-time FPS, CPU%, memory MB, latency ms tracking
+  - **Multi-threading:** Worker pool (3 threads) for parallel audio processing
+  - **Memory Optimization:** Object pooling, fixed-size buffers (deque with maxlen)
+  - **Latency Tracking:** Audio-in → radar-update latency measurement (<10ms target)
+  - **Stats Display:** Live performance metrics in toolbar (FPS + latency)
+  - **Thread Safety:** Clean worker shutdown on application close
+  - **Cache Statistics:** Hit/miss tracking for FFT cache
+
 ---
 
-## 🚀 PLANOWANE MODUŁY (10-16)
+## 🚀 PLANOWANE MODUŁY (10-11, 13-16)
 
-### **Phase 3: Environmental & Customization (v3.4.0 - v3.5.0)**
+### **Phase 3: Environmental & Customization (v3.5.0 - v3.6.0)**
 
 #### 🔊 **Module 10: Environmental Audio Analysis**
 **Cel:** Analiza akustyki środowiska i powierzchni
@@ -162,56 +174,6 @@
 - Record/Train interface
 - Profile selector dropdown
 - Signature library manager
-
----
-
-#### ⚡ **Module 12: Performance Optimization**
-**Cel:** Optymalizacja wydajności i redukcja opóźnień
-**Priorytet:** HIGH
-
-**Funkcje do implementacji:**
-- **Audio Processing Cache**
-  - FFT result caching (last 5 blocks)
-  - Spectrum analysis cache
-  - Detection result memoization
-  - Smart cache invalidation
-
-- **Multi-threading Architecture**
-  - Separate threads: audio capture, analysis, UI
-  - Thread pool for parallel detection (footstep, voice, classifier)
-  - Lock-free queues (circular buffers)
-  - Thread priority management
-
-- **GPU Acceleration** (Optional)
-  - CUDA/OpenCL for FFT
-  - Parallel target tracking
-  - GPU-accelerated correlation (ITD/ILD)
-  - Fallback to CPU if no GPU
-
-- **Memory Management**
-  - Fixed-size buffers (no dynamic allocation in hot path)
-  - Object pooling for targets
-  - Circular buffers for history
-  - Memory profiling tools
-
-- **Latency Reduction**
-  - Reduce blocksize for lower latency (<10ms target)
-  - Optimize FFT window size
-  - Fast path for high-priority detections
-  - Bypass processing for low-confidence signals
-
-**Technical Specs:**
-- Target latency: <10ms (audio in → radar update)
-- CPU usage: <15% on quad-core
-- Memory footprint: <200MB
-- FPS: Stable 60Hz even with 3 targets
-
-**UI Components:**
-- Performance Monitor panel (Tab 6)
-- FPS graph (real-time)
-- CPU/Memory usage display
-- Latency histogram
-- Thread status indicators
 
 ---
 
@@ -396,17 +358,19 @@
 
 ## 📅 TIMELINE ROZWOJU
 
-### **Milestone 1: v3.4.0** (Moduły 10-11)
+### **✅ Completed: v3.4.0** (Moduł 12)
+- ✅ Performance Optimization - **COMPLETE!**
+
+### **Milestone 1: v3.5.0** (Moduły 10-11)
 - Environmental Audio Analysis
 - Custom Sound Profiles
 - ETA: ~2-3 tygodnie
 
-### **Milestone 2: v3.5.0** (Moduły 12-13)
-- Performance Optimization
+### **Milestone 2: v3.6.0** (Moduł 13)
 - Statistics & Heatmap
-- ETA: ~2-3 tygodnie
+- ETA: ~1-2 tygodnie
 
-### **Milestone 3: v3.6.0** (Moduł 14)
+### **Milestone 3: v3.7.0** (Moduł 14)
 - Alert System
 - ETA: ~1 tydzień
 
@@ -416,14 +380,14 @@
 - Final polish & testing
 - ETA: ~1-2 tygodnie
 
-**Total ETA:** ~6-9 tygodni do v4.0.0
+**Total ETA:** ~5-8 tygodni do v4.0.0
 
 ---
 
 ## 🎯 PRIORYTETY IMPLEMENTACJI
 
 ### **HIGH Priority:**
-1. Module 12: Performance Optimization (⚡ critical for UX)
+1. ✅ ~~Module 12: Performance Optimization~~ (⚡ **COMPLETED v3.4.0**)
 2. Module 10: Environmental Audio Analysis (🔊 expands capabilities)
 3. Module 15: Configuration Profiles (💾 user experience)
 
@@ -508,5 +472,6 @@ When all 16 modules are done, RadarSuite Final will be:
 ---
 
 **Last Updated:** 2025-11-18
-**Current Version:** v3.3.1-Claude-001
+**Current Version:** v3.4.0-Claude-001
 **Next Module:** Module 10 (Environmental Audio Analysis)
+**Recently Completed:** Module 12 (Performance Optimization - FFT caching, threading, monitoring)

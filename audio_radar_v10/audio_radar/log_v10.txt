@@ -1,2 +1,0 @@
-2025-10-29 21:12:10,962 [INFO] Audio Radar version v10 starting
-2025-10-29 21:12:10,962 [INFO] Using configuration: {'input_device': None, 'output_device': None, 'bar_width': 40, 'bar_height': 200, 'transparency': 180}

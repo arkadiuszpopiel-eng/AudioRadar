@@ -1,0 +1,50 @@
+{
+    "audio": {
+        "input_device_index": -1,
+        "sample_rate": 48000,
+        "block_size": 2048,
+        "channels": 2
+    },
+    "detection": {
+        "walking_enabled": true,
+        "running_enabled": true,
+        "shooting_enabled": true,
+        "walking_rms_min": 0.02,
+        "walking_rms_max": 0.15,
+        "walking_freq_min": 1.0,
+        "walking_freq_max": 3.0,
+        "running_rms_min": 0.1,
+        "running_rms_max": 0.4,
+        "running_freq_min": 3.0,
+        "running_freq_max": 6.0,
+        "shooting_peak_threshold": 0.6,
+        "shooting_attack_time": 0.01,
+        "confidence_threshold": 0.5
+    },
+    "radar": {
+        "opacity": 0.9,
+        "fade_duration": 2.0,
+        "detached": false,
+        "window_x": 100,
+        "window_y": 100,
+        "window_width": 400,
+        "window_height": 400
+    },
+    "spectrum": {
+        "enabled": true,
+        "num_bars": 64,
+        "min_freq": 20.0,
+        "max_freq": 20000.0,
+        "smoothing": 0.7
+    },
+    "ui": {
+        "theme": "dark",
+        "window_width": 1200,
+        "window_height": 800,
+        "window_x": -1,
+        "window_y": -1,
+        "show_spectrum": true,
+        "show_radar": true,
+        "show_controls": true
+    }
+}

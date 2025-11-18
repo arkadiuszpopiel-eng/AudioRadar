@@ -2,8 +2,8 @@
 
 ## 📊 AKTUALNY STATUS
 
-**Wersja:** v3.4.0-Claude-001
-**Ukończono:** 10/16 modułów (62.5%)
+**Wersja:** v3.4.1-Claude-001
+**Ukończono:** 10/16 modułów (62.5%) + Gaming Platform Integration
 **Do zrobienia:** 6 modułów (37.5%)
 **Target:** v4.0.0-Claude-001 (100% complete)
 
@@ -85,11 +85,187 @@
   - **Thread Safety:** Clean worker shutdown on application close
   - **Cache Statistics:** Hit/miss tracking for FFT cache
 
+### **Phase 3.5: Gaming Platform Integration (v3.4.1)**
+
+- ✅ **Gaming Platform Integration (v3.4.1)** 🎮
+  - **Platform Detection:** 5 platforms (Steam, Epic Games, GOG Galaxy, Battle.net, EA App)
+  - **Steam AppID System:** Database 10 gier + regex extraction z cmdline
+  - **Epic Games Support:** Detekcja `-epicapp=` parameter
+  - **Audio Filtering:** Blacklist 18 procesów (launchery, Discord, Spotify, przeglądarki)
+  - **UI Integration:** Tab 3 - Gaming Platform Launchers sekcja (2 labels)
+  - **Intelligent Detection:** Multi-source (process name, exe path, cmdline parsing)
+  - **Performance:** <2ms overhead, 3s cache intervals
+  - **Dependency Injection:** AudioSourceScanner + PlatformLauncherDetector integration
+  - **Documentation:** Pełny raport PLATFORM_INTEGRATION_REPORT.md (550+ linii)
+
 ---
 
 ## 🚀 PLANOWANE MODUŁY (10-11, 13-16)
 
-### **Phase 3: Environmental & Customization (v3.5.0 - v3.6.0)**
+### **Phase 3.6: Gaming Platform Extensions (v3.4.2 - v3.4.5)** 🎮
+
+Rozszerzenia platformy gaming przed przejściem do Module 10:
+
+#### 🎯 **v3.4.2: Extended Platform Support**
+**Cel:** Wsparcie dla dodatkowych platform gaming
+**Priorytet:** HIGH
+
+**Funkcje do implementacji:**
+- **Xbox Game Pass Integration**
+  - Proces: GamingServices.exe, XboxPcApp.exe
+  - Microsoft Store games detection
+  - Xbox Live integration (opcjonalnie)
+  - Game Pass library detection
+
+- **Ubisoft Connect**
+  - Proces: upc.exe, UbisoftConnect.exe
+  - Ubisoft game detection
+  - Command line parameter extraction
+
+- **Rockstar Games Launcher**
+  - Proces: RockstarService.exe, LauncherPatcher.exe
+  - GTA, RDR detection
+  - Social Club integration
+
+- **Origin/EA Desktop Enhancement**
+  - Rozszerzona detekcja EA games
+  - Origin cmdline parsing
+  - EA Play integration
+
+**Technical Specs:**
+- Total platforms: 9 (było 5 + 4 nowe)
+- Steam AppID DB: Rozszerzenie do 50 gier
+- Audio blacklist: +6 procesów (Xbox, Ubisoft, Rockstar)
+- Performance: <3ms overhead (było <2ms)
+
+---
+
+#### 💾 **v3.4.3: Per-Game Profiles**
+**Cel:** Automatyczne ładowanie profili przy detekcji gry
+**Priorytet:** HIGH (fundament dla Module 15)
+
+**Funkcje do implementacji:**
+- **Auto-Profile Loading**
+  - Wykrycie gry → load matching profile
+  - Profile storage: `profiles/games/{appid}.json`
+  - Fallback to default profile
+  - Profile validation on load
+
+- **Profile Structure**
+  - Audio device preferences
+  - Detection thresholds (footsteps, voice, shots)
+  - Radar settings (zoom, colors, trails)
+  - Alert configuration
+  - Game-specific metadata (name, appid, platform)
+
+- **Profile Management**
+  - Create profile from current settings
+  - Edit existing profiles
+  - Delete profiles
+  - Import/Export profiles (.json)
+
+- **Smart Profile Matching**
+  - Match by Steam AppID (exact)
+  - Match by process name (fuzzy)
+  - Match by game engine (fallback)
+  - Priority: AppID > Process > Engine > Default
+
+**Technical Specs:**
+- Profile format: JSON (human-readable)
+- Max profiles: Unlimited
+- Auto-save on game detection
+- Load latency: <50ms
+
+**UI Components:**
+- Profile indicator in toolbar ("Profile: CS2 Competitive")
+- Quick profile switcher (dropdown)
+- Profile status in Tab 3
+
+---
+
+#### 🌐 **v3.4.4: Steam Web API Integration**
+**Cel:** Automatyczne pobieranie nazw gier i metadanych
+**Priorytet:** MEDIUM
+
+**Funkcje do implementacji:**
+- **Steam Web API Client**
+  - API key configuration (user-provided, opcjonalnie)
+  - GetAppDetails endpoint integration
+  - Game name lookup by AppID
+  - Cache responses (persistent, 30 days)
+
+- **Enhanced Game Detection**
+  - Auto-fetch game names for unknown AppIDs
+  - Display game metadata (developer, publisher)
+  - Game icon download (optional)
+  - Release date, genre info
+
+- **Offline Fallback**
+  - Local AppID DB (50 popularnych gier)
+  - Fallback: "Steam Game {appid}"
+  - Queue for next API fetch when online
+
+- **API Rate Limiting**
+  - Max 200 requests/5 min (Steam limits)
+  - Request queue with backoff
+  - Error handling (API down, invalid key)
+
+**Technical Specs:**
+- API: Steam Web API v2
+- Endpoint: ISteamApps/GetAppList + store.steampowered.com/api/appdetails
+- Cache: SQLite database (lightweight)
+- Response time: <100ms (cached), <500ms (API call)
+
+**UI Components:**
+- API key input in Settings (Tab 2)
+- API status indicator ("API: Online ✅" / "Offline ❌")
+- Game metadata display in Tab 3 (developer, genre)
+
+---
+
+#### 🎵 **v3.4.5: Enhanced Audio Routing**
+**Cel:** Inteligentne priorytetowanie audio od gier
+**Priorytet:** MEDIUM
+
+**Funkcje do implementacji:**
+- **Smart Audio Source Priority**
+  - Game audio: Priority 1 (highest)
+  - Communication (Discord, TeamSpeak): Priority 2
+  - Launcher audio (Steam, Epic): Priority 3 (lowest - filtrowane)
+  - Browser audio: Priority 3 (lowest)
+
+- **Auto-Source Switching**
+  - Wykrycie gry → auto-select game audio source
+  - Wykrycie zakończenia gry → revert to default
+  - Multi-source monitoring (game + Discord)
+
+- **Audio Source Confidence**
+  - Confidence scoring (0-100%)
+  - Game audio detection accuracy
+  - False positive filtering
+  - Source validation (czy to faktycznie gra?)
+
+- **Audio Routing Rules**
+  - User-defined routing rules
+  - "Always route X to radar when game Y is active"
+  - Blacklist override (ignore specific processes)
+  - Whitelist (only monitor specific sources)
+
+**Technical Specs:**
+- Priority system: 1 (high) - 5 (low)
+- Auto-switch latency: <100ms
+- Confidence threshold: 70% (configurable)
+- Max simultaneous sources: 3
+
+**UI Components:**
+- Audio Routing panel in Tab 2
+- Priority visualization (numbered list)
+- Auto-switch toggle
+- Confidence meter
+
+---
+
+### **Phase 4: Environmental & Customization (v3.5.0 - v3.6.0)**
 
 #### 🔊 **Module 10: Environmental Audio Analysis**
 **Cel:** Analiza akustyki środowiska i powierzchni
@@ -358,8 +534,20 @@
 
 ## 📅 TIMELINE ROZWOJU
 
-### **✅ Completed: v3.4.0** (Moduł 12)
-- ✅ Performance Optimization - **COMPLETE!**
+### **✅ Completed: v3.4.0-v3.4.1**
+- ✅ Module 12: Performance Optimization (v3.4.0) - **COMPLETE!**
+- ✅ Gaming Platform Integration (v3.4.1) - **COMPLETE!**
+
+### **Phase 3.6: Gaming Platform Extensions (v3.4.2 - v3.4.5)**
+- **v3.4.2:** Extended Platform Support (Xbox, Ubisoft, Rockstar, Origin)
+  - ETA: ~3-4 dni
+- **v3.4.3:** Per-Game Profiles (Auto-load, profile management)
+  - ETA: ~4-5 dni (wysokie znaczenie dla Module 15)
+- **v3.4.4:** Steam Web API Integration (auto-fetch game names)
+  - ETA: ~2-3 dni
+- **v3.4.5:** Enhanced Audio Routing (smart priority, auto-switching)
+  - ETA: ~3-4 dni
+- **Total Phase 3.6 ETA:** ~12-16 dni (2-3 tygodnie)
 
 ### **Milestone 1: v3.5.0** (Moduły 10-11)
 - Environmental Audio Analysis
@@ -386,18 +574,25 @@
 
 ## 🎯 PRIORYTETY IMPLEMENTACJI
 
-### **HIGH Priority:**
+### **IMMEDIATE Priority (Phase 3.6):**
 1. ✅ ~~Module 12: Performance Optimization~~ (⚡ **COMPLETED v3.4.0**)
-2. Module 10: Environmental Audio Analysis (🔊 expands capabilities)
-3. Module 15: Configuration Profiles (💾 user experience)
+2. ✅ ~~Gaming Platform Integration (v3.4.1)~~ (🎮 **COMPLETED**)
+3. **v3.4.2:** Extended Platform Support (🎮 Xbox, Ubisoft, Rockstar, Origin) - **NEXT**
+4. **v3.4.3:** Per-Game Profiles (💾 fundament dla Module 15) - **HIGH**
+5. **v3.4.4:** Steam Web API Integration (🌐 enhanced game detection)
+6. **v3.4.5:** Enhanced Audio Routing (🎵 smart priority system)
+
+### **HIGH Priority (Phase 4+):**
+7. Module 10: Environmental Audio Analysis (🔊 expands capabilities)
+8. Module 15: Configuration Profiles (💾 user experience - wymaga v3.4.3)
 
 ### **MEDIUM Priority:**
-4. Module 11: Custom Sound Profiles (🎵 power user feature)
-5. Module 13: Statistics & Heatmap (📊 analytics)
-6. Module 14: Alert System (🚨 gameplay enhancement)
+9. Module 11: Custom Sound Profiles (🎵 power user feature)
+10. Module 13: Statistics & Heatmap (📊 analytics)
+11. Module 14: Alert System (🚨 gameplay enhancement)
 
 ### **LOW Priority:**
-7. Module 16: Export & Reporting (📋 nice-to-have)
+12. Module 16: Export & Reporting (📋 nice-to-have)
 
 ---
 
@@ -472,6 +667,8 @@ When all 16 modules are done, RadarSuite Final will be:
 ---
 
 **Last Updated:** 2025-11-18
-**Current Version:** v3.4.0-Claude-001
-**Next Module:** Module 10 (Environmental Audio Analysis)
-**Recently Completed:** Module 12 (Performance Optimization - FFT caching, threading, monitoring)
+**Current Version:** v3.4.1-Claude-001
+**Next Release:** v3.4.2 (Extended Platform Support - Xbox, Ubisoft, Rockstar, Origin)
+**Recently Completed:**
+- Module 12 (Performance Optimization - FFT caching, threading, monitoring)
+- Gaming Platform Integration v3.4.1 (Steam, Epic, GOG, Battle.net, EA App)

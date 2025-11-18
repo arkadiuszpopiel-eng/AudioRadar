@@ -119,7 +119,6 @@ FEATURES FROM v3.0.5:
 """
 
 import sys
-import os
 import queue
 import time
 import math

@@ -826,6 +826,12 @@ class RadarWidget(pg.PlotWidget):
         self.addItem(self.echo)
         self.target_pos = None
 
+        # === v3.4.3: VISUAL FEEDBACK - Directional Arrows ===
+        self.visual_feedback_enabled = False
+        self.directional_arrow = None
+        self.threat_indicator = None
+        self.pulse_phase = 0  # For pulsing animation
+
     def update_sweep(self, angle_deg):
         """Update sweep line angle"""
         self.sweep_angle = angle_deg
@@ -834,11 +840,12 @@ class RadarWidget(pg.PlotWidget):
         y = 100 * math.sin(angle_rad)
         self.sweep_line.setData([0, x], [0, y])
 
-    def update_target(self, angle_deg, distance):
-        """Update target position"""
+    def update_target(self, angle_deg, distance, threat_level='medium'):
+        """Update target position with optional threat level for visual feedback"""
         if angle_deg is None or distance is None:
             self.echo.setData([], [])
             self.target_pos = None
+            self._clear_visual_feedback()
             return
 
         distance = max(5, min(100, distance))
@@ -849,6 +856,362 @@ class RadarWidget(pg.PlotWidget):
 
         self.echo.setData([x], [y])
         self.target_pos = (x, y)
+
+        # === v3.4.3: Update visual feedback if enabled ===
+        if self.visual_feedback_enabled:
+            self._update_visual_feedback(x, y, angle_deg, distance, threat_level)
+
+    def set_visual_feedback(self, enabled):
+        """Enable or disable visual feedback (v3.4.3 - Feature 2)"""
+        self.visual_feedback_enabled = enabled
+        if not enabled:
+            self._clear_visual_feedback()
+
+    def _update_visual_feedback(self, x, y, angle_deg, distance, threat_level):
+        """
+        Update visual feedback elements (v3.4.3 - Feature 2)
+
+        Features:
+        - Directional arrow from center to target
+        - Color-coded based on threat level
+        - Pulsing animation for high threats
+        """
+        try:
+            # Determine color based on threat level
+            if threat_level == 'high':
+                color = (255, 0, 0)  # Red - high threat
+                width = 3
+                pulsing = True
+            elif threat_level == 'medium':
+                color = (255, 165, 0)  # Orange - medium threat
+                width = 2
+                pulsing = False
+            elif threat_level == 'low':
+                color = (255, 255, 0)  # Yellow - low threat
+                width = 2
+                pulsing = False
+            else:
+                color = (0, 255, 0)  # Green - no threat
+                width = 2
+                pulsing = False
+
+            # Apply pulsing effect for high threats
+            if pulsing:
+                self.pulse_phase = (self.pulse_phase + 0.1) % (2 * math.pi)
+                pulse_factor = 0.5 + 0.5 * abs(math.sin(self.pulse_phase))
+                color = tuple(int(c * pulse_factor) for c in color)
+                width = int(width * (0.8 + 0.4 * pulse_factor))
+
+            # Draw directional arrow (line from center to target with arrowhead)
+            if self.directional_arrow is None:
+                self.directional_arrow = pg.PlotDataItem(
+                    [0, x], [0, y],
+                    pen=pg.mkPen(color=color, width=width, style=pg.QtCore.Qt.DashLine)
+                )
+                self.addItem(self.directional_arrow)
+            else:
+                self.directional_arrow.setData([0, x], [0, y])
+                self.directional_arrow.setPen(pg.mkPen(color=color, width=width, style=pg.QtCore.Qt.DashLine))
+
+            # Create arrowhead (triangle at target position)
+            if self.threat_indicator is None:
+                # Create arrow triangle pointing outward
+                angle_rad = math.radians(angle_deg - 90)
+                arrow_size = 8
+                arrow_points = self._create_arrow_triangle(x, y, angle_rad, arrow_size)
+
+                self.threat_indicator = pg.PlotDataItem(
+                    arrow_points[:, 0], arrow_points[:, 1],
+                    pen=None,
+                    fillLevel=0,
+                    fillBrush=pg.mkBrush(color=color + (200,)),
+                    symbol='t',
+                    symbolSize=arrow_size,
+                    symbolBrush=pg.mkBrush(color=color + (200,))
+                )
+                self.addItem(self.threat_indicator)
+            else:
+                # Update arrow position and color
+                angle_rad = math.radians(angle_deg - 90)
+                arrow_size = 8
+                self.threat_indicator.setData([x], [y])
+                self.threat_indicator.setSymbolBrush(pg.mkBrush(color=color + (200,)))
+
+        except Exception as e:
+            log(f"Error in _update_visual_feedback: {e}", "ERROR")
+
+    def _create_arrow_triangle(self, x, y, angle_rad, size):
+        """Create triangle points for directional arrow"""
+        # Create triangle pointing in the direction of angle_rad
+        points = []
+
+        # Tip of arrow (pointing toward target direction)
+        tip_x = x + size * math.cos(angle_rad)
+        tip_y = y + size * math.sin(angle_rad)
+
+        # Base of arrow (perpendicular to direction)
+        base_angle_1 = angle_rad + 2.5  # 140 degrees offset
+        base_angle_2 = angle_rad - 2.5  # -140 degrees offset
+
+        base_x1 = x + (size / 2) * math.cos(base_angle_1)
+        base_y1 = y + (size / 2) * math.sin(base_angle_1)
+
+        base_x2 = x + (size / 2) * math.cos(base_angle_2)
+        base_y2 = y + (size / 2) * math.sin(base_angle_2)
+
+        return np.array([[tip_x, tip_y], [base_x1, base_y1], [base_x2, base_y2], [tip_x, tip_y]])
+
+    def _clear_visual_feedback(self):
+        """Clear visual feedback elements"""
+        try:
+            if self.directional_arrow is not None:
+                self.removeItem(self.directional_arrow)
+                self.directional_arrow = None
+
+            if self.threat_indicator is not None:
+                self.removeItem(self.threat_indicator)
+                self.threat_indicator = None
+        except:
+            pass
+
+
+# ============================================================================
+# SOUND HEATMAP WIDGET (v3.4.3 - Feature 3)
+# ============================================================================
+
+class SoundHeatmapWidget(QWidget):
+    """
+    3D Sound Activity Heatmap (v3.4.3 - Feature 3)
+
+    Visualizes sound activity across:
+    - 360° horizontal (16 sectors: 22.5° each)
+    - 3 floors (below, same, above)
+    - Heat gradient: Blue (cold/no activity) → Red (hot/high activity)
+    - Decay over time (activity fades)
+
+    Features:
+    - Real-time activity tracking
+    - Time-based decay (3s half-life)
+    - Heat color gradient visualization
+    - Enable/disable toggle
+    """
+
+    def __init__(self):
+        super().__init__()
+        log("SoundHeatmapWidget.__init__", "INFO")
+
+        # Grid configuration
+        self.num_sectors = 16  # 360° / 16 = 22.5° per sector
+        self.num_floors = 3  # -1 (below), 0 (same), +1 (above)
+
+        # Activity grid: [floor][sector] = activity level (0.0 to 1.0)
+        self.activity_grid = np.zeros((self.num_floors, self.num_sectors))
+
+        # Last update time for each cell (for decay)
+        self.last_update_time = np.zeros((self.num_floors, self.num_sectors))
+
+        # Decay configuration
+        self.decay_half_life = 3.0  # seconds - activity halves every 3s
+        self.enabled = False
+
+        # UI Layout
+        layout = QVBoxLayout()
+
+        # Title
+        title = QLabel("🔥 Sound Activity Heatmap (v3.4.3)")
+        title.setStyleSheet("font-size: 12pt; font-weight: bold; color: #ff6600;")
+        title.setAlignment(Qt.AlignCenter)
+        layout.addWidget(title)
+
+        # Heatmap visualization (using QLabel with colored grid)
+        self.heatmap_display = QLabel()
+        self.heatmap_display.setAlignment(Qt.AlignCenter)
+        self.heatmap_display.setMinimumSize(400, 200)
+        self.heatmap_display.setStyleSheet("background-color: #0a0a0a; border: 2px solid #444;")
+        layout.addWidget(self.heatmap_display)
+
+        # Legend
+        legend_layout = QHBoxLayout()
+        legend_label = QLabel("Activity Level:")
+        legend_layout.addWidget(legend_label)
+
+        # Color gradient legend
+        for level, color_name in [(0.0, "🔵 None"), (0.25, "🟦 Low"), (0.5, "🟩 Medium"), (0.75, "🟨 High"), (1.0, "🔴 Very High")]:
+            label = QLabel(color_name)
+            label.setStyleSheet("font-size: 9pt;")
+            legend_layout.addWidget(label)
+
+        legend_layout.addStretch()
+        layout.addLayout(legend_layout)
+
+        # Floor labels
+        floor_layout = QHBoxLayout()
+        floor_layout.addWidget(QLabel("⬇️ Below"))
+        floor_layout.addStretch()
+        floor_layout.addWidget(QLabel("➡️ Same Floor"))
+        floor_layout.addStretch()
+        floor_layout.addWidget(QLabel("⬆️ Above"))
+        layout.addLayout(floor_layout)
+
+        # Stats
+        self.stats_label = QLabel("Total Activity: 0 | Peak Sector: — | Peak Floor: —")
+        self.stats_label.setStyleSheet("font-size: 9pt; color: #888;")
+        self.stats_label.setAlignment(Qt.AlignCenter)
+        layout.addWidget(self.stats_label)
+
+        layout.addStretch()
+        self.setLayout(layout)
+
+        # Start update timer
+        self.update_timer = QTimer()
+        self.update_timer.timeout.connect(self.update_display)
+        self.update_timer.start(100)  # Update every 100ms
+
+    def set_enabled(self, enabled):
+        """Enable or disable heatmap"""
+        self.enabled = enabled
+        if not enabled:
+            self.clear()
+        log(f"Sound Heatmap: {'ENABLED' if enabled else 'DISABLED'}", "INFO")
+
+    def add_activity(self, angle_deg, floor_offset=0, intensity=1.0):
+        """
+        Add sound activity to the heatmap
+
+        Args:
+            angle_deg: Direction in degrees (0-360)
+            floor_offset: Floor relative to player (-1=below, 0=same, +1=above)
+            intensity: Activity intensity (0.0 to 1.0)
+        """
+        if not self.enabled:
+            return
+
+        try:
+            # Convert angle to sector (0-15)
+            sector = int((angle_deg % 360) / 22.5) % self.num_sectors
+
+            # Convert floor offset to floor index (0=below, 1=same, 2=above)
+            if floor_offset <= -1:
+                floor_idx = 0  # Below
+            elif floor_offset >= 1:
+                floor_idx = 2  # Above
+            else:
+                floor_idx = 1  # Same floor
+
+            # Ensure floor index is valid
+            floor_idx = max(0, min(self.num_floors - 1, floor_idx))
+
+            # Add intensity (accumulate, cap at 1.0)
+            import time
+            current_time = time.time()
+
+            # Apply decay before adding new activity
+            self._apply_decay_to_cell(floor_idx, sector, current_time)
+
+            # Add new activity
+            self.activity_grid[floor_idx, sector] = min(1.0, self.activity_grid[floor_idx, sector] + intensity)
+            self.last_update_time[floor_idx, sector] = current_time
+
+        except Exception as e:
+            log(f"Error in add_activity: {e}", "ERROR")
+
+    def _apply_decay_to_cell(self, floor_idx, sector, current_time):
+        """Apply time-based decay to a specific cell"""
+        try:
+            if self.last_update_time[floor_idx, sector] > 0:
+                elapsed = current_time - self.last_update_time[floor_idx, sector]
+                decay_factor = 0.5 ** (elapsed / self.decay_half_life)
+                self.activity_grid[floor_idx, sector] *= decay_factor
+        except:
+            pass
+
+    def apply_decay(self):
+        """Apply decay to all cells"""
+        if not self.enabled:
+            return
+
+        try:
+            import time
+            current_time = time.time()
+
+            for floor_idx in range(self.num_floors):
+                for sector in range(self.num_sectors):
+                    self._apply_decay_to_cell(floor_idx, sector, current_time)
+
+        except Exception as e:
+            log(f"Error in apply_decay: {e}", "ERROR")
+
+    def clear(self):
+        """Clear all activity"""
+        self.activity_grid.fill(0.0)
+        self.last_update_time.fill(0.0)
+
+    def update_display(self):
+        """Update the heatmap visualization"""
+        if not self.enabled:
+            return
+
+        try:
+            # Apply decay
+            self.apply_decay()
+
+            # Create visualization using ASCII/Unicode art
+            lines = []
+
+            # Calculate total activity and find peak
+            total_activity = np.sum(self.activity_grid)
+            max_activity = np.max(self.activity_grid)
+
+            if max_activity > 0:
+                max_idx = np.unravel_index(np.argmax(self.activity_grid), self.activity_grid.shape)
+                peak_floor = ["Below", "Same", "Above"][max_idx[0]]
+                peak_sector = max_idx[1] * 22.5
+            else:
+                peak_floor = "—"
+                peak_sector = "—"
+
+            # Update stats
+            self.stats_label.setText(
+                f"Total Activity: {total_activity:.1f} | Peak Sector: {peak_sector}° | Peak Floor: {peak_floor}"
+            )
+
+            # Generate text visualization
+            lines.append("FLOOR | SECTORS (0° → 360°)")
+            lines.append("=" * 60)
+
+            floor_names = ["⬇️ Below", "➡️ Same ", "⬆️ Above"]
+
+            for floor_idx in range(self.num_floors):
+                line = f"{floor_names[floor_idx]} | "
+
+                for sector in range(self.num_sectors):
+                    activity = self.activity_grid[floor_idx, sector]
+
+                    # Color based on activity level
+                    if activity > 0.75:
+                        char = "🔴"  # Very high
+                    elif activity > 0.5:
+                        char = "🟠"  # High
+                    elif activity > 0.25:
+                        char = "🟡"  # Medium
+                    elif activity > 0.05:
+                        char = "🟢"  # Low
+                    else:
+                        char = "⚪"  # None
+
+                    line += char
+
+                lines.append(line)
+
+            # Set text
+            display_text = "\n".join(lines)
+            self.heatmap_display.setText(display_text)
+            self.heatmap_display.setStyleSheet(
+                "background-color: #0a0a0a; border: 2px solid #444; padding: 10px; font-family: monospace; font-size: 10pt;"
+            )
+
+        except Exception as e:
+            log(f"Error in update_display: {e}", "ERROR")
 
 
 # ============================================================================
@@ -1050,6 +1413,20 @@ class Radar3DWidget(gl.GLViewWidget):
             pos=np.array([[0, 0, 0]]),
             color=(1, 0, 0, 0)
         )
+
+    def set_visual_feedback(self, enabled):
+        """
+        Enable or disable visual feedback for 3D radar (v3.4.3 - Feature 2)
+
+        Note: 3D radar already has built-in color-coding for elevation:
+        - Orange: Above player
+        - Purple: Below player
+        - Red: Same level
+        Additional threat-based color coding handled by add_target() color parameter
+        """
+        # 3D radar already has excellent visual feedback through color coding
+        # This method is provided for API consistency with 2D radar
+        pass
 
 
 # ============================================================================
@@ -4614,6 +4991,281 @@ class LootContainerDetector:
 
 
 # ============================================================================
+# VOICE ALERT SYSTEM (v3.4.3 - Feature 1: Voice Alerts)
+# ============================================================================
+
+class VoiceAlertSystem:
+    """
+    Voice Alert System with Polish/English support (v3.4.3)
+
+    Provides audio warnings for threats and events.
+    Works with or without TTS engine (graceful degradation).
+
+    Features:
+    - Polish and English voice alerts
+    - Configurable volume and speed
+    - Enable/disable per alert type
+    - Fallback to console logging if TTS unavailable
+
+    Supported TTS engines:
+    - pyttsx3 (preferred)
+    - espeak (fallback)
+    - Console logging (no TTS)
+    """
+
+    def __init__(self):
+        log("VoiceAlertSystem.__init__", "INFO")
+
+        # Try to import TTS engine
+        self.tts_engine = None
+        self.tts_available = False
+
+        try:
+            import pyttsx3
+            self.tts_engine = pyttsx3.init()
+            self.tts_available = True
+            log("Voice Alerts: pyttsx3 initialized", "SUCCESS")
+        except:
+            log("Voice Alerts: TTS not available (install pyttsx3 for voice). Using console fallback.", "WARNING")
+
+        # Settings
+        self.enabled = False  # Disabled by default (user must enable)
+        self.volume = 0.8  # 0.0 to 1.0
+        self.rate = 150  # Words per minute
+        self.language = 'pl'  # 'pl' or 'en'
+
+        # Alert enable/disable (per type)
+        self.alert_types = {
+            'enemy_detected': True,
+            'enemy_close': True,
+            'arc_enemy': True,
+            'extraction_incoming': True,
+            'extraction_available': True,
+            'extraction_closing': True,
+            'rare_loot': True,
+            'high_threat': True
+        }
+
+        # Alert messages (PL/EN)
+        self.messages = {
+            'pl': {
+                'enemy_front': 'Wróg z przodu!',
+                'enemy_behind': 'Wróg z tyłu!',
+                'enemy_left': 'Wróg z lewej!',
+                'enemy_right': 'Wróg z prawej!',
+                'enemy_close': 'Wróg blisko! Uwaga!',
+                'arc_robot': 'ARC robot wykryty!',
+                'arc_drone': 'ARC dron wykryty!',
+                'arc_heavy': 'ARC Heavy! Wysokie zagrożenie!',
+                'arc_hazard': 'Zagrożenie środowiskowe!',
+                'extraction_incoming': 'Ekstrakcja nadchodzi!',
+                'extraction_available': 'Ekstrakcja dostępna!',
+                'extraction_closing': 'Ekstrakcja zamyka się! Pośpiech!',
+                'rare_loot': 'Rzadki przedmiot wykryty!',
+                'floor_above': 'Cel piętro wyżej!',
+                'floor_below': 'Cel piętro niżej!'
+            },
+            'en': {
+                'enemy_front': 'Enemy in front!',
+                'enemy_behind': 'Enemy behind!',
+                'enemy_left': 'Enemy on the left!',
+                'enemy_right': 'Enemy on the right!',
+                'enemy_close': 'Enemy close! Watch out!',
+                'arc_robot': 'ARC robot detected!',
+                'arc_drone': 'ARC drone detected!',
+                'arc_heavy': 'ARC Heavy! High threat!',
+                'arc_hazard': 'Environmental hazard!',
+                'extraction_incoming': 'Extraction incoming!',
+                'extraction_available': 'Extraction available!',
+                'extraction_closing': 'Extraction closing! Hurry!',
+                'rare_loot': 'Rare item detected!',
+                'floor_above': 'Target one floor above!',
+                'floor_below': 'Target one floor below!'
+            }
+        }
+
+        # Alert cooldowns (prevent spam)
+        self.last_alert_time = {}
+        self.alert_cooldown = 3.0  # seconds
+
+        # Configure TTS if available
+        if self.tts_available and self.tts_engine:
+            try:
+                self.tts_engine.setProperty('rate', self.rate)
+                self.tts_engine.setProperty('volume', self.volume)
+            except:
+                pass
+
+    def speak(self, alert_type, custom_message=None):
+        """
+        Speak an alert message
+
+        Args:
+            alert_type: Type of alert (e.g., 'enemy_front', 'arc_heavy')
+            custom_message: Optional custom message (overrides preset)
+        """
+        try:
+            # Check if enabled
+            if not self.enabled:
+                return
+
+            # Check if this alert type is enabled
+            if alert_type in self.alert_types and not self.alert_types.get(alert_type, True):
+                return
+
+            # Check cooldown
+            import time
+            current_time = time.time()
+            if alert_type in self.last_alert_time:
+                if current_time - self.last_alert_time[alert_type] < self.alert_cooldown:
+                    return  # Skip - too soon
+
+            self.last_alert_time[alert_type] = current_time
+
+            # Get message
+            if custom_message:
+                message = custom_message
+            else:
+                message = self.messages[self.language].get(alert_type, alert_type)
+
+            # Speak or log
+            if self.tts_available and self.tts_engine:
+                try:
+                    self.tts_engine.say(message)
+                    self.tts_engine.runAndWait()
+                except Exception as e:
+                    log(f"Voice Alert (TTS error): {message}", "WARNING")
+            else:
+                # Fallback to console
+                log(f"🔊 Voice Alert: {message}", "INFO")
+
+        except Exception as e:
+            log(f"Error in VoiceAlertSystem.speak: {e}", "ERROR")
+
+    def alert_enemy_direction(self, angle_deg, distance=None):
+        """
+        Alert based on enemy direction (0-360 degrees)
+
+        Args:
+            angle_deg: Direction in degrees (0=up, 90=right, 180=down, 270=left)
+            distance: Distance in meters (optional, used for "close" alerts)
+        """
+        try:
+            # Check if enemy is very close (high priority)
+            if distance is not None and distance < 5:
+                self.speak('enemy_close')
+                return
+
+            # Determine direction
+            if 45 <= angle_deg < 135:  # Right
+                alert_type = 'enemy_right'
+            elif 135 <= angle_deg < 225:  # Behind
+                alert_type = 'enemy_behind'
+            elif 225 <= angle_deg < 315:  # Left
+                alert_type = 'enemy_left'
+            else:  # Front (315-45)
+                alert_type = 'enemy_front'
+
+            self.speak(alert_type)
+
+        except Exception as e:
+            log(f"Error in alert_enemy_direction: {e}", "ERROR")
+
+    def alert_arc_enemy(self, enemy_type, threat_level):
+        """
+        Alert for ARC enemy detection
+
+        Args:
+            enemy_type: Type of ARC enemy ('robot', 'drone', 'heavy', or 'arc_robot', 'arc_drone', etc.)
+            threat_level: Threat level ('low', 'medium', 'high')
+        """
+        try:
+            # Normalize enemy type - add 'arc_' prefix if not present
+            if not enemy_type.startswith('arc_'):
+                enemy_type = f'arc_{enemy_type}'
+
+            # Normalize threat level
+            threat_lower = threat_level.lower()
+
+            # High threat - always alert immediately
+            if threat_lower == 'high':
+                self.speak(enemy_type)
+            # Medium threat - alert if message exists
+            elif threat_lower == 'medium':
+                if enemy_type in self.messages[self.language]:
+                    self.speak(enemy_type)
+
+        except Exception as e:
+            log(f"Error in alert_arc_enemy: {e}", "ERROR")
+
+    def alert_extraction(self, status, time_remaining=None):
+        """
+        Alert for extraction zone status
+
+        Args:
+            status: Status ('incoming', 'available', 'closing')
+            time_remaining: Time remaining in seconds (optional)
+        """
+        try:
+            # Normalize status to lowercase for matching
+            status_lower = status.lower()
+            alert_type = f'extraction_{status_lower}'
+
+            if status_lower == 'closing':
+                # Override cooldown for urgent closing alert
+                if alert_type in self.last_alert_time:
+                    del self.last_alert_time[alert_type]
+
+            self.speak(alert_type)
+
+        except Exception as e:
+            log(f"Error in alert_extraction: {e}", "ERROR")
+
+    def alert_loot(self, loot_type):
+        """
+        Alert for loot detection
+
+        Args:
+            loot_type: Type of loot ('rare', 'pickup', 'container')
+        """
+        try:
+            if loot_type == 'rare':
+                self.speak('rare_loot')
+
+        except Exception as e:
+            log(f"Error in alert_loot: {e}", "ERROR")
+
+    def set_enabled(self, enabled):
+        """Enable or disable voice alerts"""
+        self.enabled = enabled
+        log(f"Voice Alerts: {'ENABLED' if enabled else 'DISABLED'}", "INFO")
+
+    def set_volume(self, volume):
+        """Set volume (0.0 to 1.0)"""
+        self.volume = max(0.0, min(1.0, volume))
+        if self.tts_available and self.tts_engine:
+            try:
+                self.tts_engine.setProperty('volume', self.volume)
+            except:
+                pass
+
+    def set_rate(self, rate):
+        """Set speech rate (words per minute)"""
+        self.rate = max(50, min(300, rate))
+        if self.tts_available and self.tts_engine:
+            try:
+                self.tts_engine.setProperty('rate', self.rate)
+            except:
+                pass
+
+    def set_language(self, language):
+        """Set language ('pl' or 'en')"""
+        if language in ['pl', 'en']:
+            self.language = language
+            log(f"Voice Alerts: Language set to {language.upper()}", "INFO")
+
+
+# ============================================================================
 # AUDIO SOURCE SCANNER (v3.0 - Module 3)
 # ============================================================================
 
@@ -5194,6 +5846,125 @@ class DetectionPanel(QWidget):
         self.arc_group.setLayout(arc_layout)
         layout.addWidget(self.arc_group)
 
+        # Voice Alerts (v3.4.3 - Feature 1) 🔊
+        self.voice_group = QGroupBox("🔊 Voice Alerts (v3.4.3)")
+        voice_layout = QVBoxLayout()
+
+        # Enable/Disable checkbox
+        self.voice_enable = QCheckBox("Enable Voice Alerts")
+        self.voice_enable.setChecked(False)  # Disabled by default
+        self.voice_enable.setStyleSheet("font-size: 10pt; color: #00ffff; font-weight: bold;")
+        voice_layout.addWidget(self.voice_enable)
+
+        # Language selection
+        lang_layout = QHBoxLayout()
+        lang_layout.addWidget(QLabel("Language:"))
+        self.voice_lang_combo = QComboBox()
+        self.voice_lang_combo.addItems(['Polski (PL)', 'English (EN)'])
+        self.voice_lang_combo.setCurrentIndex(0)  # Default: Polish
+        lang_layout.addWidget(self.voice_lang_combo)
+        voice_layout.addLayout(lang_layout)
+
+        # Volume slider
+        vol_layout = QHBoxLayout()
+        vol_layout.addWidget(QLabel("Volume:"))
+        self.voice_volume_slider = QSlider(Qt.Horizontal)
+        self.voice_volume_slider.setRange(0, 100)
+        self.voice_volume_slider.setValue(80)  # 80%
+        self.voice_volume_slider.setMaximumWidth(150)
+        vol_layout.addWidget(self.voice_volume_slider)
+        self.voice_volume_label = QLabel("80%")
+        vol_layout.addWidget(self.voice_volume_label)
+        voice_layout.addLayout(vol_layout)
+
+        # Speed slider
+        speed_layout = QHBoxLayout()
+        speed_layout.addWidget(QLabel("Speed:"))
+        self.voice_speed_slider = QSlider(Qt.Horizontal)
+        self.voice_speed_slider.setRange(50, 300)
+        self.voice_speed_slider.setValue(150)  # 150 WPM
+        self.voice_speed_slider.setMaximumWidth(150)
+        speed_layout.addWidget(self.voice_speed_slider)
+        self.voice_speed_label = QLabel("150")
+        speed_layout.addWidget(self.voice_speed_label)
+        voice_layout.addLayout(speed_layout)
+
+        # Status label
+        self.voice_status_label = QLabel("Status: DISABLED")
+        self.voice_status_label.setStyleSheet("font-size: 9pt; color: #888888;")
+        voice_layout.addWidget(self.voice_status_label)
+
+        # TTS availability label
+        self.voice_tts_label = QLabel("TTS: Checking...")
+        self.voice_tts_label.setStyleSheet("font-size: 8pt; color: #666666;")
+        voice_layout.addWidget(self.voice_tts_label)
+
+        self.voice_group.setLayout(voice_layout)
+        layout.addWidget(self.voice_group)
+
+        # === v3.4.3: VISUAL FEEDBACK on Radar (Feature 2) ===
+        self.visual_feedback_group = QGroupBox("🎯 Visual Feedback (v3.4.3)")
+        visual_layout = QVBoxLayout()
+
+        # Enable/Disable checkbox
+        self.visual_feedback_enable = QCheckBox("Enable Directional Arrows")
+        self.visual_feedback_enable.setChecked(False)  # Disabled by default
+        self.visual_feedback_enable.setStyleSheet("font-size: 10pt; color: #ff00ff; font-weight: bold;")
+        visual_layout.addWidget(self.visual_feedback_enable)
+
+        # Info labels
+        info_label = QLabel("• Color-coded threat indicators\n• Pulsing animation for high threats\n• Directional arrows on radar")
+        info_label.setStyleSheet("font-size: 8pt; color: #888888;")
+        visual_layout.addWidget(info_label)
+
+        # Threat level legend
+        legend_layout = QVBoxLayout()
+        legend_layout.addWidget(QLabel("Threat Levels:"))
+        high_label = QLabel("🔴 High: Red (pulsing)")
+        high_label.setStyleSheet("font-size: 8pt; color: #ff0000;")
+        legend_layout.addWidget(high_label)
+
+        medium_label = QLabel("🟠 Medium: Orange")
+        medium_label.setStyleSheet("font-size: 8pt; color: #ffaa00;")
+        legend_layout.addWidget(medium_label)
+
+        low_label = QLabel("🟡 Low: Yellow")
+        low_label.setStyleSheet("font-size: 8pt; color: #ffff00;")
+        legend_layout.addWidget(low_label)
+
+        visual_layout.addLayout(legend_layout)
+
+        # Status label
+        self.visual_feedback_status_label = QLabel("Status: DISABLED")
+        self.visual_feedback_status_label.setStyleSheet("font-size: 9pt; color: #888888;")
+        visual_layout.addWidget(self.visual_feedback_status_label)
+
+        self.visual_feedback_group.setLayout(visual_layout)
+        layout.addWidget(self.visual_feedback_group)
+
+        # === v3.4.3: SOUND HEATMAP (Feature 3) ===
+        self.heatmap_group = QGroupBox("🔥 Sound Heatmap (v3.4.3)")
+        heatmap_layout = QVBoxLayout()
+
+        # Enable/Disable checkbox
+        self.heatmap_enable = QCheckBox("Enable Sound Activity Tracking")
+        self.heatmap_enable.setChecked(False)  # Disabled by default
+        self.heatmap_enable.setStyleSheet("font-size: 10pt; color: #ff6600; font-weight: bold;")
+        heatmap_layout.addWidget(self.heatmap_enable)
+
+        # Info labels
+        info_label = QLabel("• 360° sound activity map\n• 3 floors (below/same/above)\n• Heat gradient visualization\n• Auto decay (3s half-life)")
+        info_label.setStyleSheet("font-size: 8pt; color: #888888;")
+        heatmap_layout.addWidget(info_label)
+
+        # Status label
+        self.heatmap_status_label = QLabel("Status: DISABLED")
+        self.heatmap_status_label.setStyleSheet("font-size: 9pt; color: #888888;")
+        heatmap_layout.addWidget(self.heatmap_status_label)
+
+        self.heatmap_group.setLayout(heatmap_layout)
+        layout.addWidget(self.heatmap_group)
+
         layout.addStretch()
         self.setLayout(layout)
 
@@ -5695,6 +6466,11 @@ class MainWindow(QMainWindow):
         self.loot_detector = LootContainerDetector()
         log("ARC Raiders Integration initialized: Enemy, Extraction, Loot detectors", "SUCCESS")
 
+        # Voice Alert System (v3.4.3 - Feature 1) 🔊
+        log("Initializing Voice Alert System (v3.4.3)", "INFO")
+        self.voice_alerts = VoiceAlertSystem()
+        log("Voice Alert System initialized (disabled by default - enable in UI)", "SUCCESS")
+
         self.create_ui()
 
         # Main update timer (20 FPS)
@@ -5711,6 +6487,26 @@ class MainWindow(QMainWindow):
         self.audio_scan_timer = QTimer()
         self.audio_scan_timer.timeout.connect(self.scan_audio_sources)
         self.audio_scan_timer.start(2000)
+
+        # Voice Alerts event handlers (v3.4.3)
+        self.det_panel.voice_enable.toggled.connect(self.on_voice_alerts_toggled)
+        self.det_panel.voice_volume_slider.valueChanged.connect(self.on_voice_volume_changed)
+        self.det_panel.voice_speed_slider.valueChanged.connect(self.on_voice_speed_changed)
+        self.det_panel.voice_lang_combo.currentIndexChanged.connect(self.on_voice_language_changed)
+
+        # Update TTS status label
+        if self.voice_alerts.tts_available:
+            self.det_panel.voice_tts_label.setText("TTS: ✅ Available (pyttsx3)")
+            self.det_panel.voice_tts_label.setStyleSheet("font-size: 8pt; color: #00ff00;")
+        else:
+            self.det_panel.voice_tts_label.setText("TTS: ⚠️ Not installed (console fallback)")
+            self.det_panel.voice_tts_label.setStyleSheet("font-size: 8pt; color: #ff8800;")
+
+        # === v3.4.3: Visual Feedback event handler (Feature 2) ===
+        self.det_panel.visual_feedback_enable.toggled.connect(self.on_visual_feedback_toggled)
+
+        # === v3.4.3: Sound Heatmap event handler (Feature 3) ===
+        self.det_panel.heatmap_enable.toggled.connect(self.on_heatmap_toggled)
 
         # Initial scans (v3.0)
         QTimer.singleShot(500, self.scan_games)  # Scan games after 0.5s
@@ -5771,6 +6567,10 @@ class MainWindow(QMainWindow):
         # 3D Radar
         self.radar_3d_widget = Radar3DWidget()
         self.radar_tabs.addTab(self.radar_3d_widget, "🌐 3D Sphere")
+
+        # === v3.4.3: Sound Heatmap (Feature 3) ===
+        self.sound_heatmap = SoundHeatmapWidget()
+        self.radar_tabs.addTab(self.sound_heatmap, "🔥 Sound Heatmap")
 
         radar_layout.addWidget(self.radar_tabs)
 
@@ -6374,6 +7174,9 @@ class MainWindow(QMainWindow):
                     icon = "🟢"
                 self.det_panel.arc_enemy_label.setText(f"{icon} {enemy_type} ({confidence:.0f}%) [{threat}]")
                 self.det_panel.arc_enemy_label.setStyleSheet(f"font-size: 10pt; color: {color}; font-weight: bold;")
+
+                # === v3.4.3: VOICE ALERT - ARC Enemy ===
+                self.voice_alerts.alert_arc_enemy(arc_enemy_result['enemy_type'], arc_enemy_result['threat_level'])
             else:
                 self.det_panel.arc_enemy_label.setText("ARC Enemy: None")
                 self.det_panel.arc_enemy_label.setStyleSheet("font-size: 10pt; color: #888888;")
@@ -6400,6 +7203,9 @@ class MainWindow(QMainWindow):
                     time_str = ""
                 self.det_panel.extraction_label.setText(f"{icon} Extraction: {status} {time_str}")
                 self.det_panel.extraction_label.setStyleSheet(f"font-size: 10pt; color: {color}; font-weight: bold;")
+
+                # === v3.4.3: VOICE ALERT - Extraction Zone ===
+                self.voice_alerts.alert_extraction(extraction_result['extraction_status'], time_remaining)
             else:
                 self.det_panel.extraction_label.setText("Extraction: Not active")
                 self.det_panel.extraction_label.setStyleSheet("font-size: 10pt; color: #888888;")
@@ -6420,6 +7226,9 @@ class MainWindow(QMainWindow):
                     color = "#ffaa00"
                 self.det_panel.loot_label.setText(f"{icon} {loot_type} (Count: {loot_count}) {confidence:.0f}%")
                 self.det_panel.loot_label.setStyleSheet(f"font-size: 10pt; color: {color}; font-weight: bold;")
+
+                # === v3.4.3: VOICE ALERT - Loot Detection ===
+                self.voice_alerts.alert_loot(loot_result['loot_type'])
             else:
                 loot_count = loot_result['loot_count']
                 if loot_count > 0:
@@ -6589,6 +7398,32 @@ class MainWindow(QMainWindow):
                 self.radar_widget.update_target(primary_target['angle'], primary_target['distance'])
                 if self.detached_radar:
                     self.detached_radar.radar.update_target(primary_target['angle'], primary_target['distance'])
+
+                # === v3.4.3: VOICE ALERT - Enemy Direction ===
+                # Alert for highest threat target (first in ranked list)
+                if len(active_targets) > 0:
+                    highest_threat = active_targets[0]  # Already ranked by threat
+                    self.voice_alerts.alert_enemy_direction(highest_threat['angle'], highest_threat['distance'])
+
+                # === v3.4.3: SOUND HEATMAP - Add Activity (Feature 3) ===
+                # Add activity for all detected targets
+                for target in active_targets:
+                    # Determine floor offset from elevation
+                    elevation = target.get('elevation', 0)
+                    if elevation > 15:  # Above player
+                        floor_offset = 1
+                    elif elevation < -15:  # Below player
+                        floor_offset = -1
+                    else:  # Same floor
+                        floor_offset = 0
+
+                    # Determine intensity based on energy and distance
+                    distance = target.get('distance', 50)
+                    intensity = min(1.0, energy * 10) * (100 / max(distance, 5))  # Closer = higher intensity
+                    intensity = min(1.0, max(0.1, intensity))  # Clamp to 0.1-1.0
+
+                    # Add to heatmap
+                    self.sound_heatmap.add_activity(target['angle'], floor_offset, intensity)
             else:
                 # Clear all radars when no targets
                 self.radar_widget.update_target(None, None)
@@ -7222,6 +8057,92 @@ class MainWindow(QMainWindow):
 
         except Exception as e:
             log(f"Error in scan_audio_sources: {e}", "ERROR")
+
+    # ========================================================================
+    # VOICE ALERTS EVENT HANDLERS (v3.4.3 - Feature 1)
+    # ========================================================================
+
+    def on_voice_alerts_toggled(self, checked):
+        """Handle voice alerts enable/disable"""
+        try:
+            self.voice_alerts.set_enabled(checked)
+
+            if checked:
+                self.det_panel.voice_status_label.setText("Status: ✅ ENABLED")
+                self.det_panel.voice_status_label.setStyleSheet("font-size: 9pt; color: #00ff00; font-weight: bold;")
+            else:
+                self.det_panel.voice_status_label.setText("Status: ❌ DISABLED")
+                self.det_panel.voice_status_label.setStyleSheet("font-size: 9pt; color: #888888;")
+
+        except Exception as e:
+            log(f"Error in on_voice_alerts_toggled: {e}", "ERROR")
+
+    def on_voice_volume_changed(self, value):
+        """Handle voice volume change"""
+        try:
+            volume = value / 100.0  # Convert 0-100 to 0.0-1.0
+            self.voice_alerts.set_volume(volume)
+            self.det_panel.voice_volume_label.setText(f"{value}%")
+        except Exception as e:
+            log(f"Error in on_voice_volume_changed: {e}", "ERROR")
+
+    def on_voice_speed_changed(self, value):
+        """Handle voice speed change"""
+        try:
+            self.voice_alerts.set_rate(value)
+            self.det_panel.voice_speed_label.setText(str(value))
+        except Exception as e:
+            log(f"Error in on_voice_speed_changed: {e}", "ERROR")
+
+    def on_voice_language_changed(self, index):
+        """Handle language change"""
+        try:
+            language = 'pl' if index == 0 else 'en'
+            self.voice_alerts.set_language(language)
+        except Exception as e:
+            log(f"Error in on_voice_language_changed: {e}", "ERROR")
+
+    def on_visual_feedback_toggled(self, checked):
+        """Handle visual feedback enable/disable (v3.4.3 - Feature 2)"""
+        try:
+            # Enable/disable visual feedback on all radar widgets
+            self.radar_widget.set_visual_feedback(checked)
+            self.radar_3d_widget.set_visual_feedback(checked)
+
+            if self.detached_radar:
+                self.detached_radar.radar.set_visual_feedback(checked)
+
+            # Update status label
+            if checked:
+                self.det_panel.visual_feedback_status_label.setText("Status: ✅ ENABLED")
+                self.det_panel.visual_feedback_status_label.setStyleSheet("font-size: 9pt; color: #00ff00; font-weight: bold;")
+                log("Visual Feedback: ENABLED (directional arrows + threat indicators)", "INFO")
+            else:
+                self.det_panel.visual_feedback_status_label.setText("Status: ❌ DISABLED")
+                self.det_panel.visual_feedback_status_label.setStyleSheet("font-size: 9pt; color: #888888;")
+                log("Visual Feedback: DISABLED", "INFO")
+
+        except Exception as e:
+            log(f"Error in on_visual_feedback_toggled: {e}", "ERROR")
+
+    def on_heatmap_toggled(self, checked):
+        """Handle sound heatmap enable/disable (v3.4.3 - Feature 3)"""
+        try:
+            # Enable/disable heatmap
+            self.sound_heatmap.set_enabled(checked)
+
+            # Update status label
+            if checked:
+                self.det_panel.heatmap_status_label.setText("Status: ✅ ENABLED")
+                self.det_panel.heatmap_status_label.setStyleSheet("font-size: 9pt; color: #00ff00; font-weight: bold;")
+                log("Sound Heatmap: ENABLED (360° x 3 floors activity tracking)", "INFO")
+            else:
+                self.det_panel.heatmap_status_label.setText("Status: ❌ DISABLED")
+                self.det_panel.heatmap_status_label.setStyleSheet("font-size: 9pt; color: #888888;")
+                log("Sound Heatmap: DISABLED", "INFO")
+
+        except Exception as e:
+            log(f"Error in on_heatmap_toggled: {e}", "ERROR")
 
     def closeEvent(self, event):
         """Handle window close (Module 12: cleanup worker threads)"""

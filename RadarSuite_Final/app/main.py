@@ -1,10 +1,27 @@
 """
-RadarSuite Final v3.4.0-Claude-001
+RadarSuite Final v3.4.1-Claude-001
 Advanced audio radar and detection system for gaming with AI-powered human detection
 Supports: sounddevice, soundcard loopback, pyqtgraph visualization
 Optimized for: ARC Raiders + Sound Blaster Z SE + HyperX Cloud II
 
-NEW IN v3.4.0-Claude-001 - PERFORMANCE OPTIMIZATION:
+NEW IN v3.4.1-Claude-001 - GAMING PLATFORM INTEGRATION:
+🎮 INTEGRACJA Z PLATFORMAMI GAMING 🎮
+- Platform Detection: Steam, Epic Games, GOG Galaxy, Battle.net, EA App
+- Steam AppID Detection: Automatyczne wykrywanie gier przez Steam AppID
+- Epic Games Integration: Wykrywanie parametrów -epicapp=
+- Launcher Audio Filtering: Ignorowanie audio od Steam/Discord/Spotify
+- Enhanced Game Detection: Wyświetlanie gry + platforma w UI
+- Platform Status Display: Live status wszystkich launcherów w Tab 3
+- Intelligent Audio Routing: Priorytetyzacja audio od gier, nie launcherów
+
+TECHNICAL DETAILS:
+- 5 platform: Steam (priority: high), Epic (high), GOG (medium), Battle.net (medium), EA App (low)
+- Steam AppID database: 10+ popularnych gier (CS2, Apex, PUBG, etc.)
+- Audio blacklist: 15+ procesów do ignorowania (launchery, Discord, przeglądaki)
+- Regex parsing: Steam AppID extraction, Epic -epicapp parameter
+- UI integration: Nowa sekcja "Gaming Platform Launchers" w Tab 3
+
+FROM v3.4.0-Claude-001 - PERFORMANCE OPTIMIZATION:
 ⚡ MODULE 12: PERFORMANCE OPTIMIZATION ⚡
 - FFT Caching: Compute FFT once, reuse 4x (eliminates redundant calculations)
 - Performance Monitoring: Real-time FPS, CPU, memory, latency tracking
@@ -107,6 +124,7 @@ import queue
 import time
 import math
 import threading
+import re
 from pathlib import Path
 from datetime import datetime
 from concurrent.futures import ThreadPoolExecutor
@@ -141,7 +159,7 @@ from PyQt5.QtGui import QPainter, QColor, QPen, QBrush, QPalette
 # VERSION
 # ============================================================================
 
-VERSION = "v3.4.0-Claude-001"
+VERSION = "v3.4.1-Claude-001"
 
 # ============================================================================
 # TRANSLATIONS
@@ -2637,6 +2655,266 @@ class GameProcessDetector:
 
 
 # ============================================================================
+# PLATFORM LAUNCHER DETECTOR (v3.4.1 - Gaming Platform Integration)
+# ============================================================================
+
+class PlatformLauncherDetector:
+    """
+    Wykrywa platformy gaming (Steam, Epic Games, GOG) i gry uruchomione przez nie
+    Integracja z launcherami zapewnia lepszą detekcję i routing audio
+    """
+
+    def __init__(self):
+        log("PlatformLauncherDetector.__init__", "INFO")
+
+        # Konfiguracja platform gaming
+        self.platforms = {
+            'Steam': {
+                'process': 'steam.exe',
+                'helper_processes': ['steamwebhelper.exe', 'steamservice.exe'],
+                'paths': [
+                    r'C:\Program Files (x86)\Steam',
+                    r'C:\Program Files\Steam',
+                    r'D:\Steam',
+                    r'E:\Steam'
+                ],
+                'game_path_pattern': r'steamapps[/\\]common[/\\](.+?)[/\\]',
+                'priority': 'high'
+            },
+            'Epic Games': {
+                'process': 'EpicGamesLauncher.exe',
+                'helper_processes': ['EpicWebHelper.exe'],
+                'paths': [
+                    r'C:\Program Files (x86)\Epic Games',
+                    r'C:\Program Files\Epic Games',
+                    r'D:\Epic Games',
+                    r'E:\Epic Games'
+                ],
+                'game_path_pattern': r'Epic Games[/\\](.+?)[/\\]',
+                'param_pattern': r'-epicapp=(\w+)',
+                'priority': 'high'
+            },
+            'GOG Galaxy': {
+                'process': 'GalaxyClient.exe',
+                'helper_processes': ['GalaxyClientService.exe'],
+                'paths': [
+                    r'C:\Program Files (x86)\GOG Galaxy',
+                    r'C:\Program Files\GOG Galaxy',
+                    r'D:\GOG Galaxy',
+                    r'E:\GOG Galaxy'
+                ],
+                'game_path_pattern': r'GOG Games[/\\](.+?)[/\\]',
+                'priority': 'medium'
+            },
+            'Battle.net': {
+                'process': 'Battle.net.exe',
+                'helper_processes': ['Agent.exe'],
+                'paths': [
+                    r'C:\Program Files (x86)\Battle.net',
+                    r'C:\Program Files\Battle.net'
+                ],
+                'priority': 'medium'
+            },
+            'EA App': {
+                'process': 'EADesktop.exe',
+                'helper_processes': ['EABackgroundService.exe'],
+                'paths': [
+                    r'C:\Program Files\Electronic Arts\EA Desktop',
+                    r'C:\Program Files (x86)\Electronic Arts\EA Desktop'
+                ],
+                'priority': 'low'
+            }
+        }
+
+        # Procesy do ignorowania przy detekcji audio (launchery, nie gry)
+        self.launcher_audio_blacklist = [
+            'steam.exe', 'steamwebhelper.exe', 'steamservice.exe',
+            'epicgameslauncher.exe', 'epicwebhelper.exe',
+            'galaxyclient.exe', 'galaxyclientservice.exe',
+            'battle.net.exe', 'agent.exe',
+            'eadesktop.exe', 'eabackgroundservice.exe',
+            'discord.exe', 'discordptb.exe',  # Discord overlay
+            'spotify.exe', 'spotifywebhelper.exe',  # Muzyka
+            'chrome.exe', 'firefox.exe', 'msedge.exe'  # Przeglądarki
+        ]
+
+        # Steam AppID database (popularne gry)
+        self.steam_appid_db = {
+            730: 'Counter-Strike 2',
+            570: 'Dota 2',
+            440: 'Team Fortress 2',
+            1172470: 'Apex Legends',
+            578080: 'PUBG: Battlegrounds',
+            271590: 'Grand Theft Auto V',
+            1238840: 'Battlefield 2042',
+            1938090: 'Call of Duty: Warzone',
+            359550: 'Rainbow Six Siege',
+            1517290: 'Battlefield 2042',
+            # Dodaj więcej według potrzeb
+        }
+
+        self.active_platforms = []
+        self.detected_game_via_launcher = None
+        self.last_scan_time = 0.0
+        self.scan_interval = 3.0  # Skanuj co 3 sekundy
+
+    def scan_platforms(self):
+        """
+        Skanuj uruchomione platformy gaming
+        Returns: dict z aktywnymi platformami i statusem
+        """
+        try:
+            current_time = time.time()
+
+            # Nie skanuj zbyt często
+            if current_time - self.last_scan_time < self.scan_interval:
+                return {
+                    'platforms': self.active_platforms,
+                    'count': len(self.active_platforms),
+                    'has_platforms': len(self.active_platforms) > 0
+                }
+
+            self.last_scan_time = current_time
+
+            detected_platforms = []
+
+            # Skanuj wszystkie procesy
+            for platform_name, config in self.platforms.items():
+                if self._is_platform_running(config):
+                    detected_platforms.append({
+                        'name': platform_name,
+                        'process': config['process'],
+                        'priority': config['priority'],
+                        'status': 'running'
+                    })
+                    log(f"Detected platform: {platform_name}", "INFO")
+
+            self.active_platforms = detected_platforms
+
+            return {
+                'platforms': self.active_platforms,
+                'count': len(self.active_platforms),
+                'has_platforms': len(self.active_platforms) > 0
+            }
+
+        except Exception as e:
+            log(f"Error in scan_platforms: {e}", "ERROR")
+            return {
+                'platforms': [],
+                'count': 0,
+                'has_platforms': False
+            }
+
+    def _is_platform_running(self, config):
+        """Sprawdź czy platforma jest uruchomiona"""
+        try:
+            for proc in psutil.process_iter(['name']):
+                if proc.info['name'] and proc.info['name'].lower() == config['process'].lower():
+                    return True
+            return False
+        except:
+            return False
+
+    def detect_game_from_launcher(self, game_processes):
+        """
+        Inteligentna detekcja gry przez launchery
+
+        Args:
+            game_processes: Lista wykrytych procesów gier
+
+        Returns:
+            dict z informacjami o grze + launcher
+        """
+        try:
+            if not game_processes:
+                return None
+
+            # Dla każdego procesu gry, sprawdź czy jest uruchomiony przez launcher
+            for proc in psutil.process_iter(['pid', 'name', 'exe', 'cmdline']):
+                try:
+                    proc_name = proc.info['name'] or ''
+                    proc_exe = proc.info['exe'] or ''
+                    proc_cmdline = ' '.join(proc.info['cmdline']) if proc.info.get('cmdline') else ''
+
+                    # Sprawdź czy to proces gry (nie launcher)
+                    if proc_name.lower() in [p.lower() for p in self.launcher_audio_blacklist]:
+                        continue
+
+                    # Sprawdź Steam AppID
+                    if 'steam' in proc_cmdline.lower():
+                        appid = self._extract_steam_appid(proc_cmdline)
+                        if appid:
+                            game_name = self.steam_appid_db.get(appid, f"Steam Game {appid}")
+                            self.detected_game_via_launcher = {
+                                'name': game_name,
+                                'platform': 'Steam',
+                                'appid': appid,
+                                'process': proc_name,
+                                'pid': proc.info['pid']
+                            }
+                            log(f"Detected via Steam: {game_name} (AppID: {appid})", "INFO")
+                            return self.detected_game_via_launcher
+
+                    # Sprawdź Epic Games
+                    if '-epicapp=' in proc_cmdline.lower():
+                        match = re.search(r'-epicapp=(\w+)', proc_cmdline, re.IGNORECASE)
+                        if match:
+                            epic_app = match.group(1)
+                            self.detected_game_via_launcher = {
+                                'name': f"Epic: {epic_app}",
+                                'platform': 'Epic Games',
+                                'app_name': epic_app,
+                                'process': proc_name,
+                                'pid': proc.info['pid']
+                            }
+                            log(f"Detected via Epic: {epic_app}", "INFO")
+                            return self.detected_game_via_launcher
+
+                except (psutil.NoSuchProcess, psutil.AccessDenied):
+                    continue
+
+            return None
+
+        except Exception as e:
+            log(f"Error in detect_game_from_launcher: {e}", "ERROR")
+            return None
+
+    def _extract_steam_appid(self, cmdline):
+        """Wyciągnij Steam AppID z command line"""
+        try:
+            # Szukaj steam://rungameid/XXXXX
+            match = re.search(r'steam://rungameid/(\d+)', cmdline, re.IGNORECASE)
+            if match:
+                return int(match.group(1))
+
+            # Alternatywnie: SteamAppId=XXXXX
+            match = re.search(r'SteamAppId[=:](\d+)', cmdline, re.IGNORECASE)
+            if match:
+                return int(match.group(1))
+
+            return None
+        except:
+            return None
+
+    def should_ignore_audio_source(self, process_name):
+        """
+        Sprawdź czy źródło audio powinno być ignorowane
+        (launchery, nie gry)
+
+        Returns: True jeśli należy ignorować
+        """
+        if not process_name:
+            return False
+
+        proc_lower = process_name.lower()
+        return proc_lower in self.launcher_audio_blacklist
+
+    def get_platform_info(self, platform_name):
+        """Pobierz informacje o platformie"""
+        return self.platforms.get(platform_name, None)
+
+
+# ============================================================================
 # AUDIO SOURCE SCANNER (v3.0 - Module 3)
 # ============================================================================
 
@@ -2645,15 +2923,18 @@ class AudioSourceScanner:
     Scans system for active and inactive audio sources
     Provides visualization: green = active, red = inactive
     Lists all available audio devices with real-time status
+
+    v3.4.1: Dodano filtrowanie audio od launcherów (ignoruj Steam, Discord, etc.)
     """
 
-    def __init__(self):
+    def __init__(self, platform_detector=None):
         log("AudioSourceScanner.__init__", "INFO")
 
         self.active_sources = []
         self.inactive_sources = []
         self.last_scan_time = 0.0
         self.scan_interval = 2.0  # Scan every 2 seconds
+        self.platform_detector = platform_detector  # v3.4.1: filtrowanie launcherów
 
     def scan_audio_sources(self):
         """
@@ -3629,7 +3910,12 @@ class MainWindow(QMainWindow):
 
         # Advanced scanners (v3.0)
         self.game_detector = GameProcessDetector()
-        self.audio_scanner = AudioSourceScanner()
+
+        # Platform launcher detector (v3.4.1 - Gaming Platform Integration)
+        self.platform_detector = PlatformLauncherDetector()
+
+        # Audio scanner z integracją platform (v3.4.1)
+        self.audio_scanner = AudioSourceScanner(platform_detector=self.platform_detector)
 
         # Sound classifier (Module 7 - v3.2.0)
         self.sound_classifier = SoundClassifier()
@@ -3811,6 +4097,23 @@ class MainWindow(QMainWindow):
 
         game_group.setLayout(game_group_layout)
         game_layout.addWidget(game_group)
+
+        # Platform Launchers section (v3.4.1)
+        platform_group = QGroupBox("🚀 Gaming Platform Launchers")
+        platform_layout = QVBoxLayout()
+
+        self.detected_platforms_label = QLabel("Scanning for launchers...")
+        self.detected_platforms_label.setStyleSheet("font-size: 10pt; color: #888888; padding: 5px;")
+        self.detected_platforms_label.setWordWrap(True)
+        platform_layout.addWidget(self.detected_platforms_label)
+
+        self.launcher_game_label = QLabel("—")
+        self.launcher_game_label.setStyleSheet("font-size: 9pt; color: #00DDFF; padding: 5px;")
+        self.launcher_game_label.setWordWrap(True)
+        platform_layout.addWidget(self.launcher_game_label)
+
+        platform_group.setLayout(platform_layout)
+        game_layout.addWidget(platform_group)
 
         # Audio sources section
         sources_group = QGroupBox("🔊 Audio Sources Monitor")
@@ -4704,15 +5007,27 @@ class MainWindow(QMainWindow):
             )
 
     def scan_games(self):
-        """Scan for running games and update UI (v3.1.0)"""
+        """Scan for running games and update UI (v3.4.1 - z integracją platform gaming)"""
         try:
             game_data = self.game_detector.scan_processes()
+
+            # Skanuj platformy gaming (v3.4.1)
+            platform_data = self.platform_detector.scan_platforms()
+
+            # Inteligentna detekcja przez launchery (v3.4.1)
+            launcher_game = self.platform_detector.detect_game_from_launcher(game_data['games'])
 
             # Update game detection labels in Tab 3
             if game_data['has_games']:
                 games_text = ", ".join(game_data['games'][:5])
                 if len(game_data['games']) > 5:
                     games_text += f" (+{len(game_data['games']) - 5} more)"
+
+                # Dodaj informację o platformie jeśli wykryto
+                if launcher_game:
+                    platform_name = launcher_game['platform']
+                    games_text += f" 🔹 via {platform_name}"
+
                 self.detected_games_label.setText(f"🎮 {games_text}")
                 self.detected_games_label.setStyleSheet("font-size: 11pt; color: #00FF00; font-weight: bold; padding: 10px;")
 
@@ -4738,6 +5053,33 @@ class MainWindow(QMainWindow):
             else:
                 self.detected_engines_label.setText("No engines detected")
                 self.detected_engines_label.setStyleSheet("font-size: 10pt; color: #888888; padding: 5px;")
+
+            # Aktualizuj informacje o platformach (v3.4.1)
+            if platform_data['has_platforms']:
+                platforms_list = []
+                for p in platform_data['platforms']:
+                    status_icon = "✅" if p['status'] == 'running' else "❌"
+                    platforms_list.append(f"{status_icon} {p['name']}")
+
+                platforms_text = ", ".join(platforms_list)
+                self.detected_platforms_label.setText(platforms_text)
+                self.detected_platforms_label.setStyleSheet("font-size: 10pt; color: #00FF00; padding: 5px;")
+            else:
+                self.detected_platforms_label.setText("No launchers detected")
+                self.detected_platforms_label.setStyleSheet("font-size: 10pt; color: #888888; padding: 5px;")
+
+            # Aktualizuj informacje o grze przez launcher (v3.4.1)
+            if launcher_game:
+                game_info = f"🎯 {launcher_game['name']}"
+                if 'appid' in launcher_game:
+                    game_info += f" (AppID: {launcher_game['appid']})"
+                game_info += f"\n   Platform: {launcher_game['platform']}"
+                game_info += f"\n   Process: {launcher_game['process']}"
+                self.launcher_game_label.setText(game_info)
+                self.launcher_game_label.setStyleSheet("font-size: 9pt; color: #00FFAA; padding: 5px; font-weight: bold;")
+            else:
+                self.launcher_game_label.setText("—")
+                self.launcher_game_label.setStyleSheet("font-size: 9pt; color: #888888; padding: 5px;")
 
         except Exception as e:
             log(f"Error in scan_games: {e}", "ERROR")

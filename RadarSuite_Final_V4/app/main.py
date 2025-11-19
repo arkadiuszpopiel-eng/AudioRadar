@@ -482,8 +482,10 @@ class PerformanceMonitor:
             try:
                 self.cpu_percent = self.process.cpu_percent()
                 self.memory_mb = self.process.memory_info().rss / (1024 * 1024)
-            except:
-                pass
+            except (psutil.Error, AttributeError) as e:
+                log(f"Performance monitoring error: {e}", level="WARNING")
+                self.cpu_percent = 0.0
+                self.memory_mb = 0.0
 
     def get_stats(self):
         """Get current performance statistics"""
@@ -1960,7 +1962,8 @@ class SoundClassifier:
                 return attack_time
             return 0.0
 
-        except:
+        except (ValueError, IndexError, ZeroDivisionError) as e:
+            log(f"Attack time calculation error: {e}", level="WARNING")
             return 0.0
 
 
@@ -2812,7 +2815,8 @@ class PlatformLauncherDetector:
                 if proc.info['name'] and proc.info['name'].lower() == config['process'].lower():
                     return True
             return False
-        except:
+        except (psutil.Error, KeyError, AttributeError) as e:
+            log(f"Platform detection error for {config.get('name', 'unknown')}: {e}", level="WARNING")
             return False
 
     def detect_game_from_launcher(self, game_processes):
@@ -2893,7 +2897,8 @@ class PlatformLauncherDetector:
                 return int(match.group(1))
 
             return None
-        except:
+        except (AttributeError, ValueError, IndexError) as e:
+            log(f"Steam AppID parsing error: {e}", level="WARNING")
             return None
 
     def should_ignore_audio_source(self, process_name):
@@ -2975,7 +2980,8 @@ class AudioSourceScanner:
                         try:
                             default_device = sd.query_devices(kind='input')
                             is_active = (dev['name'] == default_device['name'])
-                        except:
+                        except (KeyError, Exception) as e:
+                            log(f"Error checking default device: {e}", level="DEBUG")
                             is_active = False
 
                         if is_active or dev['max_input_channels'] > 0:

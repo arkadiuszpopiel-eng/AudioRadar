@@ -1,2 +1,13 @@
-# RadarSuite v3.5.0 - Tracking Module
-# TODO: Move classes here during modularization
+"""
+RadarSuite v3.5.0 - Tracking Module
+Multi-target tracking and threat priority system
+"""
+
+from .target import Target, TargetTracker
+from .threat import ThreatPrioritySystem
+
+__all__ = [
+    'Target',
+    'TargetTracker',
+    'ThreatPrioritySystem',
+]

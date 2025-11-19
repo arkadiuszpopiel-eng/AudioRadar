@@ -3,9 +3,20 @@ RadarSuite v3.5.0 - Audio Source Scanner
 Scans and filters audio sources (games vs launchers)
 """
 
+import time
 import psutil
 
-from core.logger import log
+try:
+    import sounddevice as sd
+except ImportError:
+    sd = None
+
+try:
+    import soundcard as sc
+except ImportError:
+    sc = None
+
+from ..core.logger import log
 
 
 class AudioSourceScanner:

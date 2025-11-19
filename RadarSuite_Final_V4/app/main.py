@@ -165,7 +165,7 @@ from PyQt5.QtGui import QPainter, QColor, QPen, QBrush, QPalette
 # ============================================================================
 # CORE MODULE IMPORTS (Point 10 - v3.5.0: Modularization)
 # ============================================================================
-from core import (
+from .core import (
     # Constants
     VERSION,
     SAMPLE_RATE,
@@ -208,7 +208,7 @@ from core import (
 # ============================================================================
 # HARDWARE MODULE IMPORTS (Point 10 - v3.5.0: Modularization)
 # ============================================================================
-from hardware import (
+from .hardware import (
     GPUAccelerator,
     SoundBlasterOptimizer,
 )
@@ -216,7 +216,7 @@ from hardware import (
 # ============================================================================
 # UTILS MODULE IMPORTS (Point 10 - v3.5.0: Modularization)
 # ============================================================================
-from utils import (
+from .utils import (
     PerformanceMonitor,
     GameProcessDetector,
     PlatformLauncherDetector,
@@ -226,7 +226,7 @@ from utils import (
 # ============================================================================
 # TRACKING MODULE IMPORTS (Point 10 - v3.5.0: Modularization)
 # ============================================================================
-from tracking import (
+from .tracking import (
     Target,
     TargetTracker,
     ThreatPrioritySystem,
@@ -235,7 +235,7 @@ from tracking import (
 # ============================================================================
 # DETECTION MODULE IMPORTS (Point 10 - v3.5.0: Modularization)
 # ============================================================================
-from detection import (
+from .detection import (
     DetectionWorker,
     HumanFootstepDetector,
 )
@@ -243,7 +243,7 @@ from detection import (
 # ============================================================================
 # AUDIO MODULE IMPORTS (Point 10 - v3.5.0: Modularization)
 # ============================================================================
-from audio import (
+from .audio import (
     AudioProcessingCache,
     AudioEngine,
     SoundClassifier,
@@ -254,7 +254,7 @@ from audio import (
 # ============================================================================
 # WIDGETS MODULE IMPORTS (Point 10 - v3.5.0: Modularization)
 # ============================================================================
-from widgets import (
+from .widgets import (
     ToastNotification,
     DetachableRadarWidget,
     RadarWidget,

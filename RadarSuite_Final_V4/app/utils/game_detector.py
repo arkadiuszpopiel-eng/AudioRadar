@@ -3,10 +3,11 @@ RadarSuite v3.5.0 - Game Process Detector
 Detects running games for ARC Raiders, Tarkov, CS2, etc.
 """
 
+import time
 import re
 import psutil
 
-from core.logger import log
+from ..core.logger import log
 
 
 class GameProcessDetector:

@@ -6,7 +6,7 @@ Formant analysis for voice detection
 import numpy as np
 from scipy.signal import find_peaks
 
-from core.logger import log
+from ..core.logger import log
 
 
 class HumanVoiceDetector:

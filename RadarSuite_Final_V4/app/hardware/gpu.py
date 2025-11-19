@@ -8,7 +8,7 @@ import sys
 import numpy as np
 import psutil
 
-from core.logger import log
+from ..core.logger import log
 
 
 class GPUAccelerator:

@@ -3,11 +3,12 @@ RadarSuite v3.5.0 - Human Footstep Detector
 Advanced footstep pattern recognition
 """
 
+import time
 import numpy as np
 from scipy import signal as sp_signal
 from collections import deque
 
-from core.logger import log
+from ..core.logger import log
 
 
 class HumanFootstepDetector:

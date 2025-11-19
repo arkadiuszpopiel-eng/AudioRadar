@@ -163,6 +163,44 @@ from PyQt5.QtGui import QPainter, QColor, QPen, QBrush, QPalette
 VERSION = "v3.5.0-Diamond-001"
 
 # ============================================================================
+# CONSTANTS (FIXED v3.5.0: Extracted magic numbers)
+# ============================================================================
+
+# Audio
+SAMPLE_RATE = 48000  # Hz - Standard sample rate
+BLOCK_SIZE = 2048    # Samples per block
+CHANNELS = 2         # Stereo
+
+# Performance
+TICK_INTERVAL_MS = 50        # Main loop @ 20 FPS
+GAME_SCAN_INTERVAL_MS = 5000  # Scan games every 5s
+AUDIO_SCAN_INTERVAL_MS = 2000 # Scan audio every 2s
+STARTUP_DELAY_MS = 500        # Initial scan delay
+STARTUP_AUDIO_DELAY_MS = 1000 # Audio scan delay
+
+# Detection
+ENERGY_THRESHOLD = 0.00001    # Minimum energy for detection
+RADAR_ROTATION_DEG = 4.0      # Degrees per frame
+
+# Worker threads
+MAX_WORKERS = 3              # Thread pool size
+DETECTION_TIMEOUT_SEC = 5.0  # Worker shutdown timeout
+CLEANUP_INTERVAL_SEC = 10.0  # Future cleanup interval
+
+# Audio levels (dBFS)
+AUDIO_LEVEL_LOUD = -20      # Green
+AUDIO_LEVEL_MEDIUM = -40    # Yellow
+AUDIO_LEVEL_LOW = -60       # Orange
+
+# Recording (FIXED v3.5.0: Buffering to reduce I/O)
+RECORDING_BUFFER_SIZE = 20   # Blocks before flush (1 sec @ 20 FPS)
+RECORDING_FLUSH_INTERVAL = 1.0  # Seconds between flushes
+
+# UI
+TOAST_DURATION_MS = 3000     # Default toast display time
+TOAST_MAX_COUNT = 3          # Max concurrent toasts
+
+# ============================================================================
 # CONFIG MANAGER (Phase 4 - v3.5.0)
 # ============================================================================
 
@@ -1171,7 +1209,7 @@ class DetectionWorker:
         """Start periodic cleanup timer (every 10 seconds)"""
         if not self.shutdown_event.is_set():
             self._cleanup_done_futures()
-            self._cleanup_timer = threading.Timer(10.0, self._start_periodic_cleanup)
+            self._cleanup_timer = threading.Timer(CLEANUP_INTERVAL_SEC, self._start_periodic_cleanup)  # FIXED v3.5.0: Use constant
             self._cleanup_timer.daemon = True
             self._cleanup_timer.start()
 
@@ -1256,7 +1294,7 @@ class DetectionWorker:
             log(f"Error in classification worker: {e}", "ERROR")
             return {'type': 'unknown', 'confidence': 0, 'details': {}}
 
-    def shutdown(self, timeout=5.0):
+    def shutdown(self, timeout=DETECTION_TIMEOUT_SEC):  # FIXED v3.5.0: Use constant
         """
         Thread-safe shutdown with timeout
 
@@ -2947,6 +2985,10 @@ class AudioRecorder:
         self.start_time = None
         self.total_samples = 0
 
+        # FIXED v3.5.0: Buffering to reduce I/O (flush every 1s instead of every 50ms)
+        self._buffer = []  # Temporary buffer for audio blocks
+        self._metadata_buffer = []  # Temporary buffer for metadata
+
     def start_recording(self):
         """Start recording session"""
         self.is_recording = True
@@ -2957,13 +2999,17 @@ class AudioRecorder:
         log("Recording started", "INFO")
 
     def stop_recording(self):
-        """Stop recording session"""
+        """Stop recording session (FIXED v3.5.0: Flush remaining buffer)"""
         self.is_recording = False
+
+        # FIXED v3.5.0: Flush any remaining buffered blocks
+        self._flush_buffer()
+
         log(f"Recording stopped: {len(self.recorded_blocks)} blocks, {self.total_samples} samples", "INFO")
 
     def add_block(self, audio_block, detections=None):
         """
-        Add audio block to recording
+        Add audio block to recording (FIXED v3.5.0: Buffered I/O)
 
         Args:
             audio_block: numpy array of audio data
@@ -2973,21 +3019,48 @@ class AudioRecorder:
             return
 
         try:
-            # Store audio block
-            self.recorded_blocks.append(audio_block.copy())
+            # FIXED v3.5.0: Add to buffer instead of direct append
+            self._buffer.append(audio_block.copy())
             self.total_samples += len(audio_block)
 
-            # Store metadata
+            # Store metadata in buffer
             if detections:
                 timestamp = time.time() - self.start_time
-                self.metadata.append({
+                self._metadata_buffer.append({
                     'timestamp': timestamp,
-                    'block_index': len(self.recorded_blocks) - 1,
+                    'block_index': len(self.recorded_blocks) + len(self._buffer) - 1,
                     'detections': detections.copy()
                 })
 
+            # Flush buffer when it reaches threshold (20 blocks = 1 second @ 20 FPS)
+            if len(self._buffer) >= RECORDING_BUFFER_SIZE:
+                self._flush_buffer()
+
         except Exception as e:
             log(f"Error adding block to recording: {e}", "ERROR")
+
+    def _flush_buffer(self):
+        """
+        Flush buffered blocks to main storage (FIXED v3.5.0: Reduce I/O)
+        Called when buffer reaches threshold or recording stops
+        """
+        if not self._buffer:
+            return
+
+        try:
+            # Append all buffered blocks at once
+            self.recorded_blocks.extend(self._buffer)
+            self.metadata.extend(self._metadata_buffer)
+
+            # Clear buffers
+            buffer_size = len(self._buffer)
+            self._buffer = []
+            self._metadata_buffer = []
+
+            log(f"Flushed {buffer_size} blocks to recording", "DEBUG")
+
+        except Exception as e:
+            log(f"Error flushing buffer: {e}", "ERROR")
 
     def save_to_wav(self, filename):
         """
@@ -3044,11 +3117,15 @@ class AudioRecorder:
         return self.total_samples / self.sample_rate
 
     def clear(self):
-        """Clear recording buffer"""
+        """Clear recording buffer (FIXED v3.5.0: Also clear internal buffers)"""
         self.recorded_blocks = []
         self.metadata = []
         self.total_samples = 0
         self.start_time = None
+
+        # FIXED v3.5.0: Clear internal buffers
+        self._buffer = []
+        self._metadata_buffer = []
 
 
 # ============================================================================
@@ -4744,28 +4821,28 @@ class MainWindow(QMainWindow):
 
         self.fft_cache = AudioProcessingCache(max_size=5, gpu_accelerator=self.gpu_accelerator)
         self.perf_monitor = PerformanceMonitor()
-        self.detection_worker = DetectionWorker(max_workers=3)
+        self.detection_worker = DetectionWorker(max_workers=MAX_WORKERS)  # FIXED v3.5.0: Use constant
 
         self.create_ui()
 
-        # Main update timer (20 FPS)
+        # Main update timer (20 FPS) - FIXED v3.5.0: Use constant
         self.timer = QTimer()
         self.timer.timeout.connect(self.tick)
-        self.timer.start(50)
+        self.timer.start(TICK_INTERVAL_MS)
 
-        # Game detection timer (scan every 5 seconds)
+        # Game detection timer (scan every 5 seconds) - FIXED v3.5.0: Use constant
         self.game_scan_timer = QTimer()
         self.game_scan_timer.timeout.connect(self.scan_games)
-        self.game_scan_timer.start(5000)
+        self.game_scan_timer.start(GAME_SCAN_INTERVAL_MS)
 
-        # Audio source scan timer (scan every 2 seconds)
+        # Audio source scan timer (scan every 2 seconds) - FIXED v3.5.0: Use constant
         self.audio_scan_timer = QTimer()
         self.audio_scan_timer.timeout.connect(self.scan_audio_sources)
-        self.audio_scan_timer.start(2000)
+        self.audio_scan_timer.start(AUDIO_SCAN_INTERVAL_MS)
 
-        # Initial scans (v3.0)
-        QTimer.singleShot(500, self.scan_games)  # Scan games after 0.5s
-        QTimer.singleShot(1000, self.scan_audio_sources)  # Scan audio after 1s
+        # Initial scans (v3.0) - FIXED v3.5.0: Use constants
+        QTimer.singleShot(STARTUP_DELAY_MS, self.scan_games)
+        QTimer.singleShot(STARTUP_AUDIO_DELAY_MS, self.scan_audio_sources)
 
     def create_ui(self):
         """Create modern tabbed UI (v3.1.0 - Complete redesign)"""
@@ -5264,6 +5341,35 @@ class MainWindow(QMainWindow):
         else:
             self.led_widget.global_alpha = opacity
 
+    def _safe_update_detached_radar(self, method_name, *args):
+        """
+        Safely update detached radar (FIXED v3.5.0: Null-safety)
+
+        Prevents AttributeError when detached_radar or detached_radar.radar is None
+
+        Args:
+            method_name: Method name to call on detached_radar.radar
+            *args: Arguments to pass to method
+        """
+        if not self.detached_radar:
+            return
+
+        if not hasattr(self.detached_radar, 'radar'):
+            log(f"Detached radar missing 'radar' attribute", "WARNING")
+            return
+
+        if self.detached_radar.radar is None:
+            log(f"Detached radar.radar is None", "WARNING")
+            return
+
+        try:
+            method = getattr(self.detached_radar.radar, method_name)
+            method(*args)
+        except AttributeError as e:
+            log(f"Method '{method_name}' not found on detached radar: {e}", "WARNING")
+        except Exception as e:
+            log(f"Error updating detached radar.{method_name}: {e}", "ERROR")
+
     def toggle_detach_radar(self, checked):
         """Toggle radar detachment"""
         if checked:
@@ -5410,179 +5516,244 @@ class MainWindow(QMainWindow):
         """)
         self.status_bar.showMessage("✓ Stopped - Ready to start" if current_language == 'en' else "✓ Zatrzymano - Gotowy do startu")
 
+    def _update_radar_sweep(self):
+        """
+        Update radar sweep angle and all radar widgets (FIXED v3.5.0: Helper method)
+        """
+        self.radar_angle = (self.radar_angle + RADAR_ROTATION_DEG) % 360.0
+        self.radar_widget.update_sweep(self.radar_angle)
+        self.radar_3d_widget.update_sweep(self.radar_angle)
+        self._safe_update_detached_radar('update_sweep', self.radar_angle)
+
+    def _acquire_audio_block(self):
+        """
+        Acquire audio block from test mode or real audio input (FIXED v3.5.0: Helper method)
+
+        Returns:
+            Audio block (numpy array) or None if not available
+        """
+        if self.dev_panel.test_mode.isChecked():
+            return self.generate_test_block()
+        else:
+            return self.audio.read_block(0.0) or self.audio.last_block
+
+    def _update_recording(self, block):
+        """
+        Update audio recording and duration display (FIXED v3.5.0: Helper method)
+
+        Args:
+            block: Audio block to record
+        """
+        if self.audio_recorder.is_recording:
+            self.audio_recorder.add_block(block)
+            duration = self.audio_recorder.get_duration()
+            minutes = int(duration // 60)
+            seconds = int(duration % 60)
+            self.record_duration_label.setText(f"{minutes}:{seconds:02d}")
+
+    def _process_audio_visualizations(self, block, fft_result):
+        """
+        Update spectrum, waterfall, and waveform visualizations (FIXED v3.5.0: Helper method)
+
+        Args:
+            block: Audio block (numpy array)
+            fft_result: Cached FFT computation result
+        """
+        # Update spectrum with cached FFT (eliminates duplicate computation)
+        self.spectrum.update_from_cache(fft_result)
+        self.waveform.update_waveform(block)
+
+        # Update waterfall with cached FFT power
+        power = 20 * np.log10(fft_result['power'] + 1e-10)
+        self.waterfall.push_row(power)
+
+    def _process_audio_level_monitoring(self, energy):
+        """
+        Monitor and display audio levels with color coding (FIXED v3.5.0: Helper method)
+
+        Args:
+            energy: Audio energy (RMS)
+        """
+        if energy > 0:
+            rms_db = 20 * np.log10(energy + 1e-10)
+            self.dev_panel.rms_label.setText(f"{tr('rms')} {rms_db:.1f} dBFS")
+
+            # Color-coded audio level indicator
+            if rms_db > AUDIO_LEVEL_LOUD:
+                level_color = "#00FF00"  # Green - loud
+                level_status = "🔊 LOUD"
+            elif rms_db > AUDIO_LEVEL_MEDIUM:
+                level_color = "#FFFF00"  # Yellow - medium
+                level_status = "🔉 OK"
+            elif rms_db > AUDIO_LEVEL_LOW:
+                level_color = "#FF8800"  # Orange - quiet
+                level_status = "🔈 LOW"
+            else:
+                level_color = "#FF0000"  # Red - very quiet
+                level_status = "🔇 SILENT"
+
+            self.dev_panel.rms_label.setStyleSheet(f"color: {level_color}; font-weight: bold; font-size: 10pt;")
+        else:
+            self.dev_panel.rms_label.setText(f"{tr('rms')} --- dBFS (NO AUDIO!)")
+            self.dev_panel.rms_label.setStyleSheet("color: #FF0000; font-weight: bold; font-size: 10pt;")
+
+    def _process_detection_and_tracking(self, block, fft_result, energy):
+        """
+        Perform detection, 3D localization, classification, and tracking (FIXED v3.5.0: Helper method)
+
+        Args:
+            block: Audio block (numpy array)
+            fft_result: Cached FFT computation result
+            energy: Audio energy (RMS)
+
+        Returns:
+            Tuple of (events, bands, active_targets)
+        """
+        # Detection - use cached FFT (Module 12 optimization)
+        events, bands = self.det_panel.analyze(block, self.audio.sample_rate, fft_cache=fft_result)
+
+        # Multi-target tracking
+        has_detection = events.get('walk', False) or events.get('run', False) or events.get('shot', False)
+
+        # Prepare detections for tracker
+        detections = []
+        if has_detection and energy > ENERGY_THRESHOLD:
+            # Use precise 3D localization (Module 6)
+            location_3d = self.compute_precise_location_3d(block, self.audio.sample_rate)
+            angle = location_3d['angle']
+            distance = location_3d['distance']
+            elevation = location_3d['elevation']
+
+            # Classify sound type - use cached FFT
+            sound_class = self.sound_classifier.classify_sound(block, self.audio.sample_rate, fft_cache=fft_result)
+
+            # Determine detection type (prioritize classification over simple detection)
+            if sound_class['confidence'] > 50:
+                target_type = sound_class['type']
+            elif events.get('shot', False):
+                target_type = 'shot'
+            elif events.get('run', False):
+                target_type = 'footstep'
+            elif events.get('walk', False):
+                target_type = 'footstep'
+            else:
+                target_type = 'unknown'
+
+            detections.append({
+                'angle': angle,
+                'distance': distance,
+                'elevation': elevation,
+                'type': target_type,
+                'sound_class': sound_class['type'],
+                'class_confidence': sound_class['confidence']
+            })
+
+        # Update tracker
+        active_targets = self.target_tracker.update(detections)
+
+        # Rank targets by threat priority (Module 8)
+        if active_targets:
+            active_targets = self.threat_system.rank_targets(active_targets)
+
+        return events, bands, active_targets
+
+    def _update_ui_elements(self, active_targets, events, bands, energy, balance):
+        """
+        Update all UI elements: radars, LEDs, toolbar stats (FIXED v3.5.0: Helper method)
+
+        Args:
+            active_targets: List of tracked targets
+            events: Detection events dictionary
+            bands: Frequency bands data
+            energy: Audio energy (RMS)
+            balance: L/R audio balance
+        """
+        # Update radars with all active targets (threat-ranked)
+        if active_targets:
+            # Update 3D radar (supports multiple targets)
+            self.radar_3d_widget.clear_targets()
+            for target in active_targets:
+                self.radar_3d_widget.add_target(
+                    target['angle'],
+                    target['distance'],
+                    target['elevation'],
+                    target['color']
+                )
+
+            # Update 2D radar (show primary target only - highest confidence)
+            primary_target = max(active_targets, key=lambda t: t['confidence'])
+            self.radar_widget.update_target(primary_target['angle'], primary_target['distance'])
+            self._safe_update_detached_radar('update_target', primary_target['angle'], primary_target['distance'])
+        else:
+            # Clear all radars when no targets
+            self.radar_widget.update_target(None, None)
+            self.radar_3d_widget.clear_targets()
+            self._safe_update_detached_radar('update_target', None, None)
+
+        # Update LED overlays
+        self.led_widget.update_from_events(events, bands, energy, balance)
+        if self.detached_led:
+            self.detached_led.led_overlay.update_from_events(events, bands, energy, balance)
+
+        # Update toolbar stats with real performance metrics
+        target_count = len(active_targets) if active_targets else 0
+        if energy > 0:
+            rms_db = 20 * np.log10(energy + 1e-10)
+            audio_indicator = "🔊" if rms_db > -40 else "🔉" if rms_db > -60 else "🔇"
+        else:
+            audio_indicator = "❌"
+            rms_db = -100
+
+        # Performance monitoring - end frame and update stats
+        self.perf_monitor.end_frame()
+        self.perf_monitor.update()
+        perf_stats = self.perf_monitor.get_stats()
+
+        self.toolbar_stats_label.setText(
+            f"Targets: {target_count} | Audio: {audio_indicator} {rms_db:.0f}dB | FPS: {perf_stats['fps']:.1f} | Latency: {perf_stats['latency_ms']:.1f}ms"
+        )
+
     def tick(self):
-        """Main update loop with performance optimization (Module 12 - v3.4.0)"""
+        """
+        Main update loop (FIXED v3.5.0: Refactored with helper methods)
+
+        Performance optimizations:
+        - Module 12 (v3.4.0): Cached FFT computation
+        - v3.5.0: Split into focused helper methods for maintainability
+        """
         try:
             # Start performance monitoring
             self.perf_monitor.start_frame()
 
-            # Update radar sweep
-            self.radar_angle = (self.radar_angle + 4.0) % 360.0
+            # 1. Update radar sweep
+            self._update_radar_sweep()
 
-            # Update all radars (2D and 3D)
-            self.radar_widget.update_sweep(self.radar_angle)
-            self.radar_3d_widget.update_sweep(self.radar_angle)
-            if self.detached_radar:
-                self.detached_radar.radar.update_sweep(self.radar_angle)
-
-            # Get audio block
-            if self.dev_panel.test_mode.isChecked():
-                block = self.generate_test_block()
-            else:
-                block = self.audio.read_block(0.0) or self.audio.last_block
-
+            # 2. Acquire and process audio block
+            block = self._acquire_audio_block()
             if block is None:
                 return
-
-            # Apply audio processing (auto-gain, noise gate) (v3.1.2)
             block = self.apply_audio_processing(block)
 
-            # Record audio if recording is active (Module 9 - v3.3.0)
-            # Note: detections will be added later in tick()
-            if self.audio_recorder.is_recording:
-                self.audio_recorder.add_block(block)
+            # 3. Update recording
+            self._update_recording(block)
 
-                # Update recording duration display
-                duration = self.audio_recorder.get_duration()
-                minutes = int(duration // 60)
-                seconds = int(duration % 60)
-                self.record_duration_label.setText(f"{minutes}:{seconds:02d}")
-
-            # === PERFORMANCE OPTIMIZATION: Compute FFT once and cache (Module 12) ===
-            # This eliminates 4 redundant FFT computations that were happening before!
+            # 4. Compute FFT once and cache (Module 12 - eliminates 4 redundant computations!)
             fft_result = self.fft_cache.compute_fft(block, self.audio.sample_rate)
 
-            # Update spectrum, waterfall, and waveform (v3.1.2) - now uses cached FFT
-            # FIXED v3.5.0: Use cached FFT instead of recomputing (eliminates duplicate)
-            self.spectrum.update_from_cache(fft_result)
-            self.waveform.update_waveform(block)
+            # 5. Update audio visualizations
+            self._process_audio_visualizations(block, fft_result)
 
-            # Waterfall - use cached FFT power
-            power = 20 * np.log10(fft_result['power'] + 1e-10)
-            self.waterfall.push_row(power)
-
-            # Compute energy and balance
+            # 6. Compute energy and balance
             energy, balance = self.compute_orientation(block)
 
-            # AUDIO LEVEL MONITORING (v3.1.0 - Debug audio issues)
-            if energy > 0:
-                rms_db = 20 * np.log10(energy + 1e-10)
-                self.dev_panel.rms_label.setText(f"{tr('rms')} {rms_db:.1f} dBFS")
+            # 7. Monitor audio levels
+            self._process_audio_level_monitoring(energy)
 
-                # Color-coded audio level indicator
-                if rms_db > -20:
-                    level_color = "#00FF00"  # Green - loud
-                    level_status = "🔊 LOUD"
-                elif rms_db > -40:
-                    level_color = "#FFFF00"  # Yellow - medium
-                    level_status = "🔉 OK"
-                elif rms_db > -60:
-                    level_color = "#FF8800"  # Orange - quiet
-                    level_status = "🔈 LOW"
-                else:
-                    level_color = "#FF0000"  # Red - very quiet
-                    level_status = "🔇 SILENT"
+            # 8. Detection, classification, and tracking
+            events, bands, active_targets = self._process_detection_and_tracking(block, fft_result, energy)
 
-                self.dev_panel.rms_label.setStyleSheet(f"color: {level_color}; font-weight: bold; font-size: 10pt;")
-            else:
-                self.dev_panel.rms_label.setText(f"{tr('rms')} --- dBFS (NO AUDIO!)")
-                self.dev_panel.rms_label.setStyleSheet("color: #FF0000; font-weight: bold; font-size: 10pt;")
-
-            # Detection - use cached FFT (Module 12 optimization)
-            events, bands = self.det_panel.analyze(block, self.audio.sample_rate, fft_cache=fft_result)
-
-            # Multi-target tracking (v3.0.5 - Module 5)
-            has_detection = events.get('walk', False) or events.get('run', False) or events.get('shot', False)
-
-            # Prepare detections for tracker
-            # OBNIŻONY PRÓG: 0.0001 -> 0.00001 (10x bardziej czuły!)
-            detections = []
-            if has_detection and energy > 0.00001:
-                # Use precise 3D localization (Module 6 - v3.2.0)
-                location_3d = self.compute_precise_location_3d(block, self.audio.sample_rate)
-
-                angle = location_3d['angle']
-                distance = location_3d['distance']
-                elevation = location_3d['elevation']
-
-                # Classify sound type - use cached FFT (Module 12 optimization)
-                sound_class = self.sound_classifier.classify_sound(block, self.audio.sample_rate, fft_cache=fft_result)
-
-                # Determine detection type (prioritize classification over simple detection)
-                if sound_class['confidence'] > 50:
-                    # High confidence classification - use it
-                    target_type = sound_class['type']
-                elif events.get('shot', False):
-                    target_type = 'shot'
-                elif events.get('run', False):
-                    target_type = 'footstep'
-                elif events.get('walk', False):
-                    target_type = 'footstep'
-                else:
-                    target_type = 'unknown'
-
-                detections.append({
-                    'angle': angle,
-                    'distance': distance,
-                    'elevation': elevation,
-                    'type': target_type,
-                    'sound_class': sound_class['type'],  # Always include classification
-                    'class_confidence': sound_class['confidence']
-                })
-
-            # Update tracker
-            active_targets = self.target_tracker.update(detections)
-
-            # Rank targets by threat priority (Module 8 - v3.3.0)
-            if active_targets:
-                active_targets = self.threat_system.rank_targets(active_targets)
-
-            # Update radars with all active targets (now threat-ranked)
-            if active_targets:
-                # Update 3D radar (supports multiple targets natively)
-                self.radar_3d_widget.clear_targets()
-                for target in active_targets:
-                    self.radar_3d_widget.add_target(
-                        target['angle'],
-                        target['distance'],
-                        target['elevation'],
-                        target['color']
-                    )
-
-                # Update 2D radar (show primary target only - highest confidence)
-                primary_target = max(active_targets, key=lambda t: t['confidence'])
-                self.radar_widget.update_target(primary_target['angle'], primary_target['distance'])
-                if self.detached_radar:
-                    self.detached_radar.radar.update_target(primary_target['angle'], primary_target['distance'])
-            else:
-                # Clear all radars when no targets
-                self.radar_widget.update_target(None, None)
-                self.radar_3d_widget.clear_targets()
-                if self.detached_radar:
-                    self.detached_radar.radar.update_target(None, None)
-
-            # Update LED overlays
-            self.led_widget.update_from_events(events, bands, energy, balance)
-            if self.detached_led:
-                self.detached_led.led_overlay.update_from_events(events, bands, energy, balance)
-
-            # Update toolbar stats with real performance metrics (Module 12 - v3.4.0)
-            target_count = len(active_targets) if active_targets else 0
-            if energy > 0:
-                rms_db = 20 * np.log10(energy + 1e-10)
-                audio_indicator = "🔊" if rms_db > -40 else "🔉" if rms_db > -60 else "🔇"
-            else:
-                audio_indicator = "❌"
-                rms_db = -100
-
-            # Performance monitoring - end frame and update stats
-            self.perf_monitor.end_frame()
-            self.perf_monitor.update()
-            perf_stats = self.perf_monitor.get_stats()
-
-            self.toolbar_stats_label.setText(
-                f"Targets: {target_count} | Audio: {audio_indicator} {rms_db:.0f}dB | FPS: {perf_stats['fps']:.1f} | Latency: {perf_stats['latency_ms']:.1f}ms"
-            )
+            # 9. Update UI elements (radars, LEDs, toolbar stats)
+            self._update_ui_elements(active_targets, events, bands, energy, balance)
 
         except Exception as e:
             # CRITICAL ERROR HANDLING: Prevent application freeze if tick() crashes
@@ -6041,7 +6212,7 @@ class MainWindow(QMainWindow):
         # Shutdown worker threads with timeout (v3.5.0)
         if hasattr(self, 'detection_worker'):
             try:
-                self.detection_worker.shutdown(timeout=5.0)
+                self.detection_worker.shutdown(timeout=DETECTION_TIMEOUT_SEC)  # FIXED v3.5.0: Use constant
                 log("Detection worker shutdown complete", "INFO")
             except Exception as e:
                 log(f"Error shutting down detection worker: {e}", "ERROR")

@@ -501,26 +501,54 @@ class DetectionWorker:
     """
     Worker thread for parallel audio detection processing
     Offloads heavy computation from main UI thread
+
+    ENHANCED v3.5.0: Thread-safe shutdown with timeout
     """
 
     def __init__(self, max_workers=3):
         log(f"DetectionWorker.__init__ (max_workers={max_workers})", "INFO")
         self.executor = ThreadPoolExecutor(max_workers=max_workers, thread_name_prefix="DetectionWorker")
-        self.active_tasks = []
+        self.active_futures = []
+        self.shutdown_event = threading.Event()
+        self._lock = threading.Lock()
 
     def submit_detection(self, det_panel, block, sample_rate, fft_cache):
         """Submit detection task to worker pool"""
+        if self.shutdown_event.is_set():
+            log("Worker pool shutting down, rejecting new detection task", "WARNING")
+            return None
+
         future = self.executor.submit(self._run_detection, det_panel, block, sample_rate, fft_cache)
+
+        with self._lock:
+            self.active_futures.append(future)
+
         return future
 
     def submit_localization(self, compute_func, block, sample_rate):
         """Submit 3D localization task to worker pool"""
+        if self.shutdown_event.is_set():
+            log("Worker pool shutting down, rejecting new localization task", "WARNING")
+            return None
+
         future = self.executor.submit(compute_func, block, sample_rate)
+
+        with self._lock:
+            self.active_futures.append(future)
+
         return future
 
     def submit_classification(self, classifier, block, sample_rate, fft_cache):
         """Submit sound classification task to worker pool"""
+        if self.shutdown_event.is_set():
+            log("Worker pool shutting down, rejecting new classification task", "WARNING")
+            return None
+
         future = self.executor.submit(self._run_classification, classifier, block, sample_rate, fft_cache)
+
+        with self._lock:
+            self.active_futures.append(future)
+
         return future
 
     @staticmethod
@@ -543,10 +571,39 @@ class DetectionWorker:
             log(f"Error in classification worker: {e}", "ERROR")
             return {'type': 'unknown', 'confidence': 0, 'details': {}}
 
-    def shutdown(self):
-        """Shutdown worker pool"""
-        log("DetectionWorker.shutdown", "INFO")
-        self.executor.shutdown(wait=False)
+    def shutdown(self, timeout=5.0):
+        """
+        Thread-safe shutdown with timeout
+
+        Args:
+            timeout: Maximum time to wait for tasks to complete (seconds)
+
+        ENHANCED v3.5.0: Proper cleanup with cancel_futures
+        """
+        log(f"DetectionWorker.shutdown (timeout={timeout}s)", "INFO")
+        self.shutdown_event.set()
+
+        # Cancel pending futures
+        cancelled_count = 0
+        with self._lock:
+            for future in self.active_futures:
+                if not future.done():
+                    cancelled = future.cancel()
+                    if cancelled:
+                        cancelled_count += 1
+
+        if cancelled_count > 0:
+            log(f"Cancelled {cancelled_count} pending tasks", "INFO")
+
+        # Wait for running tasks with timeout
+        try:
+            self.executor.shutdown(wait=True, timeout=timeout)
+            log("DetectionWorker shutdown complete", "INFO")
+        except Exception as e:
+            log(f"DetectionWorker shutdown error: {e}", "WARNING")
+            # Force shutdown if timeout exceeded
+            self.executor.shutdown(wait=False, cancel_futures=True)
+            log("Forced shutdown after timeout", "WARNING")
 
 
 # ============================================================================
@@ -683,7 +740,11 @@ class AudioEngine:
         thread.start()
 
     def stop(self):
-        """Stop audio capture"""
+        """
+        Stop audio capture with automatic retry
+
+        ENHANCED v3.5.0: Retry logic prevents hangs on device errors
+        """
         if not self.running:
             return
 
@@ -691,12 +752,25 @@ class AudioEngine:
         self.running = False
 
         if self.stream is not None:
-            try:
-                self.stream.stop()
-                self.stream.close()
-                self.stream = None
-            except Exception as e:
-                log(f"Error stopping stream: {e}", "ERROR")
+            retry_count = 0
+            max_retries = 3
+
+            while retry_count < max_retries:
+                try:
+                    self.stream.stop()
+                    self.stream.close()
+                    self.stream = None
+                    log("Audio stream stopped successfully", "INFO")
+                    break  # Success
+                except Exception as e:
+                    retry_count += 1
+                    log(f"Error stopping stream (attempt {retry_count}/{max_retries}): {e}", "WARNING")
+
+                    if retry_count < max_retries:
+                        time.sleep(0.5)  # Wait before retry
+                    else:
+                        log("Failed to stop stream after retries, forcing cleanup", "ERROR")
+                        self.stream = None  # Force cleanup to prevent memory leak
 
     def read_block(self, timeout=0.0):
         """Read audio block from queue"""
@@ -5133,21 +5207,48 @@ class MainWindow(QMainWindow):
             log(f"Error in scan_audio_sources: {e}", "ERROR")
 
     def closeEvent(self, event):
-        """Handle window close (Module 12: cleanup worker threads)"""
-        log("Application closing", "INFO")
+        """
+        Handle window close - Enhanced cleanup
+
+        ENHANCED v3.5.0: Thread-safe shutdown with timeout
+        """
+        log("Application closing - starting cleanup", "INFO")
+
+        # Stop audio first
         self.stop()
 
-        # Shutdown worker threads (Module 12 - v3.4.0)
+        # Shutdown worker threads with timeout (v3.5.0)
         if hasattr(self, 'detection_worker'):
-            self.detection_worker.shutdown()
-            log("Detection worker shutdown complete", "INFO")
+            try:
+                self.detection_worker.shutdown(timeout=5.0)
+                log("Detection worker shutdown complete", "INFO")
+            except Exception as e:
+                log(f"Error shutting down detection worker: {e}", "ERROR")
 
+        # Stop all timers
+        if hasattr(self, 'timer'):
+            self.timer.stop()
+
+        if hasattr(self, 'game_scan_timer'):
+            self.game_scan_timer.stop()
+
+        if hasattr(self, 'audio_scan_timer'):
+            self.audio_scan_timer.stop()
+
+        # Close detached windows
         if self.detached_radar:
-            self.detached_radar.close()
+            try:
+                self.detached_radar.close()
+            except Exception as e:
+                log(f"Error closing detached radar: {e}", "WARNING")
 
         if self.detached_led:
-            self.detached_led.close()
+            try:
+                self.detached_led.close()
+            except Exception as e:
+                log(f"Error closing detached LED: {e}", "WARNING")
 
+        log("Application cleanup complete", "INFO")
         event.accept()
 
 

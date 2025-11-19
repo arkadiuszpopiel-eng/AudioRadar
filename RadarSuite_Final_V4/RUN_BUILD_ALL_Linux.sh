@@ -1,7 +1,8 @@
 #!/bin/bash
 # ============================================================================
-# RadarSuite Final v2.3.0 - Build Script (Linux/macOS)
-# Builds standalone executable using PyInstaller and packages to ZIP
+# RadarSuite Final v3.5.0 - Linux Build Script
+# Builds standalone Linux executable using PyInstaller
+# Platform: Linux only (does not build Windows version)
 # Requires: Python 3.11
 # ============================================================================
 
@@ -19,7 +20,8 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR"
 
 # Set version
-VERSION="v2.3.0"
+VERSION="v3.5.0"
+PLATFORM="Linux64"
 BUILD_DATE=$(date +"%Y-%m-%d")
 BUILD_TIME=$(date +"%H:%M:%S")
 
@@ -58,6 +60,10 @@ print_warning() {
 # Start logging
 echo ""
 echo "========================================================================"
+echo "  RadarSuite Final v3.5.0 - Linux Build System"
+echo "  Building Linux standalone executable with PyInstaller"
+echo "  Platform: Linux x64"
+echo "========================================================================"
 log "============================================================"
 log "BUILD STARTED"
 log "============================================================"
@@ -71,6 +77,11 @@ echo "========================================================================"
 echo "  RadarSuite Final $VERSION - Build System"
 echo "  Building standalone executable with PyInstaller"
 echo "========================================================================"
+echo ""
+
+echo -e "${YELLOW}[INFO] This script builds LINUX version only${NC}"
+echo "   For Windows build, use RUN_BUILD_ALL_Win.cmd on Windows system"
+log "[INFO] Platform: Linux x64 only"
 echo ""
 
 # ============================================================================
@@ -300,14 +311,14 @@ echo ""
 # ============================================================================
 # STEP 7: Package to ZIP
 # ============================================================================
-print_step "[STEP 7/7] Packaging to ZIP..."
+print_step "[STEP 7/7] Packaging to ZIP (Linux x64 only)..."
 
-# Create unique archive name with timestamp
+# Create unique archive name with timestamp and platform
 TIMESTAMP=$(date +"%Y%m%d_%H%M%S")
-ZIP_NAME="RadarSuite_Final_${VERSION}_linux_${TIMESTAMP}.zip"
+ZIP_NAME="RadarSuite_Final_${VERSION}_Linux-x64_${TIMESTAMP}.zip"
 
 print_success "Archive name: $ZIP_NAME"
-log "Creating archive: $ZIP_NAME"
+log "Creating Linux archive: $ZIP_NAME"
 
 # Check if zip command is available
 if ! command -v zip &> /dev/null; then

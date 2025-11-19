@@ -1,7 +1,8 @@
 @echo off
 REM ============================================================================
-REM RadarSuite Final v2.3.0 - Build Script
-REM Builds standalone EXE using PyInstaller and packages to ZIP
+REM RadarSuite Final v3.5.0 - Windows Build Script
+REM Builds standalone Windows EXE using PyInstaller
+REM Platform: Windows only (does not build Linux version)
 REM Requires: Python 3.11
 REM ============================================================================
 
@@ -9,8 +10,9 @@ setlocal EnableDelayedExpansion
 
 echo.
 echo ========================================================================
-echo   RadarSuite Final v2.3.0 - Build System
-echo   Building standalone EXE with PyInstaller
+echo   RadarSuite Final v3.5.0 - Windows Build System
+echo   Building Windows standalone EXE with PyInstaller
+echo   Platform: Windows x64
 echo ========================================================================
 echo.
 
@@ -19,7 +21,8 @@ set "SCRIPT_DIR=%~dp0"
 cd /d "%SCRIPT_DIR%"
 
 REM Set version
-set "VERSION=v2.3.0"
+set "VERSION=v3.5.0"
+set "PLATFORM=Win64"
 set "BUILD_DATE=%date:~-4%-%date:~3,2%-%date:~0,2%"
 set "BUILD_TIME=%time:~0,2%-%time:~3,2%-%time:~6,2%"
 set "BUILD_TIME=!BUILD_TIME: =0!"
@@ -36,6 +39,11 @@ echo [%date% %time%] Script Directory: %SCRIPT_DIR% >> "%LOG_FILE%"
 echo [%date% %time%] Build Date: %BUILD_DATE% >> "%LOG_FILE%"
 echo [%date% %time%] Build Time: %BUILD_TIME% >> "%LOG_FILE%"
 echo. >> "%LOG_FILE%"
+
+echo [INFO] This script builds WINDOWS version only
+echo [INFO] For Linux build, use RUN_BUILD_ALL_Linux.sh on Linux system
+echo [%date% %time%] [INFO] Platform: Windows x64 only >> "%LOG_FILE%"
+echo.
 
 echo [STEP 1/7] Checking Python 3.11 installation...
 echo [%date% %time%] [STEP 1/7] Checking Python 3.11... >> "%LOG_FILE%"
@@ -229,12 +237,12 @@ echo    - EXE size: !EXE_SIZE! bytes
 echo [%date% %time%] EXE size: !EXE_SIZE! bytes >> "%LOG_FILE%"
 echo.
 
-echo [STEP 7/7] Packaging to ZIP...
-echo [%date% %time%] [STEP 7/7] Creating ZIP archive... >> "%LOG_FILE%"
+echo [STEP 7/7] Packaging to ZIP (Windows x64 only)...
+echo [%date% %time%] [STEP 7/7] Creating Windows ZIP archive... >> "%LOG_FILE%"
 
-REM Create unique archive name with timestamp
+REM Create unique archive name with timestamp and platform
 for /f "tokens=2 delims==" %%A in ('wmic os get LocalDateTime /value ^| find "="') do set DTS=%%A
-set "ZIP_NAME=RadarSuite_Final_%VERSION%_win64_!DTS:~0,8!_!DTS:~8,6!.zip"
+set "ZIP_NAME=RadarSuite_Final_%VERSION%_Windows-x64_!DTS:~0,8!_!DTS:~8,6!.zip"
 
 echo    - Archive name: %ZIP_NAME%
 echo [%date% %time%] Creating archive: %ZIP_NAME% >> "%LOG_FILE%"

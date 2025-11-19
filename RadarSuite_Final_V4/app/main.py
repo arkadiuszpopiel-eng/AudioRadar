@@ -393,26 +393,95 @@ def tr(key):
     return TRANSLATIONS.get(current_language, TRANSLATIONS['en']).get(key, key)
 
 # ============================================================================
-# PATHS AND LOGGING
+# PATHS AND LOGGING (ENHANCED v3.5.0 - Thread-safe logging)
 # ============================================================================
+
+import logging
+import logging.handlers
 
 ROOT = Path(__file__).parent.parent
 SUPER_LOG = ROOT / "super_log.txt"
 
 
+class ThreadSafeLogger:
+    """
+    Thread-safe logger using Python's logging module
+
+    FIXED v3.5.0: Race condition in multi-threaded logging
+    - Uses RotatingFileHandler (thread-safe, automatic rotation)
+    - Max 10MB per file, 5 backups
+    - Singleton pattern for global access
+    """
+
+    _instance = None
+    _lock = threading.Lock()
+
+    def __new__(cls):
+        if cls._instance is None:
+            with cls._lock:
+                if cls._instance is None:
+                    cls._instance = super().__new__(cls)
+                    cls._instance._init_logger()
+        return cls._instance
+
+    def _init_logger(self):
+        """Initialize logger with rotating file handler"""
+        self.logger = logging.getLogger('RadarSuite')
+        self.logger.setLevel(logging.DEBUG)
+
+        # Remove existing handlers (avoid duplicates)
+        self.logger.handlers.clear()
+
+        # Rotating file handler (max 10MB, 5 backups) - THREAD-SAFE
+        file_handler = logging.handlers.RotatingFileHandler(
+            str(SUPER_LOG),
+            maxBytes=10*1024*1024,  # 10MB
+            backupCount=5,
+            encoding='utf-8'
+        )
+        file_handler.setLevel(logging.DEBUG)
+
+        # Formatter with timestamp
+        formatter = logging.Formatter(
+            '[%(asctime)s.%(msecs)03d] [%(levelname)s] %(message)s',
+            datefmt='%Y-%m-%d %H:%M:%S'
+        )
+        file_handler.setFormatter(formatter)
+        self.logger.addHandler(file_handler)
+
+        # Console handler for errors only
+        console_handler = logging.StreamHandler()
+        console_handler.setLevel(logging.ERROR)
+        console_handler.setFormatter(formatter)
+        self.logger.addHandler(console_handler)
+
+    def log(self, msg: str, level: str = "INFO"):
+        """Thread-safe log method"""
+        level_map = {
+            "DEBUG": logging.DEBUG,
+            "INFO": logging.INFO,
+            "WARNING": logging.WARNING,
+            "WARN": logging.WARNING,
+            "ERROR": logging.ERROR,
+            "CRITICAL": logging.CRITICAL
+        }
+
+        log_level = level_map.get(level.upper(), logging.INFO)
+        self.logger.log(log_level, msg)
+
+
+# Global logger instance (singleton)
+_thread_safe_logger = ThreadSafeLogger()
+
+
 def log(msg: str, level: str = "INFO"):
-    """Write to super_log.txt with timestamp"""
-    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")[:-3]
-    line = f"[{timestamp}] [{level}] {msg}\n"
+    """
+    Thread-safe logging wrapper
 
-    try:
-        with open(SUPER_LOG, 'a', encoding='utf-8') as f:
-            f.write(line)
-    except Exception as e:
-        print(f"LOG ERROR: {e}")
-
-    if level in ["ERROR", "CRITICAL"]:
-        print(line.strip())
+    FIXED v3.5.0: Race condition eliminated via logging.handlers.RotatingFileHandler
+    Safe for concurrent access from multiple threads
+    """
+    _thread_safe_logger.log(msg, level)
 
 
 def apply_dark_theme(app: QApplication):
@@ -497,6 +566,7 @@ class AudioProcessingCache:
     Caches FFT results, spectral analysis, etc.
 
     ENHANCED v3.5.0: GPU acceleration support via GPUAccelerator
+    FIXED v3.5.0: Thread-safe cache operations with lock
     """
 
     def __init__(self, max_size=5, gpu_accelerator=None):
@@ -507,12 +577,16 @@ class AudioProcessingCache:
         self.misses = 0
         self.gpu_accelerator = gpu_accelerator
 
+        # FIXED v3.5.0: Thread lock for concurrent access
+        self._lock = threading.Lock()
+
     def compute_fft(self, block, sample_rate):
         """
-        Compute FFT with caching
+        Compute FFT with caching (THREAD-SAFE)
         Returns: (fft_data, freqs, power, mono_signal)
 
         ENHANCED v3.5.0: Uses GPU acceleration if available
+        FIXED v3.5.0: Thread-safe via lock
         """
         # Convert to mono
         if block.ndim == 2:
@@ -533,7 +607,7 @@ class AudioProcessingCache:
         freqs = np.fft.rfftfreq(len(mono), d=1.0/sample_rate)
         power = np.abs(fft_data)
 
-        # Cache result
+        # Cache result (THREAD-SAFE)
         result = {
             'fft_data': fft_data,
             'freqs': freqs,
@@ -543,19 +617,23 @@ class AudioProcessingCache:
             'timestamp': time.time()
         }
 
-        self.cache.append(result)
+        with self._lock:  # FIXED v3.5.0: Protect cache operations
+            self.cache.append(result)
+            self.misses += 1
+
         return result
 
     def get_stats(self):
-        """Get cache statistics"""
-        total = self.hits + self.misses
-        hit_rate = (self.hits / total * 100) if total > 0 else 0
-        return {
-            'hits': self.hits,
-            'misses': self.misses,
-            'hit_rate': hit_rate,
-            'size': len(self.cache)
-        }
+        """Get cache statistics (THREAD-SAFE)"""
+        with self._lock:  # FIXED v3.5.0: Protect reads
+            total = self.hits + self.misses
+            hit_rate = (self.hits / total * 100) if total > 0 else 0
+            return {
+                'hits': self.hits,
+                'misses': self.misses,
+                'hit_rate': hit_rate,
+                'size': len(self.cache)
+            }
 
 
 class GPUAccelerator:
@@ -966,6 +1044,7 @@ class DetectionWorker:
     Offloads heavy computation from main UI thread
 
     ENHANCED v3.5.0: Thread-safe shutdown with timeout
+    FIXED v3.5.0: Memory leak - automatic cleanup of completed futures
     """
 
     def __init__(self, max_workers=3):
@@ -975,11 +1054,37 @@ class DetectionWorker:
         self.shutdown_event = threading.Event()
         self._lock = threading.Lock()
 
+        # FIXED v3.5.0: Periodic cleanup to prevent memory leak
+        self._cleanup_timer = None
+        self._start_periodic_cleanup()
+
+    def _start_periodic_cleanup(self):
+        """Start periodic cleanup timer (every 10 seconds)"""
+        if not self.shutdown_event.is_set():
+            self._cleanup_done_futures()
+            self._cleanup_timer = threading.Timer(10.0, self._start_periodic_cleanup)
+            self._cleanup_timer.daemon = True
+            self._cleanup_timer.start()
+
+    def _cleanup_done_futures(self):
+        """Remove completed futures from list (MEMORY LEAK FIX)"""
+        with self._lock:
+            before_count = len(self.active_futures)
+            self.active_futures = [f for f in self.active_futures if not f.done()]
+            cleaned_count = before_count - len(self.active_futures)
+
+            if cleaned_count > 0:
+                log(f"Cleaned {cleaned_count} completed futures (remaining: {len(self.active_futures)})", "DEBUG")
+
     def submit_detection(self, det_panel, block, sample_rate, fft_cache):
-        """Submit detection task to worker pool"""
+        """Submit detection task to worker pool (with automatic cleanup)"""
         if self.shutdown_event.is_set():
             log("Worker pool shutting down, rejecting new detection task", "WARNING")
             return None
+
+        # FIXED v3.5.0: Cleanup before submit to prevent unbounded growth
+        with self._lock:
+            self.active_futures = [f for f in self.active_futures if not f.done()]
 
         future = self.executor.submit(self._run_detection, det_panel, block, sample_rate, fft_cache)
 
@@ -989,10 +1094,14 @@ class DetectionWorker:
         return future
 
     def submit_localization(self, compute_func, block, sample_rate):
-        """Submit 3D localization task to worker pool"""
+        """Submit 3D localization task to worker pool (with automatic cleanup)"""
         if self.shutdown_event.is_set():
             log("Worker pool shutting down, rejecting new localization task", "WARNING")
             return None
+
+        # FIXED v3.5.0: Cleanup before submit
+        with self._lock:
+            self.active_futures = [f for f in self.active_futures if not f.done()]
 
         future = self.executor.submit(compute_func, block, sample_rate)
 
@@ -1002,10 +1111,14 @@ class DetectionWorker:
         return future
 
     def submit_classification(self, classifier, block, sample_rate, fft_cache):
-        """Submit sound classification task to worker pool"""
+        """Submit sound classification task to worker pool (with automatic cleanup)"""
         if self.shutdown_event.is_set():
             log("Worker pool shutting down, rejecting new classification task", "WARNING")
             return None
+
+        # FIXED v3.5.0: Cleanup before submit
+        with self._lock:
+            self.active_futures = [f for f in self.active_futures if not f.done()]
 
         future = self.executor.submit(self._run_classification, classifier, block, sample_rate, fft_cache)
 
@@ -1041,10 +1154,15 @@ class DetectionWorker:
         Args:
             timeout: Maximum time to wait for tasks to complete (seconds)
 
-        ENHANCED v3.5.0: Proper cleanup with cancel_futures
+        ENHANCED v3.5.0: Proper cleanup with cancel_futures + timer cleanup
         """
         log(f"DetectionWorker.shutdown (timeout={timeout}s)", "INFO")
         self.shutdown_event.set()
+
+        # FIXED v3.5.0: Stop periodic cleanup timer
+        if self._cleanup_timer is not None:
+            self._cleanup_timer.cancel()
+            log("Cleanup timer stopped", "DEBUG")
 
         # Cancel pending futures
         cancelled_count = 0
@@ -1871,7 +1989,7 @@ class SpectrumWidget(pg.PlotWidget):
         self.avg_size = 30
 
     def update_fft(self, data):
-        """Update spectrum from audio data"""
+        """Update spectrum from audio data (computes FFT - legacy method)"""
         try:
             if data.ndim == 2:
                 mono = np.mean(data, axis=1)
@@ -1897,6 +2015,34 @@ class SpectrumWidget(pg.PlotWidget):
 
         except Exception as e:
             log(f"Error in update_fft: {e}", "ERROR")
+
+    def update_from_cache(self, fft_result):
+        """
+        Update spectrum from cached FFT result (PERFORMANCE OPTIMIZATION)
+
+        FIXED v3.5.0: Eliminates duplicate FFT computation
+
+        Args:
+            fft_result: Dict with keys 'fft_data', 'freqs', 'power'
+        """
+        try:
+            freqs = fft_result['freqs']
+            power_linear = fft_result['power']
+
+            # Convert to dB
+            power = 20 * np.log10(power_linear + 1e-10)
+
+            self.spectrum_curve.setData(freqs, power)
+
+            self.avg_buffer.append(power)
+            if len(self.avg_buffer) > self.avg_size:
+                self.avg_buffer.pop(0)
+
+            avg_power = np.mean(self.avg_buffer, axis=0)
+            self.avg_curve.setData(freqs, avg_power)
+
+        except Exception as e:
+            log(f"Error in update_from_cache: {e}", "ERROR")
 
 
 # ============================================================================
@@ -5198,7 +5344,8 @@ class MainWindow(QMainWindow):
             fft_result = self.fft_cache.compute_fft(block, self.audio.sample_rate)
 
             # Update spectrum, waterfall, and waveform (v3.1.2) - now uses cached FFT
-            self.spectrum.update_fft(block)  # TODO: Could also use cached FFT
+            # FIXED v3.5.0: Use cached FFT instead of recomputing (eliminates duplicate)
+            self.spectrum.update_from_cache(fft_result)
             self.waveform.update_waveform(block)
 
             # Waterfall - use cached FFT power

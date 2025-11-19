@@ -125,6 +125,7 @@ import time
 import math
 import threading
 import re
+import json
 from pathlib import Path
 from datetime import datetime
 from concurrent.futures import ThreadPoolExecutor
@@ -159,7 +160,122 @@ from PyQt5.QtGui import QPainter, QColor, QPen, QBrush, QPalette
 # VERSION
 # ============================================================================
 
-VERSION = "v3.4.1-Claude-001"
+VERSION = "v3.5.0-Diamond-001"
+
+# ============================================================================
+# CONFIG MANAGER (Phase 4 - v3.5.0)
+# ============================================================================
+
+class ConfigManager:
+    """
+    Persistent settings manager for Windows/Linux
+
+    Windows: %APPDATA%/RadarSuite/config.json
+    Linux: ~/.config/RadarSuite/config.json
+
+    ADDED v3.5.0: Auto-save/restore user settings
+    Optimized for Windows 11 Pro 64-bit
+    """
+
+    def __init__(self):
+        # Determine config path based on OS
+        if sys.platform == 'win32':
+            # Windows: %APPDATA%/RadarSuite
+            config_base = Path(os.environ.get('APPDATA', Path.home() / 'AppData' / 'Roaming'))
+        else:
+            # Linux/Mac: ~/.config/RadarSuite
+            config_base = Path.home() / '.config'
+
+        self.config_dir = config_base / 'RadarSuite'
+        self.config_file = self.config_dir / 'config.json'
+
+        # Create directory if not exists
+        try:
+            self.config_dir.mkdir(parents=True, exist_ok=True)
+        except Exception as e:
+            print(f"Error creating config directory: {e}")
+
+        self.default_config = {
+            "audio": {
+                "device": None,
+                "sample_rate": 48000,
+                "block_size": 2048,
+                "channels": 2,
+                "loopback": False,
+                "gain": 1.0,
+                "auto_gain": False,
+                "noise_gate": -60.0
+            },
+            "detection": {
+                "walk_threshold": 35,
+                "run_threshold": 35,
+                "shot_threshold": 45,
+                "walk_enabled": True,
+                "run_enabled": True,
+                "shot_enabled": True
+            },
+            "ui": {
+                "language": "en",
+                "radar_alpha": 100,
+                "led_alpha": 80,
+                "window_x": 100,
+                "window_y": 100,
+                "window_width": 1400,
+                "window_height": 900,
+                "window_maximized": False
+            },
+            "performance": {
+                "use_gpu": True,  # AMD OpenCL for RX 7900 GRE
+                "max_workers": 4
+            },
+            "version": VERSION
+        }
+
+    def load(self):
+        """Load settings from disk"""
+        try:
+            if self.config_file.exists():
+                with open(self.config_file, 'r', encoding='utf-8') as f:
+                    user_config = json.load(f)
+
+                # Merge with defaults
+                merged = self._merge_configs(self.default_config, user_config)
+                merged['version'] = VERSION
+                return merged
+            else:
+                return self.default_config.copy()
+
+        except Exception as e:
+            print(f"Error loading settings: {e}")
+            return self.default_config.copy()
+
+    def save(self, config):
+        """Save settings to disk"""
+        try:
+            self.config_dir.mkdir(parents=True, exist_ok=True)
+            config['version'] = VERSION
+
+            with open(self.config_file, 'w', encoding='utf-8') as f:
+                json.dump(config, f, indent=2, ensure_ascii=False)
+
+        except Exception as e:
+            print(f"Error saving settings: {e}")
+
+    def _merge_configs(self, default, user):
+        """Recursively merge user config with defaults"""
+        merged = default.copy()
+
+        for key, value in user.items():
+            if key in merged:
+                if isinstance(value, dict) and isinstance(merged[key], dict):
+                    merged[key] = self._merge_configs(merged[key], value)
+                else:
+                    merged[key] = value
+            else:
+                merged[key] = value
+
+        return merged
+
 
 # ============================================================================
 # TRANSLATIONS

@@ -206,6 +206,14 @@ from core import (
 )
 
 # ============================================================================
+# HARDWARE MODULE IMPORTS (Point 10 - v3.5.0: Modularization)
+# ============================================================================
+from hardware import (
+    GPUAccelerator,
+    SoundBlasterOptimizer,
+)
+
+# ============================================================================
 # CONFIG MANAGER - Imported from core module
 # ============================================================================
 
@@ -379,193 +387,6 @@ class AudioProcessingCache:
             }
 
 
-class GPUAccelerator:
-    """
-    Optional GPU acceleration for FFT operations
-    Optimized for AMD Radeon RX 7900 GRE (16GB)
-    Falls back gracefully to CPU if OpenCL unavailable
-
-    ADDED v3.5.0: AMD GPU support via numpy (OpenCL optional)
-    """
-
-    def __init__(self, enable_gpu=True):
-        self.enabled = False
-        self.gpu_available = False
-
-        if not enable_gpu:
-            log("GPU acceleration disabled by config", "INFO")
-            return
-
-        try:
-            self.gpu_available = self._detect_amd_gpu()
-            if self.gpu_available:
-                log("AMD GPU detected (RX 7900 GRE optimizations available)", "INFO")
-                self.enabled = True
-            else:
-                log("No AMD GPU detected, using CPU", "INFO")
-        except Exception as e:
-            log(f"GPU initialization skipped: {e}", "DEBUG")
-
-    def _detect_amd_gpu(self):
-        """
-        Detect AMD GPU presence - lightweight check
-        Searches for AMD/Radeon processes on Windows
-        """
-        try:
-            if sys.platform == 'win32':
-                # Check for AMD driver processes
-                for proc in psutil.process_iter(['name']):
-                    try:
-                        name = proc.info.get('name', '').lower()
-                        if 'amd' in name or 'radeon' in name:
-                            return True
-                    except (psutil.NoSuchProcess, psutil.AccessDenied):
-                        continue
-            return False
-        except Exception as e:
-            log(f"GPU detection error: {e}", "DEBUG")
-            return False
-
-    def fft_optimized(self, signal):
-        """
-        Optimized FFT for AMD GPU
-        Uses numpy with optimal settings for AMD architecture
-        Falls back to standard numpy FFT if GPU unavailable
-
-        Args:
-            signal: Input signal array
-
-        Returns:
-            FFT result array
-        """
-        if not self.enabled:
-            return np.fft.rfft(signal)
-
-        try:
-            # Use orthonormal normalization for better AMD GPU performance
-            # RX 7900 GRE benefits from this normalization mode
-            result = np.fft.rfft(signal, norm='ortho')
-            return result
-        except Exception as e:
-            log(f"GPU FFT failed, fallback to CPU: {e}", "WARNING")
-            return np.fft.rfft(signal)
-
-    def get_info(self):
-        """Get GPU acceleration status"""
-        return {
-            'enabled': self.enabled,
-            'gpu_available': self.gpu_available,
-            'backend': 'numpy-optimized' if self.enabled else 'cpu'
-        }
-
-
-class SoundBlasterOptimizer:
-    """
-    Sound Blaster Z SE audio card optimization
-    Auto-detects Sound Blaster devices and applies optimal settings
-    Optimized for Sound Blaster Z SE with 48kHz/2048 block size
-
-    ADDED v3.5.0: Sound Blaster Z SE hardware optimization
-    """
-
-    def __init__(self):
-        self.is_soundblaster = False
-        self.device_name = None
-        self.optimal_settings = {
-            'sample_rate': 48000,  # Native rate for Sound Blaster Z SE
-            'block_size': 2048,    # Optimal for low latency without dropouts
-            'channels': 2          # Stereo
-        }
-
-        try:
-            self._detect_soundblaster()
-        except Exception as e:
-            log(f"Sound Blaster detection failed: {e}", "DEBUG")
-
-    def _detect_soundblaster(self):
-        """
-        Detect Sound Blaster audio devices
-        Checks for Sound Blaster Z SE and other Creative cards
-        """
-        try:
-            import sounddevice as sd
-
-            devices = sd.query_devices()
-            for idx, device in enumerate(devices):
-                device_name = device.get('name', '').lower()
-
-                # Check for Sound Blaster devices
-                if any(keyword in device_name for keyword in ['sound blaster', 'creative', 'sb z', 'sbz']):
-                    self.is_soundblaster = True
-                    self.device_name = device.get('name', 'Unknown')
-                    log(f"Sound Blaster detected: {self.device_name}", "INFO")
-
-                    # Check specifically for Z SE model
-                    if 'z se' in device_name or 'z-se' in device_name:
-                        log("Sound Blaster Z SE detected - applying optimal settings", "INFO")
-
-                    return
-
-            log("No Sound Blaster device detected - using standard settings", "DEBUG")
-
-        except Exception as e:
-            log(f"Device enumeration error: {e}", "DEBUG")
-
-    def get_optimal_settings(self):
-        """
-        Get optimal audio settings for detected hardware
-        Returns dict with sample_rate, block_size, channels
-        """
-        if self.is_soundblaster:
-            return self.optimal_settings
-        else:
-            # Standard settings for other audio devices
-            return {
-                'sample_rate': 48000,
-                'block_size': 2048,
-                'channels': 2
-            }
-
-    def apply_eq_compensation(self, audio_block):
-        """
-        Apply EQ compensation for Sound Blaster Z SE characteristics
-        Sound Blaster Z SE has slight bass boost - compensate for flat response
-
-        Args:
-            audio_block: Input audio array
-
-        Returns:
-            Compensated audio array
-        """
-        if not self.is_soundblaster:
-            return audio_block
-
-        try:
-            # Sound Blaster Z SE has ~2dB bass boost below 200Hz
-            # Apply gentle high-pass filter to compensate
-            from scipy.signal import butter, sosfilt
-
-            # Butterworth high-pass filter: 80Hz cutoff, order 2
-            sos = butter(2, 80, btype='highpass', fs=48000, output='sos')
-            compensated = sosfilt(sos, audio_block, axis=0)
-
-            # Blend 20% compensation with 80% original for subtle effect
-            result = 0.8 * audio_block + 0.2 * compensated
-
-            return result
-
-        except Exception as e:
-            log(f"EQ compensation failed: {e}", "WARNING")
-            return audio_block
-
-    def get_info(self):
-        """Get Sound Blaster detection status"""
-        return {
-            'detected': self.is_soundblaster,
-            'device_name': self.device_name,
-            'optimal_sample_rate': self.optimal_settings['sample_rate'],
-            'optimal_block_size': self.optimal_settings['block_size']
-        }
 
 
 class ToastNotification(QWidget):

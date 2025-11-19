@@ -118,6 +118,9 @@ FEATURES FROM v3.0.5:
 ✨ HUMAN FOOTSTEP PATTERN RECOGNITION (cadence, L-R, surface, gait)
 """
 
+# ============================================================================
+# STANDARD LIBRARY IMPORTS
+# ============================================================================
 import sys
 import os
 import queue
@@ -131,6 +134,9 @@ from datetime import datetime
 from concurrent.futures import ThreadPoolExecutor
 from collections import deque
 
+# ============================================================================
+# THIRD-PARTY IMPORTS
+# ============================================================================
 import numpy as np
 from scipy import signal as sp_signal
 import psutil
@@ -157,387 +163,55 @@ from PyQt5.QtCore import Qt, QTimer, pyqtSignal, QPoint
 from PyQt5.QtGui import QPainter, QColor, QPen, QBrush, QPalette
 
 # ============================================================================
-# VERSION
+# CORE MODULE IMPORTS (Point 10 - v3.5.0: Modularization)
 # ============================================================================
+from core import (
+    # Constants
+    VERSION,
+    SAMPLE_RATE,
+    BLOCK_SIZE,
+    CHANNELS,
+    TICK_INTERVAL_MS,
+    GAME_SCAN_INTERVAL_MS,
+    AUDIO_SCAN_INTERVAL_MS,
+    STARTUP_DELAY_MS,
+    STARTUP_AUDIO_DELAY_MS,
+    ENERGY_THRESHOLD,
+    RADAR_ROTATION_DEG,
+    MAX_WORKERS,
+    DETECTION_TIMEOUT_SEC,
+    CLEANUP_INTERVAL_SEC,
+    AUDIO_LEVEL_LOUD,
+    AUDIO_LEVEL_MEDIUM,
+    AUDIO_LEVEL_LOW,
+    RECORDING_BUFFER_SIZE,
+    RECORDING_FLUSH_INTERVAL,
+    TOAST_DURATION_MS,
+    TOAST_MAX_COUNT,
 
-VERSION = "v3.5.0-Diamond-001"
+    # Logger
+    ThreadSafeLogger,
+    log,
+    ROOT,
+    SUPER_LOG,
 
-# ============================================================================
-# CONSTANTS (FIXED v3.5.0: Extracted magic numbers)
-# ============================================================================
+    # Config
+    ConfigManager,
 
-# Audio
-SAMPLE_RATE = 48000  # Hz - Standard sample rate
-BLOCK_SIZE = 2048    # Samples per block
-CHANNELS = 2         # Stereo
-
-# Performance
-TICK_INTERVAL_MS = 50        # Main loop @ 20 FPS
-GAME_SCAN_INTERVAL_MS = 5000  # Scan games every 5s
-AUDIO_SCAN_INTERVAL_MS = 2000 # Scan audio every 2s
-STARTUP_DELAY_MS = 500        # Initial scan delay
-STARTUP_AUDIO_DELAY_MS = 1000 # Audio scan delay
-
-# Detection
-ENERGY_THRESHOLD = 0.00001    # Minimum energy for detection
-RADAR_ROTATION_DEG = 4.0      # Degrees per frame
-
-# Worker threads
-MAX_WORKERS = 3              # Thread pool size
-DETECTION_TIMEOUT_SEC = 5.0  # Worker shutdown timeout
-CLEANUP_INTERVAL_SEC = 10.0  # Future cleanup interval
-
-# Audio levels (dBFS)
-AUDIO_LEVEL_LOUD = -20      # Green
-AUDIO_LEVEL_MEDIUM = -40    # Yellow
-AUDIO_LEVEL_LOW = -60       # Orange
-
-# Recording (FIXED v3.5.0: Buffering to reduce I/O)
-RECORDING_BUFFER_SIZE = 20   # Blocks before flush (1 sec @ 20 FPS)
-RECORDING_FLUSH_INTERVAL = 1.0  # Seconds between flushes
-
-# UI
-TOAST_DURATION_MS = 3000     # Default toast display time
-TOAST_MAX_COUNT = 3          # Max concurrent toasts
-
-# ============================================================================
-# CONFIG MANAGER (Phase 4 - v3.5.0)
-# ============================================================================
-
-class ConfigManager:
-    """
-    Persistent settings manager for Windows/Linux
-
-    Windows: %APPDATA%/RadarSuite/config.json
-    Linux: ~/.config/RadarSuite/config.json
-
-    ADDED v3.5.0: Auto-save/restore user settings
-    FIXED v3.5.0: Schema validation to prevent corrupt config
-    Optimized for Windows 11 Pro 64-bit
-    """
-
-    # FIXED v3.5.0: Config schema for validation
-    CONFIG_SCHEMA = {
-        "audio": {
-            "device": {"type": (type(None), int, str), "required": False},
-            "sample_rate": {"type": int, "values": [8000, 16000, 22050, 44100, 48000, 96000]},
-            "block_size": {"type": int, "range": (128, 8192)},
-            "channels": {"type": int, "values": [1, 2]},
-            "loopback": {"type": bool},
-            "gain": {"type": (int, float), "range": (0.1, 100.0)},
-            "auto_gain": {"type": bool},
-            "noise_gate": {"type": (int, float), "range": (-120.0, 0.0)}
-        },
-        "detection": {
-            "walk_threshold": {"type": (int, float), "range": (0, 100)},
-            "run_threshold": {"type": (int, float), "range": (0, 100)},
-            "shot_threshold": {"type": (int, float), "range": (0, 100)},
-            "walk_enabled": {"type": bool},
-            "run_enabled": {"type": bool},
-            "shot_enabled": {"type": bool}
-        },
-        "ui": {
-            "language": {"type": str, "values": ["en", "pl"]},
-            "radar_alpha": {"type": int, "range": (0, 100)},
-            "led_alpha": {"type": int, "range": (0, 100)},
-            "window_x": {"type": int},
-            "window_y": {"type": int},
-            "window_width": {"type": int, "range": (800, 4000)},
-            "window_height": {"type": int, "range": (600, 3000)},
-            "window_maximized": {"type": bool}
-        },
-        "performance": {
-            "use_gpu": {"type": bool},
-            "max_workers": {"type": int, "range": (1, 16)}
-        }
-    }
-
-    def __init__(self):
-        # Determine config path based on OS
-        if sys.platform == 'win32':
-            # Windows: %APPDATA%/RadarSuite
-            config_base = Path(os.environ.get('APPDATA', Path.home() / 'AppData' / 'Roaming'))
-        else:
-            # Linux/Mac: ~/.config/RadarSuite
-            config_base = Path.home() / '.config'
-
-        self.config_dir = config_base / 'RadarSuite'
-        self.config_file = self.config_dir / 'config.json'
-
-        # Create directory if not exists
-        try:
-            self.config_dir.mkdir(parents=True, exist_ok=True)
-        except Exception as e:
-            print(f"Error creating config directory: {e}")
-
-        self.default_config = {
-            "audio": {
-                "device": None,
-                "sample_rate": 48000,
-                "block_size": 2048,
-                "channels": 2,
-                "loopback": False,
-                "gain": 1.0,
-                "auto_gain": False,
-                "noise_gate": -60.0
-            },
-            "detection": {
-                "walk_threshold": 35,
-                "run_threshold": 35,
-                "shot_threshold": 45,
-                "walk_enabled": True,
-                "run_enabled": True,
-                "shot_enabled": True
-            },
-            "ui": {
-                "language": "en",
-                "radar_alpha": 100,
-                "led_alpha": 80,
-                "window_x": 100,
-                "window_y": 100,
-                "window_width": 1400,
-                "window_height": 900,
-                "window_maximized": False
-            },
-            "performance": {
-                "use_gpu": True,  # AMD OpenCL for RX 7900 GRE
-                "max_workers": 4
-            },
-            "version": VERSION
-        }
-
-    def _validate_value(self, key, value, schema):
-        """
-        Validate single value against schema (FIXED v3.5.0)
-
-        Returns: (is_valid: bool, validated_value)
-        """
-        # Type check
-        expected_types = schema.get("type", type(None))
-        if not isinstance(expected_types, tuple):
-            expected_types = (expected_types,)
-
-        if not isinstance(value, expected_types):
-            log(f"Config validation: Invalid type for '{key}': {type(value).__name__}, expected {expected_types}", "WARNING")
-            return False, None
-
-        # Values check (whitelist)
-        if "values" in schema:
-            if value not in schema["values"]:
-                log(f"Config validation: Invalid value for '{key}': {value}, allowed: {schema['values']}", "WARNING")
-                return False, None
-
-        # Range check
-        if "range" in schema:
-            min_val, max_val = schema["range"]
-            if not (min_val <= value <= max_val):
-                log(f"Config validation: Value '{key}'={value} out of range {min_val}-{max_val}", "WARNING")
-                return False, None
-
-        return True, value
-
-    def _validate_config(self, user_config):
-        """
-        Validate user config against schema (FIXED v3.5.0)
-
-        Returns validated config dict (invalid values are skipped)
-        """
-        validated = {}
-
-        for section, section_schema in self.CONFIG_SCHEMA.items():
-            if section not in user_config:
-                continue  # Section missing, will use defaults
-
-            validated[section] = {}
-
-            for key, value_schema in section_schema.items():
-                if key not in user_config[section]:
-                    continue  # Key missing, will use default
-
-                user_value = user_config[section][key]
-
-                # Validate value
-                is_valid, validated_value = self._validate_value(
-                    f"{section}.{key}",
-                    user_value,
-                    value_schema
-                )
-
-                if is_valid:
-                    validated[section][key] = validated_value
-                # Else: skip invalid value, will use default
-
-        return validated
-
-    def load(self):
-        """Load settings from disk (FIXED v3.5.0: with validation)"""
-        try:
-            if self.config_file.exists():
-                with open(self.config_file, 'r', encoding='utf-8') as f:
-                    user_config = json.load(f)
-
-                # FIXED v3.5.0: Validate before merge
-                validated_config = self._validate_config(user_config)
-
-                # Merge with defaults (validated values override defaults)
-                merged = self._merge_configs(self.default_config, validated_config)
-                merged['version'] = VERSION
-
-                log(f"Config loaded: {len(validated_config)} sections validated", "INFO")
-                return merged
-            else:
-                log("Config file not found, using defaults", "INFO")
-                return self.default_config.copy()
-
-        except json.JSONDecodeError as e:
-            log(f"Invalid JSON in config file: {e}", "ERROR")
-            return self.default_config.copy()
-        except Exception as e:
-            log(f"Error loading settings: {e}", "ERROR")
-            return self.default_config.copy()
-
-    def save(self, config):
-        """Save settings to disk"""
-        try:
-            self.config_dir.mkdir(parents=True, exist_ok=True)
-            config['version'] = VERSION
-
-            with open(self.config_file, 'w', encoding='utf-8') as f:
-                json.dump(config, f, indent=2, ensure_ascii=False)
-
-        except Exception as e:
-            print(f"Error saving settings: {e}")
-
-    def _merge_configs(self, default, user):
-        """Recursively merge user config with defaults"""
-        merged = default.copy()
-
-        for key, value in user.items():
-            if key in merged:
-                if isinstance(value, dict) and isinstance(merged[key], dict):
-                    merged[key] = self._merge_configs(merged[key], value)
-                else:
-                    merged[key] = value
-            else:
-                merged[key] = value
-
-        return merged
-
+    # Translations
+    TRANSLATIONS,
+    current_language,
+    tr,
+    set_language,
+)
 
 # ============================================================================
-# TRANSLATIONS
+# CONFIG MANAGER - Imported from core module
 # ============================================================================
 
-TRANSLATIONS = {
-    'en': {
-        'app_title': 'RadarSuite Final',
-        'radar': 'Radar',
-        'spectrum': 'Spectrum',
-        'waterfall': 'Waterfall',
-        'device_settings': 'Device & Settings',
-        'detection': 'Detection',
-        'led_alert': 'LED Edge Alert',
-        'start': 'Start',
-        'stop': 'Stop',
-        'radar_alpha': 'Radar Alpha:',
-        'led_alpha': 'LED Alpha:',
-        'detach_radar': 'Detach Radar',
-        'detach_led': 'Detach LED',
-        'frameless_mode': 'Frameless Mode',
-        'audio_device': 'Audio Device',
-        'select_device': 'Select Device:',
-        'refresh_devices': 'Refresh Devices',
-        'audio_settings': 'Audio Settings',
-        'sample_rate': 'Sample Rate:',
-        'block_size': 'Block Size:',
-        'channels': 'Channels:',
-        'mode': 'Mode',
-        'test_mode': 'Synthetic Test Mode',
-        'loopback_mode': 'Loopback (soundcard)',
-        'presets': 'Presets',
-        'sb_preset': 'SB Z SE + Cloud II',
-        'status': 'Status',
-        'rms': 'RMS:',
-        'backend': 'Backend:',
-        'detection_profile': 'Detection Profile',
-        'enable_detection': 'Enable Detection',
-        'detect_walk': 'Detect WALK',
-        'detect_run': 'Detect RUN',
-        'detect_shot': 'Detect SHOT',
-        'sensitivity': 'Sensitivity',
-        'walk': 'Walk:',
-        'run': 'Run:',
-        'shot': 'Shot:',
-        'detection_status': 'Detection Status',
-        'walk_detected': 'WALK: DETECTED',
-        'run_detected': 'RUN: DETECTED',
-        'shot_detected': 'SHOT: DETECTED',
-        'walk_none': 'WALK: —',
-        'run_none': 'RUN: —',
-        'shot_none': 'SHOT: —',
-        'ready': 'Ready',
-        'running': 'Running',
-        'stopped': 'Stopped',
-        'language': 'Language:',
-    },
-    'pl': {
-        'app_title': 'RadarSuite Final',
-        'radar': 'Radar',
-        'spectrum': 'Widmo',
-        'waterfall': 'Wodospad',
-        'device_settings': 'Urządzenie i Ustawienia',
-        'detection': 'Detekcja',
-        'led_alert': 'Alarm LED',
-        'start': 'Start',
-        'stop': 'Stop',
-        'radar_alpha': 'Przezroczystość Radaru:',
-        'led_alpha': 'Przezroczystość LED:',
-        'detach_radar': 'Odłącz Radar',
-        'detach_led': 'Odłącz LED',
-        'frameless_mode': 'Tryb Bez Ramek',
-        'audio_device': 'Urządzenie Audio',
-        'select_device': 'Wybierz Urządzenie:',
-        'refresh_devices': 'Odśwież Urządzenia',
-        'audio_settings': 'Ustawienia Audio',
-        'sample_rate': 'Częstotliwość Próbkowania:',
-        'block_size': 'Rozmiar Bloku:',
-        'channels': 'Kanały:',
-        'mode': 'Tryb',
-        'test_mode': 'Tryb Testowy (Syntetyczny)',
-        'loopback_mode': 'Loopback (karta dźwiękowa)',
-        'presets': 'Presety',
-        'sb_preset': 'SB Z SE + Cloud II',
-        'status': 'Status',
-        'rms': 'RMS:',
-        'backend': 'Backend:',
-        'detection_profile': 'Profil Detekcji',
-        'enable_detection': 'Włącz Detekcję',
-        'detect_walk': 'Wykrywaj CHÓD',
-        'detect_run': 'Wykrywaj BIEG',
-        'detect_shot': 'Wykrywaj STRZAŁY',
-        'sensitivity': 'Czułość',
-        'walk': 'Chód:',
-        'run': 'Bieg:',
-        'shot': 'Strzały:',
-        'detection_status': 'Status Detekcji',
-        'walk_detected': 'CHÓD: WYKRYTO',
-        'run_detected': 'BIEG: WYKRYTO',
-        'shot_detected': 'STRZAŁ: WYKRYTO',
-        'walk_none': 'CHÓD: —',
-        'run_none': 'BIEG: —',
-        'shot_none': 'STRZAŁ: —',
-        'ready': 'Gotowy',
-        'running': 'Działa',
-        'stopped': 'Zatrzymany',
-        'language': 'Język:',
-    }
-}
-
-current_language = 'en'
-
-def tr(key):
-    """Translate key to current language"""
-    return TRANSLATIONS.get(current_language, TRANSLATIONS['en']).get(key, key)
+# ============================================================================
+# TRANSLATIONS - Imported from core module  
+# ============================================================================
 
 # ============================================================================
 # PATHS AND LOGGING (ENHANCED v3.5.0 - Thread-safe logging)
@@ -550,85 +224,7 @@ ROOT = Path(__file__).parent.parent
 SUPER_LOG = ROOT / "super_log.txt"
 
 
-class ThreadSafeLogger:
-    """
-    Thread-safe logger using Python's logging module
-
-    FIXED v3.5.0: Race condition in multi-threaded logging
-    - Uses RotatingFileHandler (thread-safe, automatic rotation)
-    - Max 10MB per file, 5 backups
-    - Singleton pattern for global access
-    """
-
-    _instance = None
-    _lock = threading.Lock()
-
-    def __new__(cls):
-        if cls._instance is None:
-            with cls._lock:
-                if cls._instance is None:
-                    cls._instance = super().__new__(cls)
-                    cls._instance._init_logger()
-        return cls._instance
-
-    def _init_logger(self):
-        """Initialize logger with rotating file handler"""
-        self.logger = logging.getLogger('RadarSuite')
-        self.logger.setLevel(logging.DEBUG)
-
-        # Remove existing handlers (avoid duplicates)
-        self.logger.handlers.clear()
-
-        # Rotating file handler (max 10MB, 5 backups) - THREAD-SAFE
-        file_handler = logging.handlers.RotatingFileHandler(
-            str(SUPER_LOG),
-            maxBytes=10*1024*1024,  # 10MB
-            backupCount=5,
-            encoding='utf-8'
-        )
-        file_handler.setLevel(logging.DEBUG)
-
-        # Formatter with timestamp
-        formatter = logging.Formatter(
-            '[%(asctime)s.%(msecs)03d] [%(levelname)s] %(message)s',
-            datefmt='%Y-%m-%d %H:%M:%S'
-        )
-        file_handler.setFormatter(formatter)
-        self.logger.addHandler(file_handler)
-
-        # Console handler for errors only
-        console_handler = logging.StreamHandler()
-        console_handler.setLevel(logging.ERROR)
-        console_handler.setFormatter(formatter)
-        self.logger.addHandler(console_handler)
-
-    def log(self, msg: str, level: str = "INFO"):
-        """Thread-safe log method"""
-        level_map = {
-            "DEBUG": logging.DEBUG,
-            "INFO": logging.INFO,
-            "WARNING": logging.WARNING,
-            "WARN": logging.WARNING,
-            "ERROR": logging.ERROR,
-            "CRITICAL": logging.CRITICAL
-        }
-
-        log_level = level_map.get(level.upper(), logging.INFO)
-        self.logger.log(log_level, msg)
-
-
-# Global logger instance (singleton)
-_thread_safe_logger = ThreadSafeLogger()
-
-
-def log(msg: str, level: str = "INFO"):
-    """
-    Thread-safe logging wrapper
-
-    FIXED v3.5.0: Race condition eliminated via logging.handlers.RotatingFileHandler
-    Safe for concurrent access from multiple threads
-    """
-    _thread_safe_logger.log(msg, level)
+# ThreadSafeLogger - Imported from core module
 
 
 def apply_dark_theme(app: QApplication):

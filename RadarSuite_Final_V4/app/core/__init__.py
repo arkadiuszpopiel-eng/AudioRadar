@@ -47,6 +47,13 @@ from .translations import (
     set_language,
 )
 
+# Dependency Injection (Point 11 - v3.5.0)
+from .di import (
+    ServiceContainer,
+    get_container,
+    configure_services,
+)
+
 __all__ = [
     # Constants
     'VERSION',
@@ -85,4 +92,9 @@ __all__ = [
     'current_language',
     'tr',
     'set_language',
+
+    # Dependency Injection
+    'ServiceContainer',
+    'get_container',
+    'configure_services',
 ]

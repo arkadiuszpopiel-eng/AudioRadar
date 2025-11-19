@@ -378,16 +378,21 @@ def apply_dark_theme(app: QApplication):
 
 
 class MainWindow(QMainWindow):
-    """Main application window"""
+    """
+    Main application window
 
-    def __init__(self):
+    Point 11 - v3.5.0: Dependency Injection support
+    Can receive dependencies via container or create them directly (backward compatible)
+    """
+
+    def __init__(self, container=None):
         super().__init__()
         log("MainWindow.__init__", "INFO")
 
         self.setWindowTitle(f"{tr('app_title')} {VERSION}")
         self.setGeometry(100, 100, 1400, 900)
 
-        self.audio = AudioEngine()
+        # State
         self.is_running = False
         self.radar_angle = 0.0
         self.test_phase = 0.0
@@ -396,45 +401,19 @@ class MainWindow(QMainWindow):
         self.detached_radar = None
         self.detached_led = None
 
-        # Advanced scanners (v3.0)
-        self.game_detector = GameProcessDetector()
+        # Point 11 - v3.5.0: Dependency Injection
+        if container is not None:
+            log("MainWindow: Using DI container for dependencies", "INFO")
+            self._inject_dependencies(container)
+        else:
+            log("MainWindow: Creating dependencies directly (legacy mode)", "INFO")
+            self._create_dependencies()
 
-        # Platform launcher detector (v3.4.1 - Gaming Platform Integration)
-        self.platform_detector = PlatformLauncherDetector()
-
-        # Audio scanner z integracją platform (v3.4.1)
-        self.audio_scanner = AudioSourceScanner(platform_detector=self.platform_detector)
-
-        # Sound classifier (Module 7 - v3.2.0)
-        self.sound_classifier = SoundClassifier()
-
-        # Threat priority system (Module 8 - v3.3.0)
-        self.threat_system = ThreatPrioritySystem()
-
-        # Audio recorder (Module 9 - v3.3.0)
-        self.audio_recorder = AudioRecorder(sample_rate=48000)
-
-        # Multi-target tracker (v3.0.5 - Module 5)
-        self.target_tracker = TargetTracker(max_targets=3)
-
-        # Configuration manager (v3.5.0 - Phase 4)
-        self.config_manager = ConfigManager()
+        # Configuration
         self.config = self.config_manager.load()
-
-        # Performance optimization (Module 12 - v3.4.0)
-        # ENHANCED v3.5.0: GPU acceleration support
-        use_gpu = self.config.get('performance', {}).get('use_gpu', True)
-        self.gpu_accelerator = GPUAccelerator(enable_gpu=use_gpu)
-
-        # Sound Blaster Z SE optimization (v3.5.0 - Phase 6)
-        self.sb_optimizer = SoundBlasterOptimizer()
 
         # Toast notification system (v3.5.0 - Phase 7)
         self.toast = ToastNotification()
-
-        self.fft_cache = AudioProcessingCache(max_size=5, gpu_accelerator=self.gpu_accelerator)
-        self.perf_monitor = PerformanceMonitor()
-        self.detection_worker = DetectionWorker(max_workers=MAX_WORKERS)  # FIXED v3.5.0: Use constant
 
         self.create_ui()
 
@@ -456,6 +435,74 @@ class MainWindow(QMainWindow):
         # Initial scans (v3.0) - FIXED v3.5.0: Use constants
         QTimer.singleShot(STARTUP_DELAY_MS, self.scan_games)
         QTimer.singleShot(STARTUP_AUDIO_DELAY_MS, self.scan_audio_sources)
+
+    def _inject_dependencies(self, container):
+        """
+        Inject dependencies from DI container (Point 11 - v3.5.0)
+
+        Args:
+            container: ServiceContainer with registered dependencies
+        """
+        # Core
+        self.config_manager = container.get('config_manager')
+
+        # Hardware
+        self.gpu_accelerator = container.get('gpu')
+        self.sb_optimizer = container.get('soundblaster')
+
+        # Audio
+        self.fft_cache = container.get('audio_cache')
+        self.audio = container.get('audio_engine')
+        self.sound_classifier = container.get('sound_classifier')
+        self.audio_recorder = container.get('audio_recorder')
+
+        # Detection
+        self.detection_worker = container.get('detection_worker')
+
+        # Tracking
+        self.target_tracker = container.get('target_tracker')
+        self.threat_system = container.get('threat_system')
+
+        # Utils
+        self.perf_monitor = container.get('performance_monitor')
+        self.game_detector = container.get('game_detector')
+        self.platform_detector = container.get('launcher_detector')
+        self.audio_scanner = container.get('audio_scanner')
+
+    def _create_dependencies(self):
+        """
+        Create dependencies directly (legacy mode)
+        Backward compatible with pre-DI code
+        """
+        # Configuration manager (v3.5.0 - Phase 4)
+        self.config_manager = ConfigManager()
+        config = self.config_manager.load()
+
+        # Performance optimization (Module 12 - v3.4.0)
+        use_gpu = config.get('performance', {}).get('use_gpu', True)
+        self.gpu_accelerator = GPUAccelerator(enable_gpu=use_gpu)
+
+        # Sound Blaster Z SE optimization (v3.5.0 - Phase 6)
+        self.sb_optimizer = SoundBlasterOptimizer()
+
+        # Audio services
+        self.fft_cache = AudioProcessingCache(max_size=5, gpu_accelerator=self.gpu_accelerator)
+        self.audio = AudioEngine()
+        self.sound_classifier = SoundClassifier()
+        self.audio_recorder = AudioRecorder(sample_rate=48000)
+
+        # Detection
+        self.detection_worker = DetectionWorker(max_workers=MAX_WORKERS)
+
+        # Tracking
+        self.target_tracker = TargetTracker(max_targets=3)
+        self.threat_system = ThreatPrioritySystem()
+
+        # Utils
+        self.perf_monitor = PerformanceMonitor()
+        self.game_detector = GameProcessDetector()
+        self.platform_detector = PlatformLauncherDetector()
+        self.audio_scanner = AudioSourceScanner(platform_detector=self.platform_detector)
 
     def create_ui(self):
         """Create modern tabbed UI (v3.1.0 - Complete redesign)"""
@@ -1875,7 +1922,11 @@ class MainWindow(QMainWindow):
 # ============================================================================
 
 def main():
-    """Main entry point"""
+    """
+    Main entry point
+
+    Point 11 - v3.5.0: Uses Dependency Injection for clean architecture
+    """
     log("=" * 80, "INFO")
     log(f"RadarSuite Final {VERSION} - Starting", "INFO")
     log("=" * 80, "INFO")
@@ -1892,7 +1943,18 @@ def main():
 
     apply_dark_theme(app)
 
-    window = MainWindow()
+    # Point 11 - v3.5.0: Configure Dependency Injection
+    from core import configure_services, ConfigManager
+
+    log("Configuring Dependency Injection container...", "INFO")
+    config_mgr = ConfigManager()
+    config = config_mgr.load()
+
+    container = configure_services(config)
+    log(f"DI: {len(container.get_registered_services())} services registered", "INFO")
+
+    # Create main window with DI
+    window = MainWindow(container=container)
     window.show()
 
     log("Main window shown, entering event loop", "INFO")

@@ -324,15 +324,15 @@ print_success "Executable built successfully!"
 
 # Verify executable exists
 APP_DIR="dist/RadarSuite_Linux"
-if [ ! -f "$APP_DIR/RadarSuite_Final" ]; then
+if [ ! -f "$APP_DIR/RadarSuite_Linux" ]; then
     print_error "Executable not found in dist!"
     exit 1
 fi
 
 # Make executable
-chmod +x "$APP_DIR/RadarSuite_Final"
+chmod +x "$APP_DIR/RadarSuite_Linux"
 
-print_success "Executable location: $APP_DIR/RadarSuite_Final"
+print_success "Executable location: $APP_DIR/RadarSuite_Linux"
 
 # Get executable size
 EXE_SIZE=$(stat -f%z "$APP_DIR/RadarSuite_Linux" 2>/dev/null || stat -c%s "$APP_DIR/RadarSuite_Linux" 2>/dev/null)
@@ -405,12 +405,12 @@ echo "  - Runtime log will be created as super_log.txt when you run the app"
 echo ""
 echo "To run the application:"
 echo "  1. Go to: $APP_DIR"
-echo "  2. Run: ./RadarSuite_Final"
+echo "  2. Run: ./RadarSuite_Linux"
 echo ""
 if [ -f "dist/$ZIP_NAME" ]; then
     echo "Or from the ZIP:"
     echo "  1. Extract: dist/$ZIP_NAME"
-    echo "  2. Run: ./RadarSuite_Final"
+    echo "  2. Run: ./RadarSuite_Linux"
 fi
 echo ""
 echo "========================================================================"

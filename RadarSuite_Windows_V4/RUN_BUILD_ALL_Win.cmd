@@ -299,12 +299,12 @@ echo   - Runtime log will be created as super_log.txt when you run the EXE
 echo.
 echo To run the application:
 echo   1. Go to: %APP_DIR%
-echo   2. Double-click: RadarSuite_Final.exe
+echo   2. Double-click: RadarSuite_Windows.exe
 echo.
 echo Or from this ZIP:
 if exist "dist\%ZIP_NAME%" (
     echo   1. Extract: dist\%ZIP_NAME%
-    echo   2. Run: RadarSuite_Final.exe
+    echo   2. Run: RadarSuite_Windows.exe
 )
 echo.
 echo ========================================================================

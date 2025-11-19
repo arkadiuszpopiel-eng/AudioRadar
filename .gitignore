@@ -34,6 +34,7 @@ env/
 
 # Logs
 *.log
+super_log.txt
 
 # IDE
 .vscode/

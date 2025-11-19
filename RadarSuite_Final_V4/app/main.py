@@ -163,117 +163,161 @@ from PyQt5.QtCore import Qt, QTimer, pyqtSignal, QPoint
 from PyQt5.QtGui import QPainter, QColor, QPen, QBrush, QPalette
 
 # ============================================================================
-# CORE MODULE IMPORTS (Point 10 - v3.5.0: Modularization)
+# MODULE IMPORTS - Support both package and standalone execution
 # ============================================================================
-from .core import (
-    # Constants
-    VERSION,
-    SAMPLE_RATE,
-    BLOCK_SIZE,
-    CHANNELS,
-    TICK_INTERVAL_MS,
-    GAME_SCAN_INTERVAL_MS,
-    AUDIO_SCAN_INTERVAL_MS,
-    STARTUP_DELAY_MS,
-    STARTUP_AUDIO_DELAY_MS,
-    ENERGY_THRESHOLD,
-    RADAR_ROTATION_DEG,
-    MAX_WORKERS,
-    DETECTION_TIMEOUT_SEC,
-    CLEANUP_INTERVAL_SEC,
-    AUDIO_LEVEL_LOUD,
-    AUDIO_LEVEL_MEDIUM,
-    AUDIO_LEVEL_LOW,
-    RECORDING_BUFFER_SIZE,
-    RECORDING_FLUSH_INTERVAL,
-    TOAST_DURATION_MS,
-    TOAST_MAX_COUNT,
+# Add current directory to path for standalone script execution
+# This allows 'from core import ...' to work when running 'python main.py'
+_current_dir = os.path.dirname(os.path.abspath(__file__))
+if _current_dir not in sys.path:
+    sys.path.insert(0, _current_dir)
 
-    # Logger
-    ThreadSafeLogger,
-    log,
-    ROOT,
-    SUPER_LOG,
+# Try relative imports first (when running as package module)
+# Fall back to direct imports (when running as standalone script)
+try:
+    # ============================================================================
+    # CORE MODULE IMPORTS (Point 10 - v3.5.0: Modularization)
+    # ============================================================================
+    from .core import (
+        # Constants
+        VERSION,
+        SAMPLE_RATE,
+        BLOCK_SIZE,
+        CHANNELS,
+        TICK_INTERVAL_MS,
+        GAME_SCAN_INTERVAL_MS,
+        AUDIO_SCAN_INTERVAL_MS,
+        STARTUP_DELAY_MS,
+        STARTUP_AUDIO_DELAY_MS,
+        ENERGY_THRESHOLD,
+        RADAR_ROTATION_DEG,
+        MAX_WORKERS,
+        DETECTION_TIMEOUT_SEC,
+        CLEANUP_INTERVAL_SEC,
+        AUDIO_LEVEL_LOUD,
+        AUDIO_LEVEL_MEDIUM,
+        AUDIO_LEVEL_LOW,
+        RECORDING_BUFFER_SIZE,
+        RECORDING_FLUSH_INTERVAL,
+        TOAST_DURATION_MS,
+        TOAST_MAX_COUNT,
 
-    # Config
-    ConfigManager,
+        # Logger
+        ThreadSafeLogger,
+        log,
+        ROOT,
+        SUPER_LOG,
 
-    # Translations
-    TRANSLATIONS,
-    current_language,
-    tr,
-    set_language,
-)
+        # Config
+        ConfigManager,
 
-# ============================================================================
-# HARDWARE MODULE IMPORTS (Point 10 - v3.5.0: Modularization)
-# ============================================================================
-from .hardware import (
-    GPUAccelerator,
-    SoundBlasterOptimizer,
-)
+        # Translations
+        TRANSLATIONS,
+        current_language,
+        tr,
+        set_language,
+    )
 
-# ============================================================================
-# UTILS MODULE IMPORTS (Point 10 - v3.5.0: Modularization)
-# ============================================================================
-from .utils import (
-    PerformanceMonitor,
-    GameProcessDetector,
-    PlatformLauncherDetector,
-    AudioSourceScanner,
-)
+    # ============================================================================
+    # HARDWARE MODULE IMPORTS (Point 10 - v3.5.0: Modularization)
+    # ============================================================================
+    from .hardware import (
+        GPUAccelerator,
+        SoundBlasterOptimizer,
+    )
 
-# ============================================================================
-# TRACKING MODULE IMPORTS (Point 10 - v3.5.0: Modularization)
-# ============================================================================
-from .tracking import (
-    Target,
-    TargetTracker,
-    ThreatPrioritySystem,
-)
+    # ============================================================================
+    # UTILS MODULE IMPORTS (Point 10 - v3.5.0: Modularization)
+    # ============================================================================
+    from .utils import (
+        PerformanceMonitor,
+        GameProcessDetector,
+        PlatformLauncherDetector,
+        AudioSourceScanner,
+    )
 
-# ============================================================================
-# DETECTION MODULE IMPORTS (Point 10 - v3.5.0: Modularization)
-# ============================================================================
-from .detection import (
-    DetectionWorker,
-    HumanFootstepDetector,
-)
+    # ============================================================================
+    # TRACKING MODULE IMPORTS (Point 10 - v3.5.0: Modularization)
+    # ============================================================================
+    from .tracking import (
+        Target,
+        TargetTracker,
+        ThreatPrioritySystem,
+    )
 
-# ============================================================================
-# AUDIO MODULE IMPORTS (Point 10 - v3.5.0: Modularization)
-# ============================================================================
-from .audio import (
-    AudioProcessingCache,
-    AudioEngine,
-    SoundClassifier,
-    AudioRecorder,
-    HumanVoiceDetector,
-)
+    # ============================================================================
+    # DETECTION MODULE IMPORTS (Point 10 - v3.5.0: Modularization)
+    # ============================================================================
+    from .detection import (
+        DetectionWorker,
+        HumanFootstepDetector,
+    )
 
-# ============================================================================
-# WIDGETS MODULE IMPORTS (Point 10 - v3.5.0: Modularization)
-# ============================================================================
-from .widgets import (
-    ToastNotification,
-    DetachableRadarWidget,
-    RadarWidget,
-    Radar3DWidget,
-    DetachableLedWidget,
-    LedOverlayWidget,
-    SpectrumWidget,
-    WaterfallWidget,
-    WaveformWidget,
-    DevicePanel,
-    DetectionPanel,
-)
+    # ============================================================================
+    # AUDIO MODULE IMPORTS (Point 10 - v3.5.0: Modularization)
+    # ============================================================================
+    from .audio import (
+        AudioProcessingCache,
+        AudioEngine,
+        SoundClassifier,
+        AudioRecorder,
+        HumanVoiceDetector,
+    )
+
+    # ============================================================================
+    # WIDGETS MODULE IMPORTS (Point 10 - v3.5.0: Modularization)
+    # ============================================================================
+    from .widgets import (
+        ToastNotification,
+        DetachableRadarWidget,
+        RadarWidget,
+        Radar3DWidget,
+        DetachableLedWidget,
+        LedOverlayWidget,
+        SpectrumWidget,
+        WaterfallWidget,
+        WaveformWidget,
+        DevicePanel,
+        DetectionPanel,
+    )
+
+except ImportError:
+    # Fallback to direct imports when running as standalone script
+    from core import (
+        VERSION, SAMPLE_RATE, BLOCK_SIZE, CHANNELS,
+        TICK_INTERVAL_MS, GAME_SCAN_INTERVAL_MS, AUDIO_SCAN_INTERVAL_MS,
+        STARTUP_DELAY_MS, STARTUP_AUDIO_DELAY_MS, ENERGY_THRESHOLD,
+        RADAR_ROTATION_DEG, MAX_WORKERS, DETECTION_TIMEOUT_SEC,
+        CLEANUP_INTERVAL_SEC, AUDIO_LEVEL_LOUD, AUDIO_LEVEL_MEDIUM,
+        AUDIO_LEVEL_LOW, RECORDING_BUFFER_SIZE, RECORDING_FLUSH_INTERVAL,
+        TOAST_DURATION_MS, TOAST_MAX_COUNT,
+        ThreadSafeLogger, log, ROOT, SUPER_LOG,
+        ConfigManager,
+        TRANSLATIONS, current_language, tr, set_language,
+    )
+    from hardware import GPUAccelerator, SoundBlasterOptimizer
+    from utils import (
+        PerformanceMonitor, GameProcessDetector,
+        PlatformLauncherDetector, AudioSourceScanner,
+    )
+    from tracking import Target, TargetTracker, ThreatPrioritySystem
+    from detection import DetectionWorker, HumanFootstepDetector
+    from audio import (
+        AudioProcessingCache, AudioEngine, SoundClassifier,
+        AudioRecorder, HumanVoiceDetector,
+    )
+    from widgets import (
+        ToastNotification, DetachableRadarWidget, RadarWidget,
+        Radar3DWidget, DetachableLedWidget, LedOverlayWidget,
+        SpectrumWidget, WaterfallWidget, WaveformWidget,
+        DevicePanel, DetectionPanel,
+    )
 
 # ============================================================================
 # CONFIG MANAGER - Imported from core module
 # ============================================================================
 
 # ============================================================================
-# TRANSLATIONS - Imported from core module  
+# TRANSLATIONS - Imported from core module
 # ============================================================================
 
 # ============================================================================

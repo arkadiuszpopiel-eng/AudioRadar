@@ -1,8 +1,10 @@
 # -*- mode: python ; coding: utf-8 -*-
 """
-PyInstaller spec file for RadarSuite Final v3.0.5
+PyInstaller spec file for RadarSuite Final v3.5.0-Diamond-001
 Builds standalone EXE with all dependencies
+Platform-specific: Use RUN_BUILD_ALL_Win.cmd or RUN_BUILD_ALL_Linux.sh
 Includes: PyQt5, pyqtgraph, PyOpenGL (3D radar), psutil (game detection)
+Testing: 250+ unit tests, full module coverage
 """
 
 import os

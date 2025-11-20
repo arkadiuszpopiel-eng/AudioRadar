@@ -266,21 +266,18 @@ print_success "All modules verified successfully (package check only)"
 print_warning "Note: sounddevice/soundcard require PortAudio at runtime"
 echo ""
 
-# Verify PyInstaller command
-pyinstaller --version >> "$LOG_FILE" 2>&1
+# Verify PyInstaller is installed
+print_step "Checking PyInstaller..."
+python -c "import PyInstaller; print(f'PyInstaller {PyInstaller.__version__}')" >> "$LOG_FILE" 2>&1
 if [ $? -ne 0 ]; then
     print_error "PyInstaller not available!"
     echo ""
-    echo "PyInstaller was installed but the command is not found."
-    echo "This might be a PATH issue. Try:"
-    echo "  1. Deactivate and reactivate the virtual environment:"
-    echo "     deactivate && source .venv/bin/activate"
-    echo "  2. Or run PyInstaller directly:"
-    echo "     python -m PyInstaller"
+    echo "PyInstaller module not found. Try:"
+    echo "  pip install pyinstaller"
     exit 1
 fi
 
-PYINSTALLER_VERSION=$(pyinstaller --version 2>&1 | head -1)
+PYINSTALLER_VERSION=$(python -c "import PyInstaller; print(PyInstaller.__version__)" 2>&1)
 print_success "PyInstaller $PYINSTALLER_VERSION is available"
 echo ""
 
@@ -307,7 +304,7 @@ log "Running PyInstaller with spec file..."
 # Set Qt platform to offscreen mode (no GUI needed during build)
 export QT_QPA_PLATFORM=offscreen
 
-pyinstaller --clean --noconfirm build_tools/radarsuite_linux.spec >> "$LOG_FILE" 2>&1
+python -m PyInstaller --clean --noconfirm build_tools/radarsuite_linux.spec >> "$LOG_FILE" 2>&1
 
 if [ $? -ne 0 ]; then
     print_error "PyInstaller build failed!"

@@ -170,15 +170,19 @@ echo    - Note: sounddevice/soundcard require PortAudio DLL at runtime
 echo [%date% %time%] All modules verified (package check only) >> "%LOG_FILE%"
 echo.
 
-REM Verify PyInstaller command
-pyinstaller --version >> "%LOG_FILE%" 2>&1
+REM Verify PyInstaller is installed
+echo    - Checking PyInstaller...
+python -c "import PyInstaller; print(f'PyInstaller {PyInstaller.__version__}')" >> "%LOG_FILE%" 2>&1
 if errorlevel 1 (
     echo [ERROR] PyInstaller not available!
-    echo [%date% %time%] [ERROR] PyInstaller command not found >> "%LOG_FILE%"
+    echo [ERROR] Try: python -m pip install pyinstaller
+    echo [%date% %time%] [ERROR] PyInstaller module not found >> "%LOG_FILE%"
     pause
     exit /b 1
 )
-
+python -c "import PyInstaller; print('   - PyInstaller version:', PyInstaller.__version__)"
+echo [%date% %time%] PyInstaller available >> "%LOG_FILE%"
+echo.
 echo [STEP 6/7] Building EXE with PyInstaller...
 echo [%date% %time%] [STEP 6/7] Building EXE... >> "%LOG_FILE%"
 echo.
@@ -197,7 +201,7 @@ if exist "dist" (
 echo    - Running PyInstaller...
 echo [%date% %time%] Running PyInstaller with spec file... >> "%LOG_FILE%"
 
-pyinstaller --clean --noconfirm build_tools\radarsuite_windows.spec >> "%LOG_FILE%" 2>&1
+python -m PyInstaller --clean --noconfirm build_tools\radarsuite_windows.spec >> "%LOG_FILE%" 2>&1
 
 if errorlevel 1 (
     echo [ERROR] PyInstaller build failed!

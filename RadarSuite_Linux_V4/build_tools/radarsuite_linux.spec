@@ -20,6 +20,7 @@ except NameError:
     spec_dir = os.path.dirname(os.path.abspath(SPEC))
 
 BASE = os.path.dirname(spec_dir)
+APP_DIR = os.path.join(BASE, 'app')
 
 # Entry point
 entry_script = os.path.join(BASE, 'app', 'main.py')
@@ -28,24 +29,53 @@ entry_script = os.path.join(BASE, 'app', 'main.py')
 if not os.path.exists(entry_script):
     raise FileNotFoundError(f"Entry script not found: {entry_script}\nBASE={BASE}\nCWD={os.getcwd()}")
 
+# Add app directory to Python path for module imports
+sys.path.insert(0, APP_DIR)
+
 # Collect essential PyQt5 and pyqtgraph modules
 # Note: Using selective imports to avoid Qt initialization issues during build
 hiddenimports = []
+
+# Custom application modules (CRITICAL for PyInstaller)
+hiddenimports += [
+    'core', 'core.constants', 'core.config', 'core.logger', 'core.translations', 'core.di',
+    'hardware', 'hardware.gpu', 'hardware.soundblaster',
+    'utils', 'utils.performance', 'utils.game_detection', 'utils.platform_detection', 'utils.audio_scanner',
+    'tracking', 'tracking.target', 'tracking.tracker', 'tracking.threat',
+    'detection', 'detection.worker', 'detection.footstep',
+    'audio', 'audio.cache', 'audio.engine', 'audio.classifier', 'audio.recorder', 'audio.voice',
+    'widgets', 'widgets.toast', 'widgets.radar', 'widgets.radar3d', 'widgets.led',
+    'widgets.spectrum', 'widgets.waterfall', 'widgets.waveform', 'widgets.panels'
+]
+
+# PyQt5 modules
 hiddenimports += [
     'PyQt5.QtCore', 'PyQt5.QtGui', 'PyQt5.QtWidgets',
     'PyQt5.QtOpenGL', 'PyQt5.sip'
 ]
+
+# pyqtgraph modules
 hiddenimports += [
     'pyqtgraph', 'pyqtgraph.graphicsItems', 'pyqtgraph.opengl',
     'pyqtgraph.widgets', 'pyqtgraph.exporters'
 ]
+
+# OpenGL modules
 hiddenimports += [
     'OpenGL', 'OpenGL.GL', 'OpenGL.GLU', 'OpenGL.GLUT',
     'OpenGL.arrays', 'OpenGL.platform'
 ]
+
+# Scientific computing
 hiddenimports += ['numpy', 'scipy', 'scipy.signal', 'scipy.fft']
+
+# Audio libraries
 hiddenimports += ['sounddevice', 'soundcard']
+
+# System utilities
 hiddenimports += ['psutil']  # Required for game detection (Module 3)
+
+# Standard library
 hiddenimports += ['queue', 'math', 'pathlib', 'datetime', 'collections', 'threading']
 
 # Collect data files for PyQt5 and pyqtgraph
@@ -73,7 +103,7 @@ excludes = [
 # Analysis
 a = Analysis(
     [entry_script],
-    pathex=[BASE],
+    pathex=[BASE, APP_DIR],  # Include app directory for module imports
     binaries=[],
     datas=datas,
     hiddenimports=hiddenimports,

@@ -153,7 +153,7 @@ if errorlevel 1 (
     echo [%date% %time%] [ERROR] Module verification failed >> "%LOG_FILE%"
     echo.
     echo Some required modules could not be imported.
-    echo Please check super_log.txt for details.
+    echo Please check %LOG_FILE% for details.
     echo.
     echo Common fixes:
     echo   - Ensure you have Visual C++ Redistributable installed
@@ -207,7 +207,10 @@ if errorlevel 1 (
     echo [ERROR] PyInstaller build failed!
     echo [%date% %time%] [ERROR] PyInstaller failed >> "%LOG_FILE%"
     echo.
-    echo Build failed. Check super_log.txt for details.
+    echo Build failed. Check %LOG_FILE% for details.
+    echo.
+    echo Last 30 lines of log:
+    powershell -Command "Get-Content '%LOG_FILE%' -Tail 30"
     pause
     exit /b 1
 )

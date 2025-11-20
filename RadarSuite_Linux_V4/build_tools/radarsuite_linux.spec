@@ -11,11 +11,22 @@ import os
 import sys
 from PyInstaller.utils.hooks import collect_submodules, collect_data_files
 
-# Get base path
-BASE = os.path.dirname(os.path.dirname(os.path.abspath(SPEC)))
+# Get base path - use __file__ for more reliable path resolution
+# SPEC variable may not work correctly in all environments
+try:
+    spec_dir = os.path.dirname(os.path.abspath(__file__))
+except NameError:
+    # Fallback to SPEC if __file__ not available (older PyInstaller)
+    spec_dir = os.path.dirname(os.path.abspath(SPEC))
+
+BASE = os.path.dirname(spec_dir)
 
 # Entry point
 entry_script = os.path.join(BASE, 'app', 'main.py')
+
+# Verify entry script exists
+if not os.path.exists(entry_script):
+    raise FileNotFoundError(f"Entry script not found: {entry_script}\nBASE={BASE}\nCWD={os.getcwd()}")
 
 # Collect essential PyQt5 and pyqtgraph modules
 # Note: Using selective imports to avoid Qt initialization issues during build

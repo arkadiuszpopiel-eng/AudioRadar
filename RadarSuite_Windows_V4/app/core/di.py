@@ -158,11 +158,7 @@ def configure_services(config: dict) -> ServiceContainer:
         gpu_accelerator=c.get('gpu')
     ))
 
-    container.register_singleton('audio_engine', lambda c: AudioEngine(
-        sample_rate=config.get('audio', {}).get('sample_rate', 48000),
-        block_size=config.get('audio', {}).get('block_size', 2048),
-        channels=config.get('audio', {}).get('channels', 2)
-    ))
+    container.register_singleton('audio_engine', lambda c: AudioEngine())
 
     container.register_singleton('sound_classifier', lambda c: SoundClassifier())
 

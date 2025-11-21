@@ -185,7 +185,7 @@ from PyQt5.QtWidgets import (
     QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
     QDockWidget, QTabWidget, QPushButton, QLabel, QComboBox,
     QSlider, QCheckBox, QToolBar, QStatusBar, QSpinBox, QGroupBox,
-    QFormLayout, QMessageBox, QAction
+    QFormLayout, QMessageBox, QAction, QSizePolicy
 )
 from PyQt5.QtCore import Qt, QTimer, pyqtSignal, QPoint
 from PyQt5.QtGui import QPainter, QColor, QPen, QBrush, QPalette
@@ -908,7 +908,10 @@ class MainWindow(QMainWindow):
         self.toolbar_stats_label.setStyleSheet("color: #0dd; padding: 5px; font-family: monospace;")
         toolbar.addWidget(self.toolbar_stats_label)
 
-        toolbar.addStretch()
+        # Add spacer to push version to the right
+        spacer = QWidget()
+        spacer.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        toolbar.addWidget(spacer)
 
         # Version label
         version_label = QLabel(f"v{VERSION}")

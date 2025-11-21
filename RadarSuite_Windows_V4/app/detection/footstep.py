@@ -8,7 +8,7 @@ import numpy as np
 from scipy import signal as sp_signal
 from collections import deque
 
-from ..core.logger import log
+from core.logger import log
 
 
 class HumanFootstepDetector:

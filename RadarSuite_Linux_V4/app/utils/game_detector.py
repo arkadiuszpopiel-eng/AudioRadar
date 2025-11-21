@@ -7,7 +7,7 @@ import time
 import re
 import psutil
 
-from ..core.logger import log
+from core.logger import log
 
 
 class GameProcessDetector:

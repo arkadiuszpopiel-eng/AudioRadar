@@ -16,7 +16,7 @@ try:
 except ImportError:
     sc = None
 
-from ..core.logger import log
+from core.logger import log
 
 
 class AudioSourceScanner:

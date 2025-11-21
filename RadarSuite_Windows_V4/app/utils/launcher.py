@@ -5,7 +5,7 @@ Detects Steam, Epic, GOG, Battle.net, EA App
 
 import psutil
 
-from ..core.logger import log
+from core.logger import log
 
 
 class PlatformLauncherDetector:

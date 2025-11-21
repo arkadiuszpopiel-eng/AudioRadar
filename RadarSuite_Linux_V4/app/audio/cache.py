@@ -9,7 +9,7 @@ import threading
 import numpy as np
 from collections import deque
 
-from ..core.logger import log
+from core.logger import log
 
 
 class AudioProcessingCache:

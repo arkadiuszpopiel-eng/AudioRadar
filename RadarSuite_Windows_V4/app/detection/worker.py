@@ -8,8 +8,8 @@ import threading
 import time
 from concurrent.futures import ThreadPoolExecutor
 
-from ..core.logger import log
-from ..core.constants import MAX_WORKERS, CLEANUP_INTERVAL_SEC, DETECTION_TIMEOUT_SEC
+from core.logger import log
+from core.constants import MAX_WORKERS, CLEANUP_INTERVAL_SEC, DETECTION_TIMEOUT_SEC
 
 
 class DetectionWorker:

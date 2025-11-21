@@ -21,21 +21,40 @@ class DeviceItemDelegate(QStyledItemDelegate):
         super().__init__(parent)
         self.active_device_index = -1
         self.device_statuses = {}  # {index: 'active'|'inactive'|'selected'}
+        self.device_names = {}  # {index: device_name} for Sound Blaster detection
 
     def paint(self, painter, option, index):
-        # Get device status
+        # Get device status and name
         status = self.device_statuses.get(index.row(), 'inactive')
+        device_name = self.device_names.get(index.row(), '').lower()
 
-        # Set background color based on status
-        if index.row() == self.active_device_index:
-            # Currently selected/active device - bright green
-            painter.fillRect(option.rect, QColor(0, 80, 0))
-        elif status == 'active':
-            # Active audio source - dim green
-            painter.fillRect(option.rect, QColor(0, 50, 0))
+        # Check if this is a Sound Blaster Z SE device
+        is_soundblaster = any(sb in device_name for sb in [
+            'sound blaster', 'soundblaster', 'sb z', 'sb-z', 'creative'
+        ])
+
+        # Set background color based on status and device type
+        if status == 'active' or index.row() == self.active_device_index:
+            if is_soundblaster:
+                # Sound Blaster Z SE - dark green with cyan tint
+                painter.fillRect(option.rect, QColor(0, 60, 40))
+                # Add a left border indicator
+                painter.fillRect(option.rect.x(), option.rect.y(),
+                               3, option.rect.height(), QColor(0, 200, 150))
+            else:
+                # General active device - bright/light green
+                painter.fillRect(option.rect, QColor(0, 100, 0))
+                # Add a left border indicator
+                painter.fillRect(option.rect.x(), option.rect.y(),
+                               3, option.rect.height(), QColor(0, 255, 0))
 
         # Call default painting
         super().paint(painter, option, index)
+
+    def set_device_info(self, index, name, is_active):
+        """Store device info for coloring"""
+        self.device_names[index] = name
+        self.device_statuses[index] = 'active' if is_active else 'inactive'
 
 
 class DevicePanel(QWidget):
@@ -343,12 +362,21 @@ class DevicePanel(QWidget):
     def refresh_devices(self):
         """Refresh device list"""
         self.device_combo.clear()
+        self.device_delegate.device_names.clear()
+        self.device_delegate.device_statuses.clear()
+
         devices = self.audio.list_devices()
 
+        idx = 0
         for dev in devices:
             if dev['type'] in ['input', 'loopback']:
                 label = f"{dev['name']} ({dev['channels']}ch, {dev['samplerate']}Hz) [{dev['backend']}]"
                 self.device_combo.addItem(label, dev)
+
+                # Store device info in delegate for coloring
+                is_active = dev.get('is_default', False) or dev['type'] == 'loopback'
+                self.device_delegate.set_device_info(idx, dev['name'], is_active)
+                idx += 1
 
         log(f"Refreshed devices: found {len(devices)}", "INFO")
 
@@ -465,6 +493,22 @@ class DevicePanel(QWidget):
     def set_game_detector(self, detector):
         """Set reference to game detector for updates"""
         self.game_detector = detector
+
+    def update_device_activity(self, active_device_names):
+        """Update device activity status for highlighting
+
+        Args:
+            active_device_names: List of device names that are currently active
+        """
+        active_lower = [name.lower() for name in active_device_names]
+
+        for idx, name in self.device_delegate.device_names.items():
+            is_active = any(active in name.lower() or name.lower() in active
+                          for active in active_lower)
+            self.device_delegate.device_statuses[idx] = 'active' if is_active else 'inactive'
+
+        # Force redraw of combo box
+        self.device_combo.update()
 
     def update_translations(self):
         """Update UI translations"""

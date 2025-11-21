@@ -5,11 +5,37 @@ RadarSuite v3.5.0 - Device_Panel Widgets
 import numpy as np
 import pyqtgraph as pg
 import pyqtgraph.opengl as gl
-from PyQt5.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QComboBox, QSlider, QCheckBox, QSpinBox, QGroupBox, QFormLayout
+from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
+                             QComboBox, QSlider, QCheckBox, QSpinBox, QGroupBox,
+                             QFormLayout, QFrame, QStyledItemDelegate)
 from PyQt5.QtCore import Qt, QTimer, pyqtSignal, QPoint
-from PyQt5.QtGui import QPainter, QColor, QPen, QBrush, QPalette
+from PyQt5.QtGui import QPainter, QColor, QPen, QBrush, QPalette, QFont
 
 from core import log, tr, TOAST_DURATION_MS, TOAST_MAX_COUNT
+
+
+class DeviceItemDelegate(QStyledItemDelegate):
+    """Custom delegate for coloring device items based on status"""
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.active_device_index = -1
+        self.device_statuses = {}  # {index: 'active'|'inactive'|'selected'}
+
+    def paint(self, painter, option, index):
+        # Get device status
+        status = self.device_statuses.get(index.row(), 'inactive')
+
+        # Set background color based on status
+        if index.row() == self.active_device_index:
+            # Currently selected/active device - bright green
+            painter.fillRect(option.rect, QColor(0, 80, 0))
+        elif status == 'active':
+            # Active audio source - dim green
+            painter.fillRect(option.rect, QColor(0, 50, 0))
+
+        # Call default painting
+        super().paint(painter, option, index)
 
 
 class DevicePanel(QWidget):
@@ -18,6 +44,7 @@ class DevicePanel(QWidget):
     def __init__(self, audio_engine):
         super().__init__()
         self.audio = audio_engine
+        self.game_detector = None  # Will be set externally
         log("DevicePanel.__init__", "INFO")
 
         layout = QVBoxLayout()
@@ -27,9 +54,60 @@ class DevicePanel(QWidget):
         device_layout = QVBoxLayout()
 
         self.device_combo = QComboBox()
+        # Add custom delegate for coloring
+        self.device_delegate = DeviceItemDelegate(self.device_combo)
+        self.device_combo.setItemDelegate(self.device_delegate)
+        # Style the combo box
+        self.device_combo.setStyleSheet("""
+            QComboBox {
+                background-color: #1a1a1a;
+                color: white;
+                border: 2px solid #333;
+                border-radius: 5px;
+                padding: 5px;
+                font-size: 10pt;
+            }
+            QComboBox:hover {
+                border: 2px solid #0a0;
+            }
+            QComboBox::drop-down {
+                border: none;
+            }
+            QComboBox QAbstractItemView {
+                background-color: #1a1a1a;
+                color: white;
+                selection-background-color: #006600;
+            }
+        """)
+        self.device_combo.currentIndexChanged.connect(self.on_device_changed)
+
         self.select_device_label = QLabel(tr('select_device'))
         device_layout.addWidget(self.select_device_label)
         device_layout.addWidget(self.device_combo)
+
+        # Current device status indicator
+        self.device_status_frame = QFrame()
+        self.device_status_frame.setStyleSheet("""
+            QFrame {
+                background-color: #1a1a1a;
+                border: 1px solid #333;
+                border-radius: 3px;
+                padding: 5px;
+            }
+        """)
+        status_frame_layout = QHBoxLayout(self.device_status_frame)
+        status_frame_layout.setContentsMargins(5, 2, 5, 2)
+
+        self.device_status_led = QLabel("●")
+        self.device_status_led.setStyleSheet("color: #666; font-size: 14pt;")
+        status_frame_layout.addWidget(self.device_status_led)
+
+        self.device_status_text = QLabel("No device selected")
+        self.device_status_text.setStyleSheet("color: #888; font-size: 9pt;")
+        status_frame_layout.addWidget(self.device_status_text)
+        status_frame_layout.addStretch()
+
+        device_layout.addWidget(self.device_status_frame)
 
         self.refresh_btn = QPushButton(tr('refresh_devices'))
         self.refresh_btn.clicked.connect(self.refresh_devices)
@@ -129,16 +207,83 @@ class DevicePanel(QWidget):
         preset_group.setLayout(preset_layout)
         layout.addWidget(preset_group)
 
-        # Game Detection (v3.0)
+        # Game Detection (v3.0) - Enhanced with process details
         self.game_group = QGroupBox("🎮 Game Detection")
         game_layout = QVBoxLayout()
 
-        self.detected_games_label = QLabel("No games detected")
-        self.detected_games_label.setStyleSheet("font-size: 9pt; color: #888888;")
-        self.detected_games_label.setWordWrap(True)
-        game_layout.addWidget(self.detected_games_label)
+        # Detection status with LED
+        detection_status_layout = QHBoxLayout()
+        self.game_detection_led = QLabel("●")
+        self.game_detection_led.setStyleSheet("color: #666; font-size: 14pt;")
+        detection_status_layout.addWidget(self.game_detection_led)
+        self.game_detection_status = QLabel("Scanning...")
+        self.game_detection_status.setStyleSheet("font-size: 10pt; font-weight: bold; color: #888;")
+        detection_status_layout.addWidget(self.game_detection_status)
+        detection_status_layout.addStretch()
+        game_layout.addLayout(detection_status_layout)
 
-        self.detected_engines_label = QLabel("No engines detected")
+        # Process details frame
+        self.process_frame = QFrame()
+        self.process_frame.setStyleSheet("""
+            QFrame {
+                background-color: #0a0a0a;
+                border: 1px solid #333;
+                border-radius: 5px;
+                padding: 5px;
+            }
+        """)
+        process_frame_layout = QVBoxLayout(self.process_frame)
+        process_frame_layout.setSpacing(2)
+        process_frame_layout.setContentsMargins(8, 5, 8, 5)
+
+        # Process name
+        self.process_name_label = QLabel("Process: —")
+        self.process_name_label.setStyleSheet("font-size: 9pt; color: #aaa; font-family: monospace;")
+        process_frame_layout.addWidget(self.process_name_label)
+
+        # PID
+        self.process_pid_label = QLabel("PID: —")
+        self.process_pid_label.setStyleSheet("font-size: 9pt; color: #888; font-family: monospace;")
+        process_frame_layout.addWidget(self.process_pid_label)
+
+        # Memory usage
+        self.process_memory_label = QLabel("Memory: —")
+        self.process_memory_label.setStyleSheet("font-size: 9pt; color: #888; font-family: monospace;")
+        process_frame_layout.addWidget(self.process_memory_label)
+
+        # Window title
+        self.process_window_label = QLabel("Window: —")
+        self.process_window_label.setStyleSheet("font-size: 9pt; color: #888; font-family: monospace;")
+        self.process_window_label.setWordWrap(True)
+        process_frame_layout.addWidget(self.process_window_label)
+
+        game_layout.addWidget(self.process_frame)
+
+        # Audio initialization status
+        self.audio_init_frame = QFrame()
+        self.audio_init_frame.setStyleSheet("""
+            QFrame {
+                background-color: #0a0a0a;
+                border: 1px solid #333;
+                border-radius: 5px;
+                padding: 3px;
+            }
+        """)
+        audio_init_layout = QHBoxLayout(self.audio_init_frame)
+        audio_init_layout.setContentsMargins(8, 3, 8, 3)
+
+        self.audio_init_led = QLabel("●")
+        self.audio_init_led.setStyleSheet("color: #666; font-size: 12pt;")
+        audio_init_layout.addWidget(self.audio_init_led)
+
+        self.audio_init_label = QLabel("Audio: Not initialized")
+        self.audio_init_label.setStyleSheet("font-size: 9pt; color: #888;")
+        audio_init_layout.addWidget(self.audio_init_label)
+        audio_init_layout.addStretch()
+
+        game_layout.addWidget(self.audio_init_frame)
+
+        self.detected_engines_label = QLabel("Engine: Unknown")
         self.detected_engines_label.setStyleSheet("font-size: 9pt; color: #888888;")
         self.detected_engines_label.setWordWrap(True)
         game_layout.addWidget(self.detected_engines_label)
@@ -240,6 +385,86 @@ class DevicePanel(QWidget):
         else:
             self.audio.use_loopback = False
             self.backend_label.setText(f"{tr('backend')} sounddevice")
+
+    def on_device_changed(self, index):
+        """Handle device selection change"""
+        if index >= 0:
+            self.device_delegate.active_device_index = index
+            dev_data = self.device_combo.currentData()
+            if dev_data:
+                # Update status indicator
+                self.device_status_led.setStyleSheet("color: #0f0; font-size: 14pt;")
+                self.device_status_text.setText(f"Selected: {dev_data['name'][:30]}...")
+                self.device_status_text.setStyleSheet("color: #0f0; font-size: 9pt;")
+                log(f"Device selected: {dev_data['name']}", "INFO")
+            self.device_combo.update()
+
+    def update_game_detection_info(self, game_info):
+        """Update game detection panel with process details"""
+        if game_info and game_info.get('detected'):
+            # Game detected - show green
+            self.game_detection_led.setStyleSheet("color: #0f0; font-size: 14pt;")
+            self.game_detection_status.setText("GAME DETECTED")
+            self.game_detection_status.setStyleSheet("font-size: 10pt; font-weight: bold; color: #0f0;")
+
+            # Update process details
+            self.process_name_label.setText(f"Process: {game_info.get('process_name', '—')}")
+            self.process_name_label.setStyleSheet("font-size: 9pt; color: #0f0; font-family: monospace;")
+
+            self.process_pid_label.setText(f"PID: {game_info.get('pid', '—')}")
+            self.process_pid_label.setStyleSheet("font-size: 9pt; color: #0dd; font-family: monospace;")
+
+            memory_mb = game_info.get('memory_mb', 0)
+            self.process_memory_label.setText(f"Memory: {memory_mb:.1f} MB")
+            self.process_memory_label.setStyleSheet("font-size: 9pt; color: #dd0; font-family: monospace;")
+
+            window = game_info.get('window_title', '—')
+            if len(window) > 40:
+                window = window[:40] + "..."
+            self.process_window_label.setText(f"Window: {window}")
+
+            # Update engine info
+            engine = game_info.get('engine', 'Unknown')
+            self.detected_engines_label.setText(f"Engine: {engine}")
+            self.detected_engines_label.setStyleSheet("font-size: 9pt; color: #0dd;")
+
+        else:
+            # No game detected - show gray
+            self.game_detection_led.setStyleSheet("color: #666; font-size: 14pt;")
+            self.game_detection_status.setText("No game detected")
+            self.game_detection_status.setStyleSheet("font-size: 10pt; font-weight: bold; color: #888;")
+
+            self.process_name_label.setText("Process: —")
+            self.process_name_label.setStyleSheet("font-size: 9pt; color: #888; font-family: monospace;")
+            self.process_pid_label.setText("PID: —")
+            self.process_pid_label.setStyleSheet("font-size: 9pt; color: #888; font-family: monospace;")
+            self.process_memory_label.setText("Memory: —")
+            self.process_memory_label.setStyleSheet("font-size: 9pt; color: #888; font-family: monospace;")
+            self.process_window_label.setText("Window: —")
+            self.detected_engines_label.setText("Engine: Unknown")
+            self.detected_engines_label.setStyleSheet("font-size: 9pt; color: #888;")
+
+    def update_audio_init_status(self, is_initialized, is_receiving_audio=False):
+        """Update audio initialization status indicator"""
+        if is_initialized and is_receiving_audio:
+            # Fully working - green
+            self.audio_init_led.setStyleSheet("color: #0f0; font-size: 12pt;")
+            self.audio_init_label.setText("Audio: ✓ Receiving audio data")
+            self.audio_init_label.setStyleSheet("font-size: 9pt; color: #0f0;")
+        elif is_initialized:
+            # Initialized but no audio - yellow
+            self.audio_init_led.setStyleSheet("color: #dd0; font-size: 12pt;")
+            self.audio_init_label.setText("Audio: ✓ Initialized (no signal)")
+            self.audio_init_label.setStyleSheet("font-size: 9pt; color: #dd0;")
+        else:
+            # Not initialized - red
+            self.audio_init_led.setStyleSheet("color: #f00; font-size: 12pt;")
+            self.audio_init_label.setText("Audio: ✗ Not initialized")
+            self.audio_init_label.setStyleSheet("font-size: 9pt; color: #f00;")
+
+    def set_game_detector(self, detector):
+        """Set reference to game detector for updates"""
+        self.game_detector = detector
 
     def update_translations(self):
         """Update UI translations"""

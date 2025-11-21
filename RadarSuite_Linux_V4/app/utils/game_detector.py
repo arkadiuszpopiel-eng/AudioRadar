@@ -162,6 +162,98 @@ class GameProcessDetector:
                 'has_games': False
             }
 
+    def get_detailed_game_info(self):
+        """
+        Get detailed information about detected game process for UI display.
+        Returns dict with process name, PID, memory, window title, etc.
+        """
+        try:
+            # Scan first if needed
+            self.scan_processes()
+
+            if not self.active_games:
+                return {'detected': False}
+
+            # Find the first detected game's process
+            for proc in psutil.process_iter(['name', 'exe', 'cmdline', 'pid', 'memory_info']):
+                try:
+                    proc_name = proc.info['name'] or ''
+                    proc_exe = proc.info['exe'] or ''
+                    proc_cmdline = ' '.join(proc.info['cmdline']) if proc.info.get('cmdline') else ''
+                    search_text = f"{proc_name} {proc_exe} {proc_cmdline}".lower()
+
+                    # Check if this process matches any active game
+                    matched_game = None
+                    for game_name in self.active_games:
+                        patterns = self.known_games.get(game_name, [])
+                        for pattern in patterns:
+                            if pattern.lower() in search_text:
+                                matched_game = game_name
+                                break
+                        if matched_game:
+                            break
+
+                    if matched_game:
+                        # Get memory info
+                        memory_info = proc.info.get('memory_info')
+                        memory_mb = memory_info.rss / (1024 * 1024) if memory_info else 0
+
+                        # Try to get window title (Windows only)
+                        window_title = "—"
+                        try:
+                            import ctypes
+                            from ctypes import wintypes
+
+                            EnumWindows = ctypes.windll.user32.EnumWindows
+                            GetWindowText = ctypes.windll.user32.GetWindowTextW
+                            GetWindowTextLength = ctypes.windll.user32.GetWindowTextLengthW
+                            GetWindowThreadProcessId = ctypes.windll.user32.GetWindowThreadProcessId
+
+                            titles = []
+
+                            def callback(hwnd, lParam):
+                                pid = wintypes.DWORD()
+                                GetWindowThreadProcessId(hwnd, ctypes.byref(pid))
+                                if pid.value == proc.info['pid']:
+                                    length = GetWindowTextLength(hwnd)
+                                    if length > 0:
+                                        buff = ctypes.create_unicode_buffer(length + 1)
+                                        GetWindowText(hwnd, buff, length + 1)
+                                        if buff.value:
+                                            titles.append(buff.value)
+                                return True
+
+                            EnumWindowsProc = ctypes.WINFUNCTYPE(ctypes.c_bool, wintypes.HWND, wintypes.LPARAM)
+                            EnumWindows(EnumWindowsProc(callback), 0)
+
+                            if titles:
+                                window_title = titles[0]
+                        except Exception:
+                            pass
+
+                        # Get engine
+                        engine = self.active_engines[0] if self.active_engines else 'Unknown'
+
+                        return {
+                            'detected': True,
+                            'game_name': matched_game,
+                            'process_name': proc_name,
+                            'pid': proc.info['pid'],
+                            'memory_mb': memory_mb,
+                            'window_title': window_title,
+                            'engine': engine,
+                            'exe_path': proc_exe
+                        }
+
+                except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
+                    continue
+
+            return {'detected': False}
+
+        except Exception as e:
+            log(f"Error in get_detailed_game_info: {e}", "ERROR")
+            return {'detected': False}
+
 
 # ============================================================================
 # PLATFORM LAUNCHER DETECTOR (v3.4.1 - Gaming Platform Integration)

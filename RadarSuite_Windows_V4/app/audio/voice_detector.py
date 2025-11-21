@@ -3,6 +3,7 @@ RadarSuite v3.5.0 - Human Voice Detector
 Formant analysis for voice detection
 """
 
+import time
 import numpy as np
 from scipy.signal import find_peaks
 

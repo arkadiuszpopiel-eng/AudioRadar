@@ -3,6 +3,7 @@ RadarSuite v3.5.0 - Audio Engine
 Audio capture via sounddevice/soundcard
 """
 
+import time
 import queue
 import threading
 import numpy as np

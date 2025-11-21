@@ -3,6 +3,7 @@ RadarSuite v3.5.0 - Platform Launcher Detector
 Detects Steam, Epic, GOG, Battle.net, EA App
 """
 
+import time
 import psutil
 
 from core.logger import log

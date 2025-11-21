@@ -2,6 +2,7 @@
 RadarSuite v3.5.0 - Toast Widgets
 """
 
+import time
 import numpy as np
 import pyqtgraph as pg
 import pyqtgraph.opengl as gl

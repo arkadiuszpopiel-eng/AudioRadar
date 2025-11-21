@@ -4,7 +4,7 @@ Essential application components
 """
 
 # Constants
-from .constants import (
+from core.constants import (
     VERSION,
     SAMPLE_RATE,
     BLOCK_SIZE,
@@ -29,7 +29,7 @@ from .constants import (
 )
 
 # Logger
-from .logger import (
+from core.logger import (
     ThreadSafeLogger,
     log,
     ROOT,
@@ -37,10 +37,10 @@ from .logger import (
 )
 
 # Config
-from .config import ConfigManager
+from core.config import ConfigManager
 
 # Translations
-from .translations import (
+from core.translations import (
     TRANSLATIONS,
     current_language,
     tr,
@@ -48,7 +48,7 @@ from .translations import (
 )
 
 # Dependency Injection (Point 11 - v3.5.0)
-from .di import (
+from core.di import (
     ServiceContainer,
     get_container,
     configure_services,

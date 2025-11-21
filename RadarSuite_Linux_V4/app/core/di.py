@@ -187,9 +187,17 @@ def configure_services(config: dict) -> ServiceContainer:
     from tracking import TargetTracker, ThreatPrioritySystem
 
     container.register_singleton('target_tracker', lambda c: TargetTracker(
-        max_targets=3,
-        confidence_threshold=0.5,
-        merge_distance=15.0
+        max_targets=3
+    ))
+    container.register_singleton('target_tracker', lambda c: TargetTracker(
+        max_targets=3
+    ))
+    container.register_singleton('target_tracker', lambda c: TargetTracker(
+        max_targets=3
+    ))
+    container.register_singleton('target_tracker', lambda c: TargetTracker(
+        max_targets=3
+    ))
     ))
 
     container.register_singleton('threat_system', lambda c: ThreatPrioritySystem())

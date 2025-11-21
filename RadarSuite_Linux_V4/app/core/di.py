@@ -220,7 +220,7 @@ def configure_services(config: dict) -> ServiceContainer:
     container.register_singleton('launcher_detector', lambda c: PlatformLauncherDetector())
 
     container.register_singleton('audio_scanner', lambda c: AudioSourceScanner(
-        launcher_detector=c.get('launcher_detector')
+        platform_detector=c.get('launcher_detector')
     ))
 
     log(f"DI: {len(container.get_registered_services())} services configured", "INFO")

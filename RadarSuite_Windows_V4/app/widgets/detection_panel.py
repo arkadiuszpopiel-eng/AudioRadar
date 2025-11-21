@@ -10,6 +10,8 @@ from PyQt5.QtCore import Qt, QTimer, pyqtSignal, QPoint
 from PyQt5.QtGui import QPainter, QColor, QPen, QBrush, QPalette
 
 from core import log, tr, TOAST_DURATION_MS, TOAST_MAX_COUNT
+from detection import HumanFootstepDetector
+from audio import HumanVoiceDetector
 
 
 class DetectionPanel(QWidget):

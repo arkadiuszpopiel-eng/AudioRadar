@@ -2,6 +2,7 @@
 RadarSuite v3.5.0 - Radar Widgets
 """
 
+import math
 import numpy as np
 import pyqtgraph as pg
 import pyqtgraph.opengl as gl
@@ -9,7 +10,7 @@ from PyQt5.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButt
 from PyQt5.QtCore import Qt, QTimer, pyqtSignal, QPoint
 from PyQt5.QtGui import QPainter, QColor, QPen, QBrush, QPalette
 
-from core import log, tr, TOAST_DURATION_MS, TOAST_MAX_COUNT
+from core import log, tr, VERSION, TOAST_DURATION_MS, TOAST_MAX_COUNT
 
 
 class DetachableRadarWidget(QWidget):

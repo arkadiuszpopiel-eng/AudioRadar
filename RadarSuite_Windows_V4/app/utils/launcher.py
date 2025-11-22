@@ -4,6 +4,7 @@ Detects Steam, Epic, GOG, Battle.net, EA App
 """
 
 import time
+import re
 import psutil
 
 from core.logger import log

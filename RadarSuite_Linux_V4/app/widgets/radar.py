@@ -114,6 +114,11 @@ class MilitaryHUDRadar(QWidget):
         self.sweep_angle = (self.sweep_angle + 3) % 360
         self.update()
 
+    def update_sweep(self, angle_deg):
+        """Update sweep angle from external source (main tick)"""
+        self.sweep_angle = angle_deg % 360
+        self.update()
+
     # =========================================================================
     # TARGET MANAGEMENT
     # =========================================================================

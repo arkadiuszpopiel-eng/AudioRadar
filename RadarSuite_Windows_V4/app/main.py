@@ -678,6 +678,7 @@ class MainWindow(QMainWindow):
 
         # Right: Device/Audio panel
         self.dev_panel = DevicePanel(self.audio)
+        self.dev_panel.set_audio_scanner(self.audio_scanner)  # v3.5.1: Connect for device tracking
         detection_layout.addWidget(self.dev_panel, 2)
 
         detection_tab.setLayout(detection_layout)
@@ -1475,8 +1476,16 @@ class MainWindow(QMainWindow):
             # 2. Acquire and process audio block
             block = self._acquire_audio_block()
             if block is None:
+                # Report no audio activity
+                if hasattr(self, 'audio_scanner') and self.audio_scanner:
+                    self.audio_scanner.report_audio_activity(False)
                 return
             block = self.apply_audio_processing(block)
+
+            # 2b. Report audio activity to scanner (v3.5.1)
+            if hasattr(self, 'audio_scanner') and self.audio_scanner:
+                has_audio = np.max(np.abs(block)) > 0.001  # Check if there's actual audio
+                self.audio_scanner.report_audio_activity(has_audio)
 
             # 3. Update recording
             self._update_recording(block)
@@ -1901,43 +1910,57 @@ class MainWindow(QMainWindow):
             log(f"Error in scan_games: {e}", "ERROR")
 
     def scan_audio_sources(self):
-        """Scan audio sources and update UI (v3.1.0)"""
+        """Scan audio sources and update UI (v3.5.1 - Fixed proper status display)"""
         try:
             sources_data = self.audio_scanner.scan_audio_sources()
+            is_receiving = sources_data.get('is_receiving', False)
 
-            # Update active sources (Tab 3)
+            # Update active/selected sources
             active_count = len(sources_data['active'])
-            self.active_sources_label.setText(f"Active: {active_count}")
 
             if active_count > 0:
+                # Show "RECEIVING" or "SELECTED" based on actual audio activity
+                status_text = "RECEIVING" if is_receiving else "SELECTED"
+                status_color = "#00FF00" if is_receiving else "#FFAA00"
+                self.active_sources_label.setText(f"{status_text}: {active_count}")
+                self.active_sources_label.setStyleSheet(f"font-size: 9pt; font-weight: bold; color: {status_color};")
+
                 active_list = []
                 for i, src in enumerate(sources_data['active'][:5]):
-                    name = src['name'][:50] + "..." if len(src['name']) > 50 else src['name']
-                    active_list.append(f"🟢 {name}")
+                    name = src['name'][:45] + "..." if len(src['name']) > 45 else src['name']
+                    icon = "📡" if is_receiving else "✓"
+                    active_list.append(f"{icon} {name}")
 
                 if len(sources_data['active']) > 5:
                     active_list.append(f"   (+{len(sources_data['active']) - 5} more)")
 
                 self.active_sources_list.setText("\n".join(active_list))
+                self.active_sources_list.setStyleSheet(f"font-size: 9pt; color: {status_color};")
             else:
-                self.active_sources_list.setText("—")
+                self.active_sources_label.setText("NO DEVICE SELECTED")
+                self.active_sources_label.setStyleSheet("font-size: 9pt; font-weight: bold; color: #FF6666;")
+                self.active_sources_list.setText("Select a device in Tab 2")
+                self.active_sources_list.setStyleSheet("font-size: 9pt; color: #888;")
 
-            # Update inactive sources
+            # Update available (inactive) sources
             inactive_count = len(sources_data['inactive'])
-            self.inactive_sources_label.setText(f"Inactive: {inactive_count}")
+            self.inactive_sources_label.setText(f"Available: {inactive_count}")
+            self.inactive_sources_label.setStyleSheet("font-size: 9pt; font-weight: bold; color: #888;")
 
             if inactive_count > 0:
                 inactive_list = []
                 for i, src in enumerate(sources_data['inactive'][:3]):
-                    name = src['name'][:50] + "..." if len(src['name']) > 50 else src['name']
-                    inactive_list.append(f"🔴 {name}")
+                    name = src['name'][:45] + "..." if len(src['name']) > 45 else src['name']
+                    inactive_list.append(f"○ {name}")
 
                 if len(sources_data['inactive']) > 3:
                     inactive_list.append(f"   (+{len(sources_data['inactive']) - 3} more)")
 
                 self.inactive_sources_list.setText("\n".join(inactive_list))
+                self.inactive_sources_list.setStyleSheet("font-size: 9pt; color: #666;")
             else:
                 self.inactive_sources_list.setText("—")
+                self.inactive_sources_list.setStyleSheet("font-size: 9pt; color: #666;")
 
         except Exception as e:
             log(f"Error in scan_audio_sources: {e}", "ERROR")

@@ -1,6 +1,6 @@
 """
 RadarSuite v3.5.0 - Audio Source Scanner
-Scans and filters audio sources (games vs launchers)
+Scans and monitors audio sources - shows selected device and available devices
 """
 
 import time
@@ -21,26 +21,51 @@ from core.logger import log
 
 class AudioSourceScanner:
     """
-    Scans system for active and inactive audio sources
-    Provides visualization: green = active, red = inactive
-    Lists all available audio devices with real-time status
+    Scans system for audio sources and monitors usage
+    Shows: Currently selected device (green) vs available devices (gray)
 
-    v3.4.1: Dodano filtrowanie audio od launcherów (ignoruj Steam, Discord, etc.)
+    v3.5.1: Fixed - now properly tracks selected device instead of showing
+            all devices as "active" incorrectly
     """
 
     def __init__(self, platform_detector=None):
         log("AudioSourceScanner.__init__", "INFO")
 
-        self.active_sources = []
-        self.inactive_sources = []
+        self.selected_device = None  # Currently selected device name
+        self.selected_device_index = -1
+        self.is_receiving_audio = False  # True if audio data is being received
+
+        self.active_sources = []   # Selected/in-use devices
+        self.inactive_sources = [] # Available but not selected devices
         self.last_scan_time = 0.0
         self.scan_interval = 2.0  # Scan every 2 seconds
-        self.platform_detector = platform_detector  # v3.4.1: filtrowanie launcherów
+        self.platform_detector = platform_detector
+
+        # Audio activity tracking
+        self.last_audio_time = 0.0
+        self.audio_activity_timeout = 3.0  # Consider inactive after 3 seconds
+
+    def set_selected_device(self, device_name, device_index=-1):
+        """Set the currently selected/active device"""
+        self.selected_device = device_name
+        self.selected_device_index = device_index
+        log(f"AudioSourceScanner: Selected device set to '{device_name}'", "INFO")
+
+    def report_audio_activity(self, has_audio=True):
+        """Report that audio is being received (call from main audio loop)"""
+        if has_audio:
+            self.last_audio_time = time.time()
+            self.is_receiving_audio = True
+        else:
+            # Check if we've timed out
+            if time.time() - self.last_audio_time > self.audio_activity_timeout:
+                self.is_receiving_audio = False
 
     def scan_audio_sources(self):
         """
-        Scan for active and inactive audio sources
-        Returns: dict with active/inactive lists and status
+        Scan for audio sources - properly shows selected vs available
+
+        Returns: dict with 'active' (selected device) and 'inactive' (available devices)
         """
         try:
             current_time = time.time()
@@ -50,7 +75,8 @@ class AudioSourceScanner:
                 return {
                     'active': self.active_sources,
                     'inactive': self.inactive_sources,
-                    'total': len(self.active_sources) + len(self.inactive_sources)
+                    'total': len(self.active_sources) + len(self.inactive_sources),
+                    'is_receiving': self.is_receiving_audio
                 }
 
             self.last_scan_time = current_time
@@ -58,31 +84,52 @@ class AudioSourceScanner:
             active = []
             inactive = []
 
+            # Check audio activity timeout
+            if current_time - self.last_audio_time > self.audio_activity_timeout:
+                self.is_receiving_audio = False
+
             # Scan sounddevice sources
             if sd:
                 try:
                     devices = sd.query_devices()
+                    default_input = None
+                    try:
+                        default_input = sd.query_devices(kind='input')
+                    except Exception:
+                        pass
+
                     for i, dev in enumerate(devices):
+                        # Only show input devices
+                        if dev['max_input_channels'] <= 0:
+                            continue
+
                         dev_info = {
                             'name': dev['name'],
                             'index': i,
                             'channels': dev['max_input_channels'],
                             'samplerate': int(dev['default_samplerate']),
                             'backend': 'sounddevice',
-                            'type': 'input' if dev['max_input_channels'] > 0 else 'output'
+                            'type': 'input',
+                            'is_default': default_input and dev['name'] == default_input['name']
                         }
 
-                        # Check if device is default (likely active)
-                        try:
-                            default_device = sd.query_devices(kind='input')
-                            is_active = (dev['name'] == default_device['name'])
-                        except (KeyError, Exception) as e:
-                            log(f"Error checking default device: {e}", level="DEBUG")
-                            is_active = False
+                        # Check if this is the selected device
+                        is_selected = False
+                        if self.selected_device:
+                            is_selected = (
+                                self.selected_device in dev['name'] or
+                                dev['name'] in self.selected_device or
+                                i == self.selected_device_index
+                            )
+                        elif dev_info['is_default']:
+                            # If no device explicitly selected, use default
+                            is_selected = True
 
-                        if is_active or dev['max_input_channels'] > 0:
+                        if is_selected:
+                            dev_info['status'] = 'receiving' if self.is_receiving_audio else 'selected'
                             active.append(dev_info)
                         else:
+                            dev_info['status'] = 'available'
                             inactive.append(dev_info)
 
                 except Exception as e:
@@ -94,16 +141,26 @@ class AudioSourceScanner:
                     speakers = sc.all_speakers()
                     for speaker in speakers:
                         dev_info = {
-                            'name': speaker.name,
-                            'index': speaker.id,
-                            'channels': speaker.channels,
-                            'samplerate': 48000,  # Default
+                            'name': f"[Loopback] {speaker.name}",
+                            'index': speaker.id if hasattr(speaker, 'id') else 0,
+                            'channels': speaker.channels if hasattr(speaker, 'channels') else 2,
+                            'samplerate': 48000,
                             'backend': 'soundcard',
-                            'type': 'loopback'
+                            'type': 'loopback',
+                            'is_default': False
                         }
 
-                        # Loopback devices are considered active if they exist
-                        active.append(dev_info)
+                        # Check if loopback is selected
+                        is_selected = False
+                        if self.selected_device and 'loopback' in self.selected_device.lower():
+                            is_selected = speaker.name in self.selected_device
+
+                        if is_selected:
+                            dev_info['status'] = 'receiving' if self.is_receiving_audio else 'selected'
+                            active.append(dev_info)
+                        else:
+                            dev_info['status'] = 'available'
+                            inactive.append(dev_info)
 
                 except Exception as e:
                     log(f"Error scanning soundcard: {e}", "ERROR")
@@ -114,7 +171,8 @@ class AudioSourceScanner:
             return {
                 'active': self.active_sources,
                 'inactive': self.inactive_sources,
-                'total': len(active) + len(inactive)
+                'total': len(active) + len(inactive),
+                'is_receiving': self.is_receiving_audio
             }
 
         except Exception as e:
@@ -122,7 +180,8 @@ class AudioSourceScanner:
             return {
                 'active': [],
                 'inactive': [],
-                'total': 0
+                'total': 0,
+                'is_receiving': False
             }
 
 

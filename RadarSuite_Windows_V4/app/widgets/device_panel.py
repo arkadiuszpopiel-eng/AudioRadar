@@ -532,6 +532,10 @@ class DevicePanel(QWidget):
             self.audio.use_loopback = False
             self.backend_label.setText(f"{tr('backend')} sounddevice")
 
+    def set_audio_scanner(self, scanner):
+        """Set reference to audio scanner for device tracking"""
+        self.audio_scanner = scanner
+
     def on_device_changed(self, index):
         """Handle device selection change"""
         if index >= 0:
@@ -543,6 +547,11 @@ class DevicePanel(QWidget):
                 self.device_status_text.setText(f"Selected: {dev_data['name'][:30]}...")
                 self.device_status_text.setStyleSheet("color: #0f0; font-size: 9pt;")
                 log(f"Device selected: {dev_data['name']}", "INFO")
+
+                # Notify audio scanner of selected device
+                if hasattr(self, 'audio_scanner') and self.audio_scanner:
+                    self.audio_scanner.set_selected_device(dev_data['name'], dev_data.get('index', -1))
+
             self.device_combo.update()
 
     def update_game_detection_info(self, game_info, scan_result=None):

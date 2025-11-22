@@ -28,9 +28,12 @@ class DeviceItemDelegate(QStyledItemDelegate):
         status = self.device_statuses.get(index.row(), 'inactive')
         device_name = self.device_names.get(index.row(), '').lower()
 
-        # Check if this is a Sound Blaster Z SE device
+        # Detect device type
         is_soundblaster = any(sb in device_name for sb in [
             'sound blaster', 'soundblaster', 'sb z', 'sb-z', 'creative'
+        ])
+        is_realtek = any(rt in device_name for rt in [
+            'realtek', 'high definition audio', 'hd audio'
         ])
 
         # Set background color based on status and device type
@@ -38,13 +41,16 @@ class DeviceItemDelegate(QStyledItemDelegate):
             if is_soundblaster:
                 # Sound Blaster Z SE - dark green with cyan tint
                 painter.fillRect(option.rect, QColor(0, 60, 40))
-                # Add a left border indicator
                 painter.fillRect(option.rect.x(), option.rect.y(),
                                3, option.rect.height(), QColor(0, 200, 150))
+            elif is_realtek:
+                # Realtek/Laptop - blue tint
+                painter.fillRect(option.rect, QColor(20, 40, 80))
+                painter.fillRect(option.rect.x(), option.rect.y(),
+                               3, option.rect.height(), QColor(100, 150, 255))
             else:
                 # General active device - bright/light green
                 painter.fillRect(option.rect, QColor(0, 100, 0))
-                # Add a left border indicator
                 painter.fillRect(option.rect.x(), option.rect.y(),
                                3, option.rect.height(), QColor(0, 255, 0))
 
@@ -221,7 +227,20 @@ class DevicePanel(QWidget):
 
         self.sb_btn = QPushButton(tr('sb_preset'))
         self.sb_btn.clicked.connect(self.apply_sb_preset)
+        self.sb_btn.setToolTip("Sound Blaster Z SE: 48kHz, 2048 block, 2ch")
         preset_layout.addWidget(self.sb_btn)
+
+        # Laptop/Realtek preset
+        self.realtek_btn = QPushButton("💻 Laptop (Realtek)")
+        self.realtek_btn.clicked.connect(self.apply_realtek_preset)
+        self.realtek_btn.setToolTip("Realtek Audio: 44.1kHz, 1024 block, 2ch - optimized for laptops")
+        preset_layout.addWidget(self.realtek_btn)
+
+        # Generic USB preset
+        self.usb_btn = QPushButton("🎧 USB Audio")
+        self.usb_btn.clicked.connect(self.apply_usb_preset)
+        self.usb_btn.setToolTip("USB Audio: 48kHz, 512 block, 2ch - low latency")
+        preset_layout.addWidget(self.usb_btn)
 
         preset_group.setLayout(preset_layout)
         layout.addWidget(preset_group)
@@ -403,7 +422,39 @@ class DevicePanel(QWidget):
         self.samplerate_combo.setCurrentText('48000')
         self.blocksize_combo.setCurrentText('2048')
         self.channels_combo.setCurrentText('2')
+        # Try to auto-select Sound Blaster device
+        self._auto_select_device(['sound blaster', 'soundblaster', 'sb z', 'creative'])
         log("Applied SB Z SE preset", "INFO")
+
+    def apply_realtek_preset(self):
+        """Apply Laptop/Realtek preset - optimized for integrated audio"""
+        self.samplerate_combo.setCurrentText('44100')
+        self.blocksize_combo.setCurrentText('1024')
+        self.channels_combo.setCurrentText('2')
+        # Try to auto-select Realtek device
+        self._auto_select_device(['realtek', 'high definition audio', 'hd audio'])
+        log("Applied Realtek/Laptop preset", "INFO")
+
+    def apply_usb_preset(self):
+        """Apply USB Audio preset - low latency for external devices"""
+        self.samplerate_combo.setCurrentText('48000')
+        self.blocksize_combo.setCurrentText('512')
+        self.channels_combo.setCurrentText('2')
+        # Try to auto-select USB device
+        self._auto_select_device(['usb', 'external', 'headset'])
+        log("Applied USB Audio preset", "INFO")
+
+    def _auto_select_device(self, keywords):
+        """Auto-select device matching any of the keywords"""
+        for i in range(self.device_combo.count()):
+            dev_data = self.device_combo.itemData(i)
+            if dev_data:
+                name_lower = dev_data['name'].lower()
+                if any(kw in name_lower for kw in keywords):
+                    self.device_combo.setCurrentIndex(i)
+                    log(f"Auto-selected device: {dev_data['name']}", "INFO")
+                    return
+        log(f"No device found matching: {keywords}", "DEBUG")
 
     def on_loopback_toggled(self, checked):
         """Handle loopback mode toggle"""

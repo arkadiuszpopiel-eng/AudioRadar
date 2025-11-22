@@ -7,7 +7,8 @@ import pyqtgraph as pg
 import pyqtgraph.opengl as gl
 from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
                              QComboBox, QSlider, QCheckBox, QSpinBox, QGroupBox,
-                             QFormLayout, QFrame, QStyledItemDelegate)
+                             QFormLayout, QFrame, QStyledItemDelegate, QScrollArea,
+                             QSizePolicy)
 from PyQt5.QtCore import Qt, QTimer, pyqtSignal, QPoint
 from PyQt5.QtGui import QPainter, QColor, QPen, QBrush, QPalette, QFont
 
@@ -64,7 +65,7 @@ class DeviceItemDelegate(QStyledItemDelegate):
 
 
 class DevicePanel(QWidget):
-    """Device selection and configuration panel"""
+    """Device selection and configuration panel with scroll support"""
 
     def __init__(self, audio_engine):
         super().__init__()
@@ -72,7 +73,39 @@ class DevicePanel(QWidget):
         self.game_detector = None  # Will be set externally
         log("DevicePanel.__init__", "INFO")
 
-        layout = QVBoxLayout()
+        # Main layout for the panel
+        main_layout = QVBoxLayout(self)
+        main_layout.setContentsMargins(0, 0, 0, 0)
+
+        # Scroll area for responsive scaling
+        scroll_area = QScrollArea()
+        scroll_area.setWidgetResizable(True)
+        scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        scroll_area.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+        scroll_area.setStyleSheet("""
+            QScrollArea {
+                border: none;
+                background-color: transparent;
+            }
+            QScrollBar:vertical {
+                background-color: #1a1a1a;
+                width: 10px;
+                border-radius: 5px;
+            }
+            QScrollBar::handle:vertical {
+                background-color: #444;
+                border-radius: 5px;
+                min-height: 30px;
+            }
+            QScrollBar::handle:vertical:hover {
+                background-color: #0a0;
+            }
+        """)
+
+        # Container widget for scroll area content
+        scroll_content = QWidget()
+        scroll_content.setStyleSheet("background-color: transparent;")
+        layout = QVBoxLayout(scroll_content)
 
         # Device selection
         device_group = QGroupBox(tr('audio_device'))
@@ -327,9 +360,9 @@ class DevicePanel(QWidget):
         game_layout.addWidget(games_header)
 
         self.games_list_label = QLabel("—")
-        self.games_list_label.setStyleSheet("font-size: 8pt; color: #666;")
+        self.games_list_label.setStyleSheet("font-size: 9pt; color: #666;")
         self.games_list_label.setWordWrap(True)
-        self.games_list_label.setMaximumHeight(80)
+        self.games_list_label.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
         game_layout.addWidget(self.games_list_label)
 
         # Engines list (shows all known engines, highlights active)
@@ -338,9 +371,9 @@ class DevicePanel(QWidget):
         game_layout.addWidget(engines_header)
 
         self.engines_list_label = QLabel("—")
-        self.engines_list_label.setStyleSheet("font-size: 8pt; color: #666;")
+        self.engines_list_label.setStyleSheet("font-size: 9pt; color: #666;")
         self.engines_list_label.setWordWrap(True)
-        self.engines_list_label.setMaximumHeight(60)
+        self.engines_list_label.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
         game_layout.addWidget(self.engines_list_label)
 
         # Launchers list (shows all known launchers, highlights active)
@@ -349,9 +382,9 @@ class DevicePanel(QWidget):
         game_layout.addWidget(launchers_header)
 
         self.launchers_list_label = QLabel("—")
-        self.launchers_list_label.setStyleSheet("font-size: 8pt; color: #666;")
+        self.launchers_list_label.setStyleSheet("font-size: 9pt; color: #666;")
         self.launchers_list_label.setWordWrap(True)
-        self.launchers_list_label.setMaximumHeight(50)
+        self.launchers_list_label.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
         game_layout.addWidget(self.launchers_list_label)
 
         self.game_group.setLayout(game_layout)
@@ -368,9 +401,9 @@ class DevicePanel(QWidget):
 
         # Active sources list (compact)
         self.active_sources_list = QLabel("—")
-        self.active_sources_list.setStyleSheet("font-size: 8pt; color: #00DD00;")
+        self.active_sources_list.setStyleSheet("font-size: 9pt; color: #00DD00;")
         self.active_sources_list.setWordWrap(True)
-        self.active_sources_list.setMaximumHeight(60)
+        self.active_sources_list.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
         sources_layout.addWidget(self.active_sources_list)
 
         # Inactive sources label
@@ -380,9 +413,9 @@ class DevicePanel(QWidget):
 
         # Inactive sources list (compact)
         self.inactive_sources_list = QLabel("—")
-        self.inactive_sources_list.setStyleSheet("font-size: 8pt; color: #DD6666;")
+        self.inactive_sources_list.setStyleSheet("font-size: 9pt; color: #DD6666;")
         self.inactive_sources_list.setWordWrap(True)
-        self.inactive_sources_list.setMaximumHeight(40)
+        self.inactive_sources_list.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
         sources_layout.addWidget(self.inactive_sources_list)
 
         self.sources_group.setLayout(sources_layout)
@@ -402,7 +435,13 @@ class DevicePanel(QWidget):
         layout.addWidget(status_group)
 
         layout.addStretch()
-        self.setLayout(layout)
+
+        # Set scroll content and add scroll area to main layout
+        scroll_area.setWidget(scroll_content)
+        main_layout.addWidget(scroll_area)
+
+        # Set minimum width for proper display
+        self.setMinimumWidth(280)
 
         self.refresh_devices()
 

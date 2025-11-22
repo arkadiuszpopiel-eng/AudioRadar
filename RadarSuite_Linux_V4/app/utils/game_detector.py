@@ -34,6 +34,39 @@ class GameProcessDetector:
             'RE Engine': ['re2.exe', 're3.exe', 're4.exe', 'mhrise.exe'],
         }
 
+        # Game to Engine mapping - infer engine from detected game
+        # Format: 'Game Name': 'Engine Name'
+        self.game_to_engine = {
+            'ARC Raiders': 'Unreal Engine 5',
+            'Fortnite': 'Unreal Engine 5',
+            'Valorant': 'Unreal Engine 4',
+            'PUBG': 'Unreal Engine 4',
+            'The Cycle': 'Unreal Engine 4',
+            'Marauders': 'Unreal Engine 4',
+            'Hell Let Loose': 'Unreal Engine 4',
+            'Squad': 'Unreal Engine 4',
+            'Ready or Not': 'Unreal Engine 4',
+            'Ground Branch': 'Unreal Engine 4',
+            'Insurgency Sandstorm': 'Unreal Engine 4',
+            'Counter-Strike 2': 'Source Engine 2',
+            'Apex Legends': 'Source Engine',
+            'Battlefield 2042': 'Frostbite',
+            'Battlefield V': 'Frostbite',
+            'Battlefield 1': 'Frostbite',
+            'Escape from Tarkov': 'Unity',
+            'Rust': 'Unity',
+            'Call of Duty: MW2': 'IW Engine',
+            'Call of Duty: Warzone': 'IW Engine',
+            'Call of Duty: MW3': 'IW Engine',
+            'Overwatch 2': 'Proprietary (Blizzard)',
+            'Rainbow Six Siege': 'AnvilNext 2.0',
+            'Destiny 2': 'Tiger Engine',
+            'Hunt Showdown': 'CryEngine',
+            'DayZ': 'Enfusion',
+            'ARMA 3': 'Real Virtuality 4',
+            'ARMA Reforger': 'Enfusion',
+        }
+
         # Known games by EXACT exe name (strict matching)
         # Format: 'Display Name': ['exact_process.exe', ...]
         self.known_games = {
@@ -158,14 +191,22 @@ class GameProcessDetector:
                             log(f"Detected game: {game_name} ({exe_name})", "INFO")
                         break
 
-            # Check for game engines - EXACT match on process name
+            # Check for game engines - EXACT match on process name (editor detection)
             for engine_name, exe_names in self.game_engines.items():
                 for exe_name in exe_names:
                     if exe_name.lower() in running_processes:
                         if engine_name not in detected_engines:
                             detected_engines.append(engine_name)
-                            log(f"Detected engine: {engine_name} ({exe_name})", "INFO")
+                            log(f"Detected engine (editor): {engine_name} ({exe_name})", "INFO")
                         break
+
+            # Infer engines from detected games (runtime detection)
+            for game_name in detected_games:
+                if game_name in self.game_to_engine:
+                    engine_name = self.game_to_engine[game_name]
+                    if engine_name not in detected_engines:
+                        detected_engines.append(engine_name)
+                        log(f"Inferred engine from game: {engine_name} (from {game_name})", "INFO")
 
             # Check for platform launchers - EXACT match on process name
             for launcher_name, exe_names in self.platform_launchers.items():

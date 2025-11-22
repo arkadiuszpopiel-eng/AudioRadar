@@ -1245,7 +1245,7 @@ class MainWindow(QMainWindow):
                 background: #cc0000;
             }
         """)
-        self.status_bar.showMessage("● RUNNING - Detection active" if current_language == 'en' else "● DZIAŁA - Detekcja aktywna")
+        self.status_bar.showMessage("● RUNNING - Detection active" if get_language() == 'en' else "● DZIAŁA - Detekcja aktywna")
 
     def stop(self):
         """Stop audio capture"""
@@ -1268,7 +1268,7 @@ class MainWindow(QMainWindow):
                 background: #00cc00;
             }
         """)
-        self.status_bar.showMessage("✓ Stopped - Ready to start" if current_language == 'en' else "✓ Zatrzymano - Gotowy do startu")
+        self.status_bar.showMessage("✓ Stopped - Ready to start" if get_language() == 'en' else "✓ Zatrzymano - Gotowy do startu")
 
     def _update_radar_sweep(self):
         """
@@ -1819,12 +1819,12 @@ class MainWindow(QMainWindow):
             # Show success message
             if found_loopback:
                 self.status_bar.showMessage(
-                    "✓ Quick Setup Complete! Loopback mode enabled. Press START to capture game audio." if current_language == 'en'
+                    "✓ Quick Setup Complete! Loopback mode enabled. Press START to capture game audio." if get_language() == 'en'
                     else "✓ Szybka konfiguracja zakończona! Tryb loopback włączony. Naciśnij START aby przechwycić dźwięk."
                 )
             else:
                 self.status_bar.showMessage(
-                    "⚠ Loopback mode enabled, but no loopback device found. Check Tab 2 settings." if current_language == 'en'
+                    "⚠ Loopback mode enabled, but no loopback device found. Check Tab 2 settings." if get_language() == 'en'
                     else "⚠ Tryb loopback włączony, ale nie znaleziono urządzenia. Sprawdź ustawienia w Zakładce 2."
                 )
 
@@ -1836,7 +1836,7 @@ class MainWindow(QMainWindow):
             import traceback
             log(traceback.format_exc(), "ERROR")
             self.status_bar.showMessage(
-                "❌ Quick Setup failed - please configure manually (Tab 2)" if current_language == 'en'
+                "❌ Quick Setup failed - please configure manually (Tab 2)" if get_language() == 'en'
                 else "❌ Szybka konfiguracja nie powiodła się - skonfiguruj ręcznie (Zakładka 2)"
             )
 
@@ -1871,7 +1871,7 @@ class MainWindow(QMainWindow):
                     # Show subtle hint in status bar
                     if not self.is_running:
                         self.status_bar.showMessage(
-                            "💡 Tip: Enable LOOPBACK mode (Tab 2) to capture game audio!" if current_language == 'en'
+                            "💡 Tip: Enable LOOPBACK mode (Tab 2) to capture game audio!" if get_language() == 'en'
                             else "💡 Wskazówka: Włącz tryb LOOPBACK (Zakładka 2) aby przechwycić dźwięk z gry!"
                         )
             else:

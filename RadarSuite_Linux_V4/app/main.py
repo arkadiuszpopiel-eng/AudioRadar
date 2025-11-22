@@ -299,6 +299,7 @@ try:
         DetachableRadarWidget,
         RadarWidget,
         MilitaryHUDRadar,
+        Military3DRadar,
         Radar3DWidget,
         DetachableLedWidget,
         LedOverlayWidget,
@@ -336,7 +337,8 @@ except ImportError:
     )
     from widgets import (
         ToastNotification, DetachableRadarWidget, RadarWidget,
-        MilitaryHUDRadar, Radar3DWidget, DetachableLedWidget, LedOverlayWidget,
+        MilitaryHUDRadar, Military3DRadar, Radar3DWidget,
+        DetachableLedWidget, LedOverlayWidget,
         SpectrumWidget, WaterfallWidget, WaveformWidget,
         DevicePanel, DetectionPanel,
     )
@@ -629,9 +631,9 @@ class MainWindow(QMainWindow):
         self.radar_widget = MilitaryHUDRadar()
         self.radar_tabs.addTab(self.radar_widget, "🎯 Military HUD")
 
-        # 3D Radar
-        self.radar_3d_widget = Radar3DWidget()
-        self.radar_tabs.addTab(self.radar_3d_widget, "🌐 3D Sphere")
+        # 3D Radar - Military Wallhack HUD Style
+        self.radar_3d_widget = Military3DRadar()
+        self.radar_tabs.addTab(self.radar_3d_widget, "🌐 3D Wallhack")
 
         radar_layout.addWidget(self.radar_tabs)
 

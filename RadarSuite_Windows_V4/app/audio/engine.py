@@ -187,26 +187,44 @@ class AudioEngine:
                 try:
                     p = pyaudio.PyAudio()
 
-                    # Find WASAPI loopback device
+                    # Find WASAPI host API
                     wasapi_info = p.get_host_api_info_by_type(pyaudio.paWASAPI)
                     default_speakers = p.get_device_info_by_index(wasapi_info["defaultOutputDevice"])
 
-                    log(f"WASAPI loopback device: {default_speakers['name']}", "INFO")
-                    log(f"  Channels: {default_speakers['maxOutputChannels']}, Rate: {default_speakers['defaultSampleRate']}", "INFO")
+                    log(f"Default speakers: {default_speakers['name']}", "INFO")
 
-                    # Use speaker's native settings
-                    channels = min(self.channels, int(default_speakers["maxOutputChannels"]))
-                    sample_rate = int(default_speakers["defaultSampleRate"])
+                    # Find the loopback device for these speakers
+                    # pyaudiowpatch exposes loopback devices with isLoopbackDevice=True
+                    loopback_device = None
+                    for i in range(p.get_device_count()):
+                        dev_info = p.get_device_info_by_index(i)
+                        # Check if this is a loopback device matching our speakers
+                        if dev_info.get("isLoopbackDevice", False):
+                            if default_speakers["name"] in dev_info["name"]:
+                                loopback_device = dev_info
+                                log(f"Found loopback device: {dev_info['name']}", "INFO")
+                                break
 
-                    # Open loopback stream
+                    if loopback_device is None:
+                        log("No loopback device found for default speakers", "ERROR")
+                        self.running = False
+                        return
+
+                    # Use loopback device's native settings
+                    channels = min(self.channels, int(loopback_device["maxInputChannels"]))
+                    sample_rate = int(loopback_device["defaultSampleRate"])
+
+                    log(f"WASAPI loopback: {loopback_device['name']}", "INFO")
+                    log(f"  Channels: {channels}, Rate: {sample_rate}", "INFO")
+
+                    # Open loopback stream (no as_loopback needed - device IS loopback)
                     stream = p.open(
                         format=pyaudio.paFloat32,
                         channels=channels,
                         rate=sample_rate,
                         frames_per_buffer=self.blocksize,
                         input=True,
-                        input_device_index=default_speakers["index"],
-                        as_loopback=True
+                        input_device_index=loopback_device["index"]
                     )
 
                     log(f"pyaudiowpatch loopback started: {sample_rate}Hz, {channels}ch", "INFO")

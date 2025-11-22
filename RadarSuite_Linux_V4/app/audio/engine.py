@@ -1,17 +1,26 @@
 """
 RadarSuite v3.5.0 - Audio Engine
-Audio capture via sounddevice/soundcard
+Audio capture via sounddevice/soundcard/pulseaudio
 """
 
 import time
 import queue
 import threading
 import numpy as np
+import sys
 
-# FIXED v3.5.3: Add numpy compatibility shim for soundcard library
-# soundcard uses deprecated numpy.fromstring which was removed in numpy 2.0
+# FIXED v3.5.4: Proper numpy compatibility wrapper for soundcard library
+# numpy.fromstring was removed in numpy 2.0, soundcard may use it internally
+_original_frombuffer = np.frombuffer
+def _fromstring_compat(string, dtype=float, count=-1, sep='', **kwargs):
+    """Compatibility wrapper: numpy.fromstring -> numpy.frombuffer"""
+    if sep == '' or sep is None:
+        return _original_frombuffer(string, dtype=dtype, count=count)
+    else:
+        raise NotImplementedError("Text mode fromstring not supported in compat shim")
+
 if not hasattr(np, 'fromstring'):
-    np.fromstring = np.frombuffer
+    np.fromstring = _fromstring_compat
 
 try:
     import sounddevice as sd
@@ -130,45 +139,20 @@ class AudioEngine:
             self.running = False
 
     def _start_loopback(self):
-        """Start soundcard loopback capture"""
-        import threading
-        import sys
+        """Start loopback capture via soundcard (PulseAudio on Linux)"""
 
         def loopback_thread():
-            # FIXED v3.5.3: Initialize COM on Windows for WASAPI loopback
-            com_initialized = False
-            if sys.platform == 'win32':
-                # Try pythoncom first, then fallback to ctypes
-                try:
-                    import pythoncom
-                    pythoncom.CoInitialize()
-                    com_initialized = True
-                    log("COM initialized via pythoncom", "INFO")
-                except ImportError:
-                    # Fallback: use ctypes to initialize COM
-                    try:
-                        import ctypes
-                        ctypes.windll.ole32.CoInitialize(None)
-                        com_initialized = True
-                        log("COM initialized via ctypes", "INFO")
-                    except Exception as e:
-                        log(f"COM init failed (ctypes): {e}", "WARN")
-                except Exception as e:
-                    log(f"COM init error: {e}", "WARN")
-
             try:
-                # FIXED v3.5.3: Apply numpy patch again inside thread
-                # This ensures fromstring is available when soundcard reads data
+                # FIXED v3.5.4: Apply numpy patch inside thread with proper wrapper
                 import numpy as _np
                 if not hasattr(_np, 'fromstring'):
-                    _np.fromstring = _np.frombuffer
+                    _np.fromstring = _fromstring_compat
                     log("Numpy fromstring patched in loopback thread", "INFO")
 
                 spk = sc.default_speaker()
                 log(f"Using speaker: {spk.name}, channels: {spk.channels}", "INFO")
 
-                # FIXED v3.5.3: Use get_microphone with include_loopback for WASAPI loopback
-                # The soundcard library requires getting a loopback microphone from the speaker
+                # Use get_microphone with include_loopback for PulseAudio monitor
                 loopback_mic = sc.get_microphone(id=str(spk.id), include_loopback=True)
                 log(f"Loopback microphone: {loopback_mic.name}", "INFO")
 
@@ -185,14 +169,6 @@ class AudioEngine:
             except Exception as e:
                 log(f"Error in loopback thread: {e}", "ERROR")
                 self.running = False
-            finally:
-                # Cleanup COM
-                if com_initialized and sys.platform == 'win32':
-                    try:
-                        import ctypes
-                        ctypes.windll.ole32.CoUninitialize()
-                    except:
-                        pass
 
         thread = threading.Thread(target=loopback_thread, daemon=True)
         thread.start()
@@ -236,4 +212,3 @@ class AudioEngine:
             return self.queue.get(timeout=timeout)
         except queue.Empty:
             return None
-

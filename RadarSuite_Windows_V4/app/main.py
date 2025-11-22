@@ -1299,7 +1299,11 @@ class MainWindow(QMainWindow):
         if self.dev_panel.test_mode.isChecked():
             return self.generate_test_block()
         else:
-            return self.audio.read_block(0.0) or self.audio.last_block
+            # FIXED v3.5.3: Avoid numpy array truth value ambiguity
+            block = self.audio.read_block(0.0)
+            if block is not None:
+                return block
+            return self.audio.last_block
 
     def _update_recording(self, block):
         """

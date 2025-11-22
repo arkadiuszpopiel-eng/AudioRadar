@@ -127,8 +127,21 @@ class AudioEngine:
     def _start_loopback(self):
         """Start soundcard loopback capture"""
         import threading
+        import sys
 
         def loopback_thread():
+            # FIXED v3.5.3: Initialize COM on Windows for WASAPI loopback
+            pythoncom = None
+            if sys.platform == 'win32':
+                try:
+                    import pythoncom
+                    pythoncom.CoInitialize()
+                    log("COM initialized for loopback thread", "INFO")
+                except ImportError:
+                    log("pythoncom not available, trying without COM init", "WARN")
+                except Exception as e:
+                    log(f"COM init error (may still work): {e}", "WARN")
+
             try:
                 spk = sc.default_speaker()
                 log(f"Using speaker: {spk.name}, channels: {spk.channels}", "INFO")
@@ -146,6 +159,13 @@ class AudioEngine:
             except Exception as e:
                 log(f"Error in loopback thread: {e}", "ERROR")
                 self.running = False
+            finally:
+                # Cleanup COM
+                if pythoncom is not None:
+                    try:
+                        pythoncom.CoUninitialize()
+                    except:
+                        pass
 
         thread = threading.Thread(target=loopback_thread, daemon=True)
         thread.start()

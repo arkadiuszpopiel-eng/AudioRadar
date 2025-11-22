@@ -242,17 +242,13 @@ class DetectionPanel(QWidget):
             run_det = run_i > 0.0 and self.run_enable.isChecked()
             shot_det = shot_i > 0.0 and self.shot_enable.isChecked()
 
-            # DEBUG v3.5.3: Log detection values
-            if walk_det or run_det or shot_det:
-                log(f"DETECT PANEL: low_r={low_r:.4f}, mid_r={mid_r:.4f}, high_r={high_r:.4f}", "INFO")
-                log(f"DETECT PANEL: walk_i={walk_i:.4f}, run_i={run_i:.4f}, shot_i={shot_i:.4f}", "INFO")
-
+            # FIXED v3.5.3: Reduced hold time for faster UI response
             if walk_det:
-                self.walk_hold = 6
+                self.walk_hold = 3
             if run_det:
-                self.run_hold = 6
+                self.run_hold = 3
             if shot_det:
-                self.shot_hold = 6
+                self.shot_hold = 3
 
             if self.walk_hold > 0:
                 self.walk_hold -= 1

@@ -306,6 +306,9 @@ try:
         SpectrumWidget,
         WaterfallWidget,
         WaveformWidget,
+        MilitarySpectrumWidget,
+        MilitaryWaterfallWidget,
+        MilitaryWaveformWidget,
         DevicePanel,
         DetectionPanel,
     )
@@ -340,6 +343,7 @@ except ImportError:
         MilitaryHUDRadar, Military3DRadar, Radar3DWidget,
         DetachableLedWidget, LedOverlayWidget,
         SpectrumWidget, WaterfallWidget, WaveformWidget,
+        MilitarySpectrumWidget, MilitaryWaterfallWidget, MilitaryWaveformWidget,
         DevicePanel, DetectionPanel,
     )
 
@@ -787,18 +791,20 @@ class MainWindow(QMainWindow):
         analysis_layout = QVBoxLayout()
         analysis_layout.setContentsMargins(5, 5, 5, 5)
 
-        # Spectrum & Waterfall & Waveform (v3.1.2 - Added waveform for debugging)
+        # Spectrum & Waterfall & Waveform - Military HUD Style (v3.5.1)
         spectrum_waterfall_tabs = QTabWidget()
 
-        self.spectrum = SpectrumWidget()
-        spectrum_waterfall_tabs.addTab(self.spectrum, "📈 Live Spectrum")
+        # NEW: Military HUD Spectrum with WALK/RUN/SHOT markers
+        self.spectrum = MilitarySpectrumWidget()
+        spectrum_waterfall_tabs.addTab(self.spectrum, "📡 LIVE SPECTRUM")
 
-        self.waterfall = WaterfallWidget()
-        spectrum_waterfall_tabs.addTab(self.waterfall, "🌊 Waterfall")
+        # NEW: Military HUD Waterfall with WALK/RUN/SHOT markers
+        self.waterfall = MilitaryWaterfallWidget()
+        spectrum_waterfall_tabs.addTab(self.waterfall, "🌊 WATERFALL")
 
-        # NEW: Waveform display for audio debugging
-        self.waveform = WaveformWidget()
-        spectrum_waterfall_tabs.addTab(self.waveform, "〰️ Waveform")
+        # NEW: Military HUD Waveform with WALK/RUN/SHOT markers
+        self.waveform = MilitaryWaveformWidget()
+        spectrum_waterfall_tabs.addTab(self.waveform, "〰️ WAVEFORM")
 
         analysis_layout.addWidget(spectrum_waterfall_tabs, 3)
 

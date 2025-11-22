@@ -126,3 +126,8 @@ def set_language(lang_code):
     global current_language
     if lang_code in TRANSLATIONS:
         current_language = lang_code
+
+
+def get_language():
+    """Get current language code"""
+    return current_language

@@ -45,6 +45,7 @@ from core.translations import (
     current_language,
     tr,
     set_language,
+    get_language,
 )
 
 # Dependency Injection (Point 11 - v3.5.0)
@@ -92,6 +93,7 @@ __all__ = [
     'current_language',
     'tr',
     'set_language',
+    'get_language',
 
     # Dependency Injection
     'ServiceContainer',

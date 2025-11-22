@@ -126,3 +126,10 @@ def set_language(lang_code):
     global current_language
     if lang_code in TRANSLATIONS:
         current_language = lang_code
+        return True
+    return False
+
+
+def get_language():
+    """Get current language code (FIXED v3.5.1: Getter function for fresh value)"""
+    return current_language

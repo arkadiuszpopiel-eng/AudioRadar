@@ -243,6 +243,7 @@ try:
         current_language,
         tr,
         set_language,
+        get_language,
     )
 
     # ============================================================================
@@ -325,7 +326,7 @@ except ImportError:
         TOAST_DURATION_MS, TOAST_MAX_COUNT,
         ThreadSafeLogger, log, ROOT, SUPER_LOG,
         ConfigManager,
-        TRANSLATIONS, current_language, tr, set_language,
+        TRANSLATIONS, current_language, tr, set_language, get_language,
     )
     from hardware import GPUAccelerator, SoundBlasterOptimizer
     from utils import (
@@ -947,24 +948,22 @@ class MainWindow(QMainWindow):
         self.setup_shortcuts()
 
     def toggle_language(self):
-        """Toggle between EN and PL (FIXED v3.5.1: Use set_language function)"""
-        # Import current_language fresh to get actual value
-        from core import current_language as lang
+        """Toggle between EN and PL (FIXED v3.5.1: Use get_language function)"""
+        # Get current language using getter function (avoids cached import issue)
+        lang = get_language()
 
         if lang == 'en':
             set_language('pl')
         else:
             set_language('en')
 
-        # Re-import to get updated value for logging
-        from core import current_language
-        log(f"Language changed to: {current_language}", "INFO")
+        log(f"Language changed to: {get_language()}", "INFO")
         self.update_ui_translations()
 
     def update_ui_translations(self):
         """Update all UI text with current language (FIXED v3.5.1)"""
-        # Get fresh language value
-        from core import current_language as lang
+        # Get fresh language value using getter function
+        lang = get_language()
 
         # Main window
         self.setWindowTitle(f"{tr('app_title')} {VERSION}")

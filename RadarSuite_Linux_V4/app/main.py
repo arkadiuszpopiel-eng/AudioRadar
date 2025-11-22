@@ -1379,10 +1379,6 @@ class MainWindow(QMainWindow):
         # Multi-target tracking
         has_detection = events.get('walk', False) or events.get('run', False) or events.get('shot', False)
 
-        # DEBUG v3.5.3: Log detection status
-        if has_detection:
-            log(f"DETECTION: walk={events.get('walk')}, run={events.get('run')}, shot={events.get('shot')}, energy={energy:.6f}", "INFO")
-
         # Prepare detections for tracker
         detections = []
         if has_detection and energy > ENERGY_THRESHOLD:
@@ -1416,15 +1412,8 @@ class MainWindow(QMainWindow):
                 'class_confidence': sound_class['confidence']
             })
 
-            # DEBUG v3.5.3: Log target creation
-            log(f"TARGET CREATED: angle={angle:.1f}, distance={distance:.1f}, type={target_type}", "INFO")
-
         # Update tracker
         active_targets = self.target_tracker.update(detections)
-
-        # DEBUG v3.5.3: Log active targets
-        if active_targets:
-            log(f"ACTIVE TARGETS: {len(active_targets)} targets", "INFO")
 
         # Rank targets by threat priority (Module 8)
         if active_targets:
@@ -1507,9 +1496,13 @@ class MainWindow(QMainWindow):
             # 2. Acquire and process audio block
             block = self._acquire_audio_block()
             if block is None:
-                # Report no audio activity
+                # FIXED v3.5.3: Update UI even when no audio block
                 if hasattr(self, 'audio_scanner') and self.audio_scanner:
                     self.audio_scanner.report_audio_activity(False)
+                # Update status to show no audio
+                self.dev_panel.update_audio_init_status(self.is_running, False)
+                self.dev_panel.rms_label.setText("RMS: --- dBFS")
+                self.perf_monitor.end_frame()
                 return
             block = self.apply_audio_processing(block)
 

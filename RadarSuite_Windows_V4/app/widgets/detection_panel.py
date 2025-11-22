@@ -228,8 +228,9 @@ class DetectionPanel(QWidget):
 
             total_power = np.mean(power) + 1e-9
 
-            low_r = np.mean(low_power) / total_power if len(low_power) > 0 else 0.0
-            mid_r = np.mean(mid_power) / total_power if len(mid_power) > 0 else 0.0
+            # FIXED v3.5.3: Use max() instead of mean() for better peak detection
+            low_r = np.max(low_power) / total_power if len(low_power) > 0 else 0.0
+            mid_r = np.max(mid_power) / total_power if len(mid_power) > 0 else 0.0
             high_r = np.max(high_power) / total_power if len(high_power) > 0 else 0.0
 
             # FIXED v3.5.3: Lower base thresholds for more sensitive detection
@@ -240,6 +241,11 @@ class DetectionPanel(QWidget):
             walk_det = walk_i > 0.0 and self.walk_enable.isChecked()
             run_det = run_i > 0.0 and self.run_enable.isChecked()
             shot_det = shot_i > 0.0 and self.shot_enable.isChecked()
+
+            # DEBUG v3.5.3: Log detection values
+            if walk_det or run_det or shot_det:
+                log(f"DETECT PANEL: low_r={low_r:.4f}, mid_r={mid_r:.4f}, high_r={high_r:.4f}", "INFO")
+                log(f"DETECT PANEL: walk_i={walk_i:.4f}, run_i={run_i:.4f}, shot_i={shot_i:.4f}", "INFO")
 
             if walk_det:
                 self.walk_hold = 6

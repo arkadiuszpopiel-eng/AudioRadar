@@ -166,6 +166,12 @@ from collections import deque
 # THIRD-PARTY IMPORTS
 # ============================================================================
 import numpy as np
+
+# FIXED v3.5.3: Add numpy compatibility shim BEFORE importing soundcard
+# soundcard uses deprecated numpy.fromstring which was removed in numpy 2.0
+if not hasattr(np, 'fromstring'):
+    np.fromstring = np.frombuffer
+
 from scipy import signal as sp_signal
 import psutil
 

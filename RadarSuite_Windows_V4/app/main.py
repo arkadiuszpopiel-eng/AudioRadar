@@ -1448,11 +1448,12 @@ class MainWindow(QMainWindow):
             # Update 3D radar (supports multiple targets)
             self.radar_3d_widget.clear_targets()
             for target in active_targets:
+                # FIXED v3.5.3: Correct parameter order for add_target
                 self.radar_3d_widget.add_target(
-                    target['angle'],
-                    target['distance'],
-                    target['elevation'],
-                    target['color']
+                    target['id'],           # target_id
+                    target['angle'],        # angle
+                    target['distance'],     # distance
+                    target['elevation']     # elevation
                 )
 
             # Update 2D radar (show primary target only - highest confidence)

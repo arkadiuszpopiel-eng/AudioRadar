@@ -1234,6 +1234,9 @@ class MainWindow(QMainWindow):
 
         self.is_running = True
         self.record_btn.setEnabled(True)  # Enable recording when audio starts
+
+        # Update audio status indicator (FIXED v3.5.3)
+        self.dev_panel.update_audio_init_status(True, False)
         self.start_btn.setText("⏹ STOP")
         self.start_btn.setStyleSheet("""
             QPushButton {
@@ -1257,6 +1260,10 @@ class MainWindow(QMainWindow):
         self.audio.stop()
 
         self.is_running = False
+
+        # Update audio status indicator (FIXED v3.5.3)
+        self.dev_panel.update_audio_init_status(False, False)
+
         self.start_btn.setText("▶ START")
         self.start_btn.setStyleSheet("""
             QPushButton {
@@ -1498,6 +1505,10 @@ class MainWindow(QMainWindow):
             if hasattr(self, 'audio_scanner') and self.audio_scanner:
                 has_audio = np.max(np.abs(block)) > 0.001  # Check if there's actual audio
                 self.audio_scanner.report_audio_activity(has_audio)
+
+            # 2c. Update audio status indicator (FIXED v3.5.3)
+            has_audio_signal = np.max(np.abs(block)) > 0.001
+            self.dev_panel.update_audio_init_status(True, has_audio_signal)
 
             # 3. Update recording
             self._update_recording(block)
@@ -1764,22 +1775,28 @@ class MainWindow(QMainWindow):
             return 0.0
 
     def generate_test_block(self):
-        """Generate synthetic test audio"""
+        """Generate synthetic test audio (FIXED v3.5.3: Stronger signals for detection)"""
         duration = self.audio.blocksize / self.audio.sample_rate
         t = np.linspace(self.test_phase, self.test_phase + duration, self.audio.blocksize)
         self.test_phase += duration
 
-        walk = 0.1 * np.sin(2 * np.pi * 80 * t)
-        run = 0.15 * np.sin(2 * np.pi * 420 * t)
+        # Stronger test signals for reliable detection (FIXED v3.5.3)
+        # Walk: 80 Hz (low frequency footsteps)
+        walk = 0.3 * np.sin(2 * np.pi * 80 * t)
 
+        # Run: 420 Hz (mid frequency running)
+        run = 0.4 * np.sin(2 * np.pi * 420 * t)
+
+        # Shot: 2200 Hz every 2 seconds (high frequency gunshot)
         shot = np.zeros_like(t)
-        if int(self.test_phase) % 2 == 0 and (self.test_phase % 2) < 0.1:
-            shot = 0.3 * np.sin(2 * np.pi * 2200 * t)
+        if int(self.test_phase) % 2 == 0 and (self.test_phase % 2) < 0.15:
+            shot = 0.5 * np.sin(2 * np.pi * 2200 * t)
 
         mono = walk + run + shot
 
-        left = mono * 0.9
-        right = mono * 1.1
+        # Stereo with slight L/R imbalance for direction detection
+        left = mono * 0.85
+        right = mono * 1.15
 
         stereo = np.column_stack([left, right]).astype(np.float32)
 

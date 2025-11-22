@@ -5,6 +5,7 @@ Weapon/vehicle identification via spectral fingerprinting
 
 import numpy as np
 from collections import deque
+from scipy import signal as sp_signal
 
 from core.logger import log
 

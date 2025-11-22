@@ -904,10 +904,11 @@ class MainWindow(QMainWindow):
 
         toolbar.addSeparator()
 
-        # Language switcher
+        # Language switcher (FIXED v3.5.1: Shows current language)
         toolbar.addWidget(QLabel("🌍"))
-        self.lang_btn = QPushButton("EN/PL")
+        self.lang_btn = QPushButton("🇬🇧 EN")  # Default to EN, updated in update_ui_translations
         self.lang_btn.setCheckable(True)
+        self.lang_btn.setToolTip("Click to switch language / Kliknij aby zmienić język")
         self.lang_btn.clicked.connect(self.toggle_language)
         toolbar.addWidget(self.lang_btn)
 
@@ -946,33 +947,44 @@ class MainWindow(QMainWindow):
         self.setup_shortcuts()
 
     def toggle_language(self):
-        """Toggle between EN and PL"""
-        global current_language
+        """Toggle between EN and PL (FIXED v3.5.1: Use set_language function)"""
+        # Import current_language fresh to get actual value
+        from core import current_language as lang
 
-        if current_language == 'en':
-            current_language = 'pl'
+        if lang == 'en':
+            set_language('pl')
         else:
-            current_language = 'en'
+            set_language('en')
 
+        # Re-import to get updated value for logging
+        from core import current_language
         log(f"Language changed to: {current_language}", "INFO")
         self.update_ui_translations()
 
     def update_ui_translations(self):
-        """Update all UI text with current language (v3.1.0)"""
+        """Update all UI text with current language (FIXED v3.5.1)"""
+        # Get fresh language value
+        from core import current_language as lang
+
         # Main window
         self.setWindowTitle(f"{tr('app_title')} {VERSION}")
 
         # Start/Stop button
         if not self.is_running:
-            self.start_btn.setText("▶ START" if current_language == 'en' else "▶ START")
+            self.start_btn.setText("▶ START")
         else:
-            self.start_btn.setText("⏹ STOP" if current_language == 'en' else "⏹ STOP")
+            self.start_btn.setText("⏹ STOP")
 
         # Status bar
         if not self.is_running:
-            self.status_bar.showMessage("✓ Ready - All systems operational" if current_language == 'en' else "✓ Gotowy - Wszystkie systemy sprawne")
+            self.status_bar.showMessage("✓ Ready - All systems operational" if lang == 'en' else "✓ Gotowy - Wszystkie systemy sprawne")
         else:
-            self.status_bar.showMessage("● RUNNING - Detection active" if current_language == 'en' else "● DZIAŁA - Detekcja aktywna")
+            self.status_bar.showMessage("● RUNNING - Detection active" if lang == 'en' else "● DZIAŁA - Detekcja aktywna")
+
+        # Update language button to show current language
+        if hasattr(self, 'lang_btn'):
+            self.lang_btn.setText("🇬🇧 EN" if lang == 'en' else "🇵🇱 PL")
+            self.lang_btn.setChecked(lang == 'pl')
 
         # Update panels
         self.dev_panel.update_translations()

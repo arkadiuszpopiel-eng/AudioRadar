@@ -8,6 +8,11 @@ import queue
 import threading
 import numpy as np
 
+# FIXED v3.5.3: Add numpy compatibility shim for soundcard library
+# soundcard uses deprecated numpy.fromstring which was removed in numpy 2.0
+if not hasattr(np, 'fromstring'):
+    np.fromstring = np.frombuffer
+
 try:
     import sounddevice as sd
 except ImportError:

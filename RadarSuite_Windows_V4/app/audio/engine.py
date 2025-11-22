@@ -32,15 +32,29 @@ try:
 except ImportError:
     sc = None
 
-# FIXED v3.5.4: Try pyaudiowpatch for WASAPI loopback (more reliable than soundcard)
+# FIXED v4.1.1: Try pyaudiowpatch for WASAPI loopback with detailed error logging
+PYAUDIO_AVAILABLE = False
+PYAUDIO_IMPORT_ERROR = None
+pyaudio = None
+
 try:
     import pyaudiowpatch as pyaudio
     PYAUDIO_AVAILABLE = True
-except ImportError:
-    pyaudio = None
-    PYAUDIO_AVAILABLE = False
+except ImportError as e:
+    PYAUDIO_IMPORT_ERROR = f"ImportError: {e}"
+except OSError as e:
+    # DLL loading errors on Windows
+    PYAUDIO_IMPORT_ERROR = f"OSError (likely missing DLL): {e}"
+except Exception as e:
+    PYAUDIO_IMPORT_ERROR = f"{type(e).__name__}: {e}"
 
 from core.logger import log
+
+# Log pyaudiowpatch availability at module load
+if PYAUDIO_AVAILABLE:
+    log(f"pyaudiowpatch loaded successfully", "INFO")
+else:
+    log(f"pyaudiowpatch NOT available - {PYAUDIO_IMPORT_ERROR}", "WARN")
 
 
 class AudioEngine:

@@ -131,16 +131,25 @@ class AudioEngine:
 
         def loopback_thread():
             # FIXED v3.5.3: Initialize COM on Windows for WASAPI loopback
-            pythoncom = None
+            com_initialized = False
             if sys.platform == 'win32':
+                # Try pythoncom first, then fallback to ctypes
                 try:
                     import pythoncom
                     pythoncom.CoInitialize()
-                    log("COM initialized for loopback thread", "INFO")
+                    com_initialized = True
+                    log("COM initialized via pythoncom", "INFO")
                 except ImportError:
-                    log("pythoncom not available, trying without COM init", "WARN")
+                    # Fallback: use ctypes to initialize COM
+                    try:
+                        import ctypes
+                        ctypes.windll.ole32.CoInitialize(None)
+                        com_initialized = True
+                        log("COM initialized via ctypes", "INFO")
+                    except Exception as e:
+                        log(f"COM init failed (ctypes): {e}", "WARN")
                 except Exception as e:
-                    log(f"COM init error (may still work): {e}", "WARN")
+                    log(f"COM init error: {e}", "WARN")
 
             try:
                 spk = sc.default_speaker()
@@ -161,9 +170,10 @@ class AudioEngine:
                 self.running = False
             finally:
                 # Cleanup COM
-                if pythoncom is not None:
+                if com_initialized and sys.platform == 'win32':
                     try:
-                        pythoncom.CoUninitialize()
+                        import ctypes
+                        ctypes.windll.ole32.CoUninitialize()
                     except:
                         pass
 

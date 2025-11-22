@@ -157,6 +157,13 @@ class AudioEngine:
                     log(f"COM init error: {e}", "WARN")
 
             try:
+                # FIXED v3.5.3: Apply numpy patch again inside thread
+                # This ensures fromstring is available when soundcard reads data
+                import numpy as _np
+                if not hasattr(_np, 'fromstring'):
+                    _np.fromstring = _np.frombuffer
+                    log("Numpy fromstring patched in loopback thread", "INFO")
+
                 spk = sc.default_speaker()
                 log(f"Using speaker: {spk.name}, channels: {spk.channels}", "INFO")
 

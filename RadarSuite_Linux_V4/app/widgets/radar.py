@@ -148,9 +148,41 @@ class MilitaryHUDRadar(QWidget):
             'last_seen': time.time()
         })
 
-    def update_target(self, target_id, angle=None, distance=None, state=None,
+    def update_target(self, angle_deg, distance):
+        """
+        Update/add primary target position (compatible with main.py interface)
+
+        Args:
+            angle_deg: Angle in degrees (or None to clear)
+            distance: Distance value (or None to clear)
+        """
+        if angle_deg is None or distance is None:
+            # Clear primary target
+            self.targets = [t for t in self.targets if t['id'] != 0]
+            return
+
+        # Update or add primary target (id=0)
+        for t in self.targets:
+            if t['id'] == 0:
+                t['angle'] = angle_deg
+                t['distance'] = min(distance, self.max_distance)
+                t['last_seen'] = time.time()
+                return
+
+        # Add new primary target
+        self.targets.append({
+            'id': 0,
+            'angle': angle_deg,
+            'distance': min(distance, self.max_distance),
+            'state': TargetState.UNKNOWN,
+            'speed': 0,
+            'label': 'TARGET',
+            'last_seen': time.time()
+        })
+
+    def update_target_by_id(self, target_id, angle=None, distance=None, state=None,
                       speed=None):
-        """Update specific target properties"""
+        """Update specific target properties by ID"""
         for t in self.targets:
             if t['id'] == target_id:
                 if angle is not None:

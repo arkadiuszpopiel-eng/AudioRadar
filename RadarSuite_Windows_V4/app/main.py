@@ -497,6 +497,9 @@ class MainWindow(QMainWindow):
 
         self.create_ui()
 
+        # Connect game detector to DevicePanel (FIXED v3.5.2)
+        self.dev_panel.set_game_detector(self.game_detector)
+
         # Main update timer (20 FPS) - FIXED v3.5.0: Use constant
         self.timer = QTimer()
         self.timer.timeout.connect(self.tick)
@@ -1914,6 +1917,10 @@ class MainWindow(QMainWindow):
             else:
                 self.launcher_game_label.setText("—")
                 self.launcher_game_label.setStyleSheet("font-size: 9pt; color: #888888; padding: 5px;")
+
+            # Update DevicePanel Game Detection section (FIXED v3.5.2)
+            detailed_info = self.game_detector.get_detailed_game_info()
+            self.dev_panel.update_game_detection_info(detailed_info, game_data)
 
         except Exception as e:
             log(f"Error in scan_games: {e}", "ERROR")

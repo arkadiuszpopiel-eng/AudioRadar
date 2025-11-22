@@ -456,6 +456,30 @@ class DetectionPanel(QWidget):
 
         return min(1.0, (ratio - thr) / (1.0 - thr))
 
+    def reset_detection(self):
+        """Reset all detection states - call when audio stops (FIXED v3.5.3)"""
+        # Reset hold counters
+        self.walk_hold = 0
+        self.run_hold = 0
+        self.shot_hold = 0
+
+        # Reset labels to "none" state
+        self.walk_label.setText(tr('walk_none'))
+        self.walk_label.setStyleSheet("font-size: 14pt; font-weight: bold; color: #666666;")
+
+        self.run_label.setText(tr('run_none'))
+        self.run_label.setStyleSheet("font-size: 14pt; font-weight: bold; color: #666666;")
+
+        self.shot_label.setText(tr('shot_none'))
+        self.shot_label.setStyleSheet("font-size: 14pt; font-weight: bold; color: #666666;")
+
+        # Reset human detection labels if they exist
+        if hasattr(self, 'human_confidence_label'):
+            self.human_confidence_label.setText("Confidence: ---%")
+            self.human_confidence_label.setStyleSheet("font-size: 10pt; font-weight: bold; color: #666666;")
+
+        log("Detection state reset", "INFO")
+
     def update_translations(self):
         """Update UI translations"""
         # Update group boxes

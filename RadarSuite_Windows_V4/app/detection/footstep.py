@@ -15,6 +15,8 @@ class HumanFootstepDetector:
     """
     Advanced human footstep pattern recognition
     Detects cadence, rhythm, weight distribution, and distinguishes human steps from other sounds
+
+    FIXED v4.1.2: Added adaptive noise floor estimation to reduce false positives
     """
 
     def __init__(self):
@@ -48,6 +50,25 @@ class HumanFootstepDetector:
         self.last_step_time = 0.0
         self.step_intervals = []
         self.max_intervals = 10
+
+        # FIXED v4.1.2: Adaptive noise floor estimation
+        self.noise_history = deque(maxlen=100)  # ~5 seconds of noise samples at 20fps
+        self.noise_floor = 0.0
+        self.noise_floor_impact = 0.0
+        self.noise_floor_detail = 0.0
+        self.noise_floor_body = 0.0
+
+        # Base thresholds (will be adjusted based on noise floor)
+        self.base_impact_threshold = 0.15
+        self.base_detail_threshold = 0.05
+        self.base_body_threshold = 0.02
+
+        # Adaptive threshold multiplier (how much above noise floor to detect)
+        self.threshold_multiplier = 1.5  # 1.5x above noise floor
+
+        # Repetitive sound filter (for ambient like rain, fans)
+        self.ambient_filter_history = deque(maxlen=50)
+        self.ambient_variance_threshold = 0.05  # low variance = repetitive ambient
 
     def analyze_footstep(self, block, sample_rate, stereo=True):
         """
@@ -101,12 +122,58 @@ class HumanFootstepDetector:
             detail_ratio = detail_power / total_power
             body_ratio = body_power / total_power
 
+            # FIXED v4.1.2: Update noise floor estimation (using median for robustness)
+            self.noise_history.append({
+                'impact': impact_ratio,
+                'detail': detail_ratio,
+                'body': body_ratio,
+                'total': total_power
+            })
+
+            # Calculate adaptive noise floor from recent history
+            if len(self.noise_history) >= 20:
+                impact_values = [h['impact'] for h in self.noise_history]
+                detail_values = [h['detail'] for h in self.noise_history]
+                body_values = [h['body'] for h in self.noise_history]
+
+                # Use median (robust to outliers/actual footsteps)
+                self.noise_floor_impact = np.median(impact_values)
+                self.noise_floor_detail = np.median(detail_values)
+                self.noise_floor_body = np.median(body_values)
+
+                # Check for repetitive ambient sound (low variance = ambient)
+                self.ambient_filter_history.append(total_power)
+                if len(self.ambient_filter_history) >= 20:
+                    variance = np.var(list(self.ambient_filter_history))
+                    mean_power = np.mean(list(self.ambient_filter_history))
+                    normalized_variance = variance / (mean_power ** 2 + 1e-9)
+
+                    # If very low variance, this is repetitive ambient - raise thresholds
+                    if normalized_variance < self.ambient_variance_threshold:
+                        self.threshold_multiplier = 2.0  # Higher threshold for ambient
+                    else:
+                        self.threshold_multiplier = 1.5  # Normal threshold
+
+            # FIXED v4.1.2: Adaptive thresholds based on noise floor
+            adaptive_impact_threshold = max(
+                self.base_impact_threshold,
+                self.noise_floor_impact * self.threshold_multiplier
+            )
+            adaptive_detail_threshold = max(
+                self.base_detail_threshold,
+                self.noise_floor_detail * self.threshold_multiplier
+            )
+            adaptive_body_threshold = max(
+                self.base_body_threshold,
+                self.noise_floor_body * self.threshold_multiplier
+            )
+
             # Human footstep signature: strong impact + moderate detail + low body
-            # Threshold for detection
+            # Using adaptive thresholds instead of static ones
             is_step_candidate = (
-                impact_ratio > 0.15 and  # strong impact
-                detail_ratio > 0.05 and  # some detail
-                body_ratio > 0.02        # some body weight
+                impact_ratio > adaptive_impact_threshold and  # strong impact above noise
+                detail_ratio > adaptive_detail_threshold and  # some detail above noise
+                body_ratio > adaptive_body_threshold          # some body weight above noise
             )
 
             # Initialize result

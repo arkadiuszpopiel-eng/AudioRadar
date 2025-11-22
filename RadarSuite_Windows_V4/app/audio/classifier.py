@@ -15,10 +15,22 @@ class SoundClassifier:
     Advanced sound classification system
     Identifies weapon types, vehicles, environmental sounds
     Uses spectral fingerprinting and pattern matching
+
+    FIXED v4.1.2: Added transient detection and history smoothing
     """
 
     def __init__(self):
         log("SoundClassifier.__init__", "INFO")
+
+        # FIXED v4.1.2: Transient detection parameters
+        self.crest_factor_threshold = 3.0  # Peak/RMS ratio for transient detection
+        self.min_transient_duration = 0.01  # 10ms minimum
+        self.max_transient_duration = 0.5   # 500ms maximum for weapon sounds
+
+        # FIXED v4.1.2: History smoothing - maintain stable type across short gaps
+        self.stable_type = 'unknown'
+        self.stable_type_count = 0
+        self.type_stability_threshold = 3  # Need 3 consecutive same classifications
 
         # Sound signatures (frequency patterns and characteristics)
         self.signatures = {
@@ -79,9 +91,28 @@ class SoundClassifier:
         self.recent_classifications = []
         self.max_history = 20
 
+    def _detect_transient(self, mono):
+        """
+        FIXED v4.1.2: Detect if block contains a transient (sudden sound onset)
+        Uses crest factor (peak/RMS ratio) to identify sharp transients
+
+        Returns: (is_transient, crest_factor)
+        """
+        rms = np.sqrt(np.mean(mono ** 2))
+        if rms < 1e-10:
+            return False, 0.0
+
+        peak = np.max(np.abs(mono))
+        crest_factor = peak / rms
+
+        is_transient = crest_factor >= self.crest_factor_threshold
+        return is_transient, crest_factor
+
     def classify_sound(self, block, sample_rate, fft_cache=None):
         """
         Classify sound type based on spectral characteristics (Module 12: optimized with FFT caching)
+
+        FIXED v4.1.2: Added transient detection - skip classification if no clear transient
 
         Returns: dict with type, confidence, details
         """
@@ -107,6 +138,18 @@ class SoundClassifier:
                 fft_data = np.fft.rfft(mono * np.hanning(len(mono)))
                 freqs = np.fft.rfftfreq(len(mono), d=1.0/sample_rate)
                 power = np.abs(fft_data)
+
+            # FIXED v4.1.2: Check for transient before classification
+            is_transient, crest_factor = self._detect_transient(mono)
+
+            if not is_transient:
+                # No clear transient - return stable type with reduced confidence
+                # This prevents chaos from non-transient sounds triggering classification
+                return {
+                    'type': self.stable_type if self.stable_type != 'unknown' else 'ambient',
+                    'confidence': 20,  # Low confidence for non-transient
+                    'details': {'crest_factor': crest_factor, 'is_transient': False}
+                }
 
             # Find dominant frequency
             peak_idx = np.argmax(power)
@@ -163,15 +206,34 @@ class SoundClassifier:
                     best_confidence = confidence
                     best_match = sound_type
 
+            # FIXED v4.1.2: History smoothing - require multiple consistent classifications
+            if best_match == self.stable_type:
+                self.stable_type_count += 1
+            else:
+                self.stable_type_count = 1
+                self.stable_type = best_match
+
+            # Only report confident type if we've seen it consistently
+            if self.stable_type_count >= self.type_stability_threshold:
+                reported_type = best_match
+                reported_confidence = best_confidence
+            else:
+                # Not stable yet - report with reduced confidence
+                reported_type = best_match
+                reported_confidence = min(best_confidence, 40)  # Cap at 40% until stable
+
             # Add to history
             classification = {
-                'type': best_match,
-                'confidence': best_confidence,
+                'type': reported_type,
+                'confidence': reported_confidence,
                 'details': {
                     'dominant_freq': dominant_freq,
                     'centroid': spectral_centroid,
                     'spread': spectral_spread,
-                    'attack_time': attack_time
+                    'attack_time': attack_time,
+                    'crest_factor': crest_factor,
+                    'is_transient': True,
+                    'stability_count': self.stable_type_count
                 }
             }
 

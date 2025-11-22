@@ -19,6 +19,7 @@ scipy>=1.7.0
 # Audio capture
 sounddevice>=0.4.0
 soundcard>=0.4.0
+pyaudiowpatch>=0.2.12  # WASAPI loopback for game audio capture
 
 # System info
 psutil>=5.9.0

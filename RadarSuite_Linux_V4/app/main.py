@@ -1264,6 +1264,13 @@ class MainWindow(QMainWindow):
         # Update audio status indicator (FIXED v3.5.3)
         self.dev_panel.update_audio_init_status(False, False)
 
+        # FIXED v3.5.3: Reset detection labels and clear radars on stop
+        self.det_panel.reset_detection()
+        self.radar_widget.update_target(None, None)
+        self.radar_3d_widget.clear_targets()
+        self.target_tracker.clear()
+        self.dev_panel.rms_label.setText("RMS: --- dBFS")
+
         self.start_btn.setText("▶ START")
         self.start_btn.setStyleSheet("""
             QPushButton {

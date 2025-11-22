@@ -20,74 +20,105 @@ class GameProcessDetector:
     def __init__(self):
         log("GameProcessDetector.__init__", "INFO")
 
-        # Known game engines and their process patterns
+        # Known game engines - match against PROCESS NAME only (more strict)
+        # Format: 'Engine': ['exact_process.exe', ...]
         self.game_engines = {
-            'Unreal Engine 5': ['UE5-', '-Win64-Shipping', 'UnrealEditor'],
-            'Unreal Engine 4': ['UE4-', '-Win64-Shipping', 'UnrealEditor'],
-            'Unity': ['Unity.exe', 'UnityPlayer.dll'],
-            'Source Engine': ['hl2.exe', 'csgo.exe', 'tf2.exe'],
-            'CryEngine': ['CryEngine', 'CRYENGINE'],
-            'Frostbite': ['bf', 'Battlefield'],
-            'id Tech': ['Doom', 'Quake'],
-            'RE Engine': ['re_chunk'],
+            'Unreal Engine 5': ['UnrealEditor-Win64-Shipping.exe', 'UE5Editor.exe'],
+            'Unreal Engine 4': ['UnrealEditor.exe', 'UE4Editor.exe'],
+            'Unity': ['Unity.exe'],
+            'Source Engine 2': ['cs2.exe'],
+            'Source Engine': ['hl2.exe', 'csgo.exe', 'tf2.exe', 'left4dead2.exe'],
+            'CryEngine': ['CryEngineEditor.exe'],
+            'Frostbite': ['bf2042.exe', 'bf1.exe', 'bfv.exe', 'NeedForSpeed.exe'],
+            'id Tech': ['DOOMEternalx64vk.exe', 'Quake.exe'],
+            'RE Engine': ['re2.exe', 're3.exe', 're4.exe', 'mhrise.exe'],
         }
 
-        # Known games by exe name and process names
-        # Multiple patterns per game to catch different process names
-        # Format: 'Display Name': ['process1', 'process2', 'folder_name', 'cmdline_arg']
+        # Known games by EXACT exe name (strict matching)
+        # Format: 'Display Name': ['exact_process.exe', ...]
         self.known_games = {
-            # ARC Raiders uses PioneerGame.exe (Unreal Engine 5)
-            'ARC Raiders': ['ARCRaiders', 'ARC-Win64', 'PioneerGame', 'Pioneer', 'ARC Raiders'],
+            # ARC Raiders
+            'ARC Raiders': ['ARCRaiders-Win64-Shipping.exe', 'PioneerGame.exe', 'ARCRaiders.exe'],
 
-            # Tarkov
-            'Escape from Tarkov': ['EscapeFromTarkov', 'Tarkov', 'EFT'],
+            # Escape from Tarkov
+            'Escape from Tarkov': ['EscapeFromTarkov.exe'],
 
             # Call of Duty series
-            'Call of Duty': ['cod', 'ModernWarfare', 'Warzone', 'BlackOps'],
+            'Call of Duty: MW2': ['cod.exe', 'ModernWarfare.exe', 'cod22-cod.exe'],
+            'Call of Duty: Warzone': ['Warzone.exe', 'cod23-cod.exe'],
+            'Call of Duty: MW3': ['cod24-cod.exe'],
 
             # Counter-Strike 2
-            'CS2': ['cs2.exe', 'cs2', 'Counter-Strike 2'],
+            'Counter-Strike 2': ['cs2.exe'],
 
             # Valorant
-            'Valorant': ['VALORANT', 'RiotClient', 'VALORANT-Win64-Shipping'],
+            'Valorant': ['VALORANT-Win64-Shipping.exe', 'VALORANT.exe'],
 
             # Apex Legends
-            'Apex Legends': ['r5apex.exe', 'r5apex', 'Apex'],
+            'Apex Legends': ['r5apex.exe'],
 
             # PUBG
-            'PUBG': ['TslGame', 'PUBG', 'TslGame-Win64-Shipping'],
+            'PUBG': ['TslGame.exe'],
 
             # Fortnite
-            'Fortnite': ['FortniteClient-Win64-Shipping', 'Fortnite', 'FortniteLauncher'],
+            'Fortnite': ['FortniteClient-Win64-Shipping.exe'],
 
-            # Overwatch
-            'Overwatch': ['Overwatch.exe', 'Overwatch'],
+            # Overwatch 2
+            'Overwatch 2': ['Overwatch.exe'],
 
             # Rainbow Six Siege
-            'Rainbow Six Siege': ['RainbowSix', 'RainbowSixGame', 'R6'],
+            'Rainbow Six Siege': ['RainbowSix.exe', 'RainbowSixGame.exe'],
 
             # Destiny 2
-            'Destiny 2': ['destiny2.exe', 'Destiny2'],
+            'Destiny 2': ['destiny2.exe'],
 
             # Hunt: Showdown
-            'Hunt Showdown': ['HuntGame', 'Hunt'],
+            'Hunt Showdown': ['HuntGame.exe'],
 
             # The Cycle: Frontier
-            'The Cycle': ['Prospect', 'TheCycle'],
+            'The Cycle': ['Prospect-Win64-Shipping.exe'],
 
             # Marauders
-            'Marauders': ['Marauders', 'MaraudersGame'],
+            'Marauders': ['Marauders-Win64-Shipping.exe'],
+
+            # Battlefield series
+            'Battlefield 2042': ['bf2042.exe'],
+            'Battlefield V': ['bfv.exe'],
+            'Battlefield 1': ['bf1.exe'],
+
+            # Other popular games
+            'Rust': ['RustClient.exe'],
+            'DayZ': ['DayZ_x64.exe', 'DayZ.exe'],
+            'Hell Let Loose': ['HLL-Win64-Shipping.exe'],
+            'Squad': ['SquadGame.exe'],
+            'Ready or Not': ['ReadyOrNot-Win64-Shipping.exe'],
+            'Ground Branch': ['GroundBranch.exe'],
+            'Insurgency Sandstorm': ['InsurgencyClient-Win64-Shipping.exe'],
+            'ARMA 3': ['arma3_x64.exe', 'arma3.exe'],
+            'ARMA Reforger': ['ArmaReforger.exe'],
         }
 
-        # Currently detected games/processes
+        # Gaming platform launchers - EXACT exe names
+        self.platform_launchers = {
+            'Steam': ['steam.exe', 'steamwebhelper.exe'],
+            'Epic Games': ['EpicGamesLauncher.exe'],
+            'EA App': ['EADesktop.exe', 'EABackgroundService.exe'],
+            'Battle.net': ['Battle.net.exe', 'Agent.exe'],
+            'Ubisoft Connect': ['UbisoftConnect.exe', 'upc.exe'],
+            'GOG Galaxy': ['GalaxyClient.exe'],
+            'Xbox App': ['XboxPcApp.exe', 'Gaming Services'],
+        }
+
+        # Currently detected (actual running processes)
         self.active_games = []
         self.active_engines = []
+        self.active_launchers = []
         self.last_scan_time = 0.0
-        self.scan_interval = 5.0  # Scan every 5 seconds
+        self.scan_interval = 3.0  # Scan every 3 seconds
 
     def scan_processes(self):
         """
-        Scan for running game processes
+        Scan for running game processes - STRICT matching on process name only
         Returns: dict with detected games and engines
         """
         try:
@@ -98,6 +129,7 @@ class GameProcessDetector:
                 return {
                     'games': self.active_games,
                     'engines': self.active_engines,
+                    'launchers': self.active_launchers,
                     'has_games': len(self.active_games) > 0
                 }
 
@@ -105,52 +137,52 @@ class GameProcessDetector:
 
             detected_games = []
             detected_engines = []
+            detected_launchers = []
 
-            # Scan all running processes (enhanced detection with cmdline)
-            for proc in psutil.process_iter(['name', 'exe', 'cmdline']):
+            # Get all running process names (lowercase for comparison)
+            running_processes = set()
+            for proc in psutil.process_iter(['name']):
                 try:
-                    proc_name = proc.info['name'] or ''
-                    proc_exe = proc.info['exe'] or ''
-                    proc_cmdline = ' '.join(proc.info['cmdline']) if proc.info.get('cmdline') else ''
-
-                    if not proc_name:
-                        continue
-
-                    # Build searchable text from all sources
-                    # This catches:
-                    # - Process name (e.g., "PioneerGame.exe")
-                    # - Full exe path (e.g., "C:\Games\ARC Raiders\PioneerGame.exe")
-                    # - Command line args (e.g., "PioneerGame.exe -windowed ARC Raiders")
-                    search_text = f"{proc_name} {proc_exe} {proc_cmdline}".lower()
-
-                    # Check for known games
-                    for game_name, patterns in self.known_games.items():
-                        for pattern in patterns:
-                            if pattern.lower() in search_text:
-                                if game_name not in detected_games:
-                                    detected_games.append(game_name)
-                                    log(f"Detected game: {game_name} (process: {proc_name})", "INFO")
-                                break  # Found this game, check next game
-
-                    # Check for game engines
-                    for engine_name, patterns in self.game_engines.items():
-                        for pattern in patterns:
-                            if pattern.lower() in search_text:
-                                if engine_name not in detected_engines:
-                                    detected_engines.append(engine_name)
-                                    log(f"Detected engine: {engine_name} (process: {proc_name})", "INFO")
-                                break  # Found this engine, check next engine
-
+                    proc_name = proc.info['name']
+                    if proc_name:
+                        running_processes.add(proc_name.lower())
                 except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
-                    # Process ended or no access - skip it
                     continue
+
+            # Check for known games - EXACT match on process name
+            for game_name, exe_names in self.known_games.items():
+                for exe_name in exe_names:
+                    if exe_name.lower() in running_processes:
+                        if game_name not in detected_games:
+                            detected_games.append(game_name)
+                            log(f"Detected game: {game_name} ({exe_name})", "INFO")
+                        break
+
+            # Check for game engines - EXACT match on process name
+            for engine_name, exe_names in self.game_engines.items():
+                for exe_name in exe_names:
+                    if exe_name.lower() in running_processes:
+                        if engine_name not in detected_engines:
+                            detected_engines.append(engine_name)
+                            log(f"Detected engine: {engine_name} ({exe_name})", "INFO")
+                        break
+
+            # Check for platform launchers - EXACT match on process name
+            for launcher_name, exe_names in self.platform_launchers.items():
+                for exe_name in exe_names:
+                    if exe_name.lower() in running_processes:
+                        if launcher_name not in detected_launchers:
+                            detected_launchers.append(launcher_name)
+                        break
 
             self.active_games = detected_games
             self.active_engines = detected_engines
+            self.active_launchers = detected_launchers
 
             return {
                 'games': self.active_games,
                 'engines': self.active_engines,
+                'launchers': self.active_launchers,
                 'has_games': len(self.active_games) > 0
             }
 
@@ -159,8 +191,17 @@ class GameProcessDetector:
             return {
                 'games': [],
                 'engines': [],
+                'launchers': [],
                 'has_games': False
             }
+
+    def get_all_known_items(self):
+        """Return all known games, engines, and launchers for UI display"""
+        return {
+            'all_games': list(self.known_games.keys()),
+            'all_engines': list(self.game_engines.keys()),
+            'all_launchers': list(self.platform_launchers.keys()),
+        }
 
     def get_detailed_game_info(self):
         """
@@ -174,20 +215,19 @@ class GameProcessDetector:
             if not self.active_games:
                 return {'detected': False}
 
-            # Find the first detected game's process
-            for proc in psutil.process_iter(['name', 'exe', 'cmdline', 'pid', 'memory_info']):
+            # Find the first detected game's process using EXACT match
+            for proc in psutil.process_iter(['name', 'exe', 'pid', 'memory_info']):
                 try:
                     proc_name = proc.info['name'] or ''
                     proc_exe = proc.info['exe'] or ''
-                    proc_cmdline = ' '.join(proc.info['cmdline']) if proc.info.get('cmdline') else ''
-                    search_text = f"{proc_name} {proc_exe} {proc_cmdline}".lower()
+                    proc_name_lower = proc_name.lower()
 
-                    # Check if this process matches any active game
+                    # Check if this process matches any active game (EXACT match)
                     matched_game = None
                     for game_name in self.active_games:
-                        patterns = self.known_games.get(game_name, [])
-                        for pattern in patterns:
-                            if pattern.lower() in search_text:
+                        exe_names = self.known_games.get(game_name, [])
+                        for exe_name in exe_names:
+                            if exe_name.lower() == proc_name_lower:
                                 matched_game = game_name
                                 break
                         if matched_game:

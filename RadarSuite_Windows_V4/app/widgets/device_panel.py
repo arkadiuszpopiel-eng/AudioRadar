@@ -321,10 +321,38 @@ class DevicePanel(QWidget):
 
         game_layout.addWidget(self.audio_init_frame)
 
-        self.detected_engines_label = QLabel("Engine: Unknown")
-        self.detected_engines_label.setStyleSheet("font-size: 9pt; color: #888888;")
-        self.detected_engines_label.setWordWrap(True)
-        game_layout.addWidget(self.detected_engines_label)
+        # Games list (shows all known games, highlights active)
+        games_header = QLabel("🎯 Games:")
+        games_header.setStyleSheet("font-size: 9pt; font-weight: bold; color: #aaa; margin-top: 5px;")
+        game_layout.addWidget(games_header)
+
+        self.games_list_label = QLabel("—")
+        self.games_list_label.setStyleSheet("font-size: 8pt; color: #666;")
+        self.games_list_label.setWordWrap(True)
+        self.games_list_label.setMaximumHeight(80)
+        game_layout.addWidget(self.games_list_label)
+
+        # Engines list (shows all known engines, highlights active)
+        engines_header = QLabel("⚙️ Engines:")
+        engines_header.setStyleSheet("font-size: 9pt; font-weight: bold; color: #aaa; margin-top: 3px;")
+        game_layout.addWidget(engines_header)
+
+        self.engines_list_label = QLabel("—")
+        self.engines_list_label.setStyleSheet("font-size: 8pt; color: #666;")
+        self.engines_list_label.setWordWrap(True)
+        self.engines_list_label.setMaximumHeight(60)
+        game_layout.addWidget(self.engines_list_label)
+
+        # Launchers list (shows all known launchers, highlights active)
+        launchers_header = QLabel("🚀 Launchers:")
+        launchers_header.setStyleSheet("font-size: 9pt; font-weight: bold; color: #aaa; margin-top: 3px;")
+        game_layout.addWidget(launchers_header)
+
+        self.launchers_list_label = QLabel("—")
+        self.launchers_list_label.setStyleSheet("font-size: 8pt; color: #666;")
+        self.launchers_list_label.setWordWrap(True)
+        self.launchers_list_label.setMaximumHeight(50)
+        game_layout.addWidget(self.launchers_list_label)
 
         self.game_group.setLayout(game_layout)
         layout.addWidget(self.game_group)
@@ -478,8 +506,8 @@ class DevicePanel(QWidget):
                 log(f"Device selected: {dev_data['name']}", "INFO")
             self.device_combo.update()
 
-    def update_game_detection_info(self, game_info):
-        """Update game detection panel with process details"""
+    def update_game_detection_info(self, game_info, scan_result=None):
+        """Update game detection panel with process details and lists"""
         if game_info and game_info.get('detected'):
             # Game detected - show green
             self.game_detection_led.setStyleSheet("color: #0f0; font-size: 14pt;")
@@ -502,11 +530,6 @@ class DevicePanel(QWidget):
                 window = window[:40] + "..."
             self.process_window_label.setText(f"Window: {window}")
 
-            # Update engine info
-            engine = game_info.get('engine', 'Unknown')
-            self.detected_engines_label.setText(f"Engine: {engine}")
-            self.detected_engines_label.setStyleSheet("font-size: 9pt; color: #0dd;")
-
         else:
             # No game detected - show gray
             self.game_detection_led.setStyleSheet("color: #666; font-size: 14pt;")
@@ -520,8 +543,66 @@ class DevicePanel(QWidget):
             self.process_memory_label.setText("Memory: —")
             self.process_memory_label.setStyleSheet("font-size: 9pt; color: #888; font-family: monospace;")
             self.process_window_label.setText("Window: —")
-            self.detected_engines_label.setText("Engine: Unknown")
-            self.detected_engines_label.setStyleSheet("font-size: 9pt; color: #888;")
+
+        # Update lists if scan_result provided
+        if scan_result:
+            self._update_detection_lists(scan_result)
+
+    def _update_detection_lists(self, scan_result):
+        """Update games, engines, launchers lists with highlighting"""
+        active_games = scan_result.get('games', [])
+        active_engines = scan_result.get('engines', [])
+        active_launchers = scan_result.get('launchers', [])
+
+        # Get all known items from game detector
+        if self.game_detector:
+            known = self.game_detector.get_all_known_items()
+            all_games = known.get('all_games', [])
+            all_engines = known.get('all_engines', [])
+            all_launchers = known.get('all_launchers', [])
+        else:
+            all_games = active_games
+            all_engines = active_engines
+            all_launchers = active_launchers
+
+        # Build HTML for games list
+        games_html = self._build_list_html(all_games, active_games, limit=12)
+        self.games_list_label.setText(games_html)
+
+        # Build HTML for engines list
+        engines_html = self._build_list_html(all_engines, active_engines, limit=8)
+        self.engines_list_label.setText(engines_html)
+
+        # Build HTML for launchers list
+        launchers_html = self._build_list_html(all_launchers, active_launchers, limit=6)
+        self.launchers_list_label.setText(launchers_html)
+
+    def _build_list_html(self, all_items, active_items, limit=10):
+        """Build HTML string with active items highlighted in green"""
+        if not all_items:
+            return "—"
+
+        # Sort: active items first, then alphabetically
+        sorted_items = sorted(all_items, key=lambda x: (x not in active_items, x))
+
+        # Limit items shown
+        display_items = sorted_items[:limit]
+        remaining = len(sorted_items) - limit
+
+        parts = []
+        for item in display_items:
+            if item in active_items:
+                # Active - bright green with indicator
+                parts.append(f'<span style="color: #0f0; font-weight: bold;">● {item}</span>')
+            else:
+                # Inactive - gray
+                parts.append(f'<span style="color: #555;">{item}</span>')
+
+        html = ', '.join(parts)
+        if remaining > 0:
+            html += f' <span style="color: #444;">+{remaining} more</span>'
+
+        return html
 
     def update_audio_init_status(self, is_initialized, is_receiving_audio=False):
         """Update audio initialization status indicator"""

@@ -155,7 +155,12 @@ class AudioEngine:
                 spk = sc.default_speaker()
                 log(f"Using speaker: {spk.name}, channels: {spk.channels}", "INFO")
 
-                with spk.recorder(samplerate=self.sample_rate, channels=self.channels, blocksize=self.blocksize) as rec:
+                # FIXED v3.5.3: Use get_microphone with include_loopback for WASAPI loopback
+                # The soundcard library requires getting a loopback microphone from the speaker
+                loopback_mic = sc.get_microphone(id=str(spk.id), include_loopback=True)
+                log(f"Loopback microphone: {loopback_mic.name}", "INFO")
+
+                with loopback_mic.recorder(samplerate=self.sample_rate, channels=self.channels, blocksize=self.blocksize) as rec:
                     while self.running:
                         data = rec.record(numframes=self.blocksize)
                         self.last_block = data.copy()

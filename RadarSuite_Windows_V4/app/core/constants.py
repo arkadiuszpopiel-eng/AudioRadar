@@ -26,8 +26,9 @@ STARTUP_DELAY_MS = 500        # Initial scan delay
 STARTUP_AUDIO_DELAY_MS = 1000 # Audio scan delay
 
 # Detection
-ENERGY_THRESHOLD = 0.00001    # Minimum energy for detection
-RADAR_ROTATION_DEG = 4.0      # Degrees per frame
+ENERGY_THRESHOLD = 0.001         # Minimum energy for detection (FIXED v4.1.1: increased 100x to reduce noise)
+LOCALIZATION_MIN_CONFIDENCE = 30  # Minimum confidence for target tracking (FIXED v4.1.1)
+RADAR_ROTATION_DEG = 4.0         # Degrees per frame
 
 # Worker threads
 MAX_WORKERS = 3              # Thread pool size

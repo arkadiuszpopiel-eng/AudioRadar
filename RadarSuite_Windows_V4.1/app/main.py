@@ -223,6 +223,7 @@ try:
         STARTUP_DELAY_MS,
         STARTUP_AUDIO_DELAY_MS,
         ENERGY_THRESHOLD,
+        LOCALIZATION_MIN_CONFIDENCE,
         RADAR_ROTATION_DEG,
         MAX_WORKERS,
         DETECTION_TIMEOUT_SEC,
@@ -326,7 +327,7 @@ except ImportError:
         VERSION, SAMPLE_RATE, BLOCK_SIZE, CHANNELS,
         TICK_INTERVAL_MS, GAME_SCAN_INTERVAL_MS, AUDIO_SCAN_INTERVAL_MS,
         STARTUP_DELAY_MS, STARTUP_AUDIO_DELAY_MS, ENERGY_THRESHOLD,
-        RADAR_ROTATION_DEG, MAX_WORKERS, DETECTION_TIMEOUT_SEC,
+        LOCALIZATION_MIN_CONFIDENCE, RADAR_ROTATION_DEG, MAX_WORKERS, DETECTION_TIMEOUT_SEC,
         CLEANUP_INTERVAL_SEC, AUDIO_LEVEL_LOUD, AUDIO_LEVEL_MEDIUM,
         AUDIO_LEVEL_LOW, RECORDING_BUFFER_SIZE, RECORDING_FLUSH_INTERVAL,
         TOAST_DURATION_MS, TOAST_MAX_COUNT,
@@ -1401,6 +1402,12 @@ class MainWindow(QMainWindow):
         if has_detection and energy > ENERGY_THRESHOLD:
             # Use precise 3D localization (Module 6)
             location_3d = self.compute_precise_location_3d(block, self.audio.sample_rate)
+
+            # FIXED v4.1.1: Filter low-confidence localizations to reduce radar chaos
+            if location_3d['confidence'] < LOCALIZATION_MIN_CONFIDENCE:
+                # Skip low-confidence detections
+                return events, bands, self.target_tracker.get_active_targets()
+
             angle = location_3d['angle']
             distance = location_3d['distance']
             elevation = location_3d['elevation']

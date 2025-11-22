@@ -83,6 +83,18 @@ datas = []
 datas += collect_data_files('PyQt5')
 datas += collect_data_files('pyqtgraph')
 
+# CRITICAL: Include sounddevice data files (contains PortAudio DLLs)
+try:
+    datas += collect_data_files('sounddevice')
+except Exception:
+    print("Warning: Could not collect sounddevice data files")
+
+# Also try to collect _sounddevice_data which contains PortAudio binaries
+try:
+    datas += collect_data_files('_sounddevice_data')
+except Exception:
+    pass
+
 # WINDOWS OPTIMIZATIONS: Exclude modules that cause warnings
 excludes = [
     # GUI frameworks we don't use

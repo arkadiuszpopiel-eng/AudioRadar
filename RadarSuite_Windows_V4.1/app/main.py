@@ -1445,6 +1445,29 @@ class MainWindow(QMainWindow):
 
         return events, bands, active_targets
 
+    def _map_target_type_to_state(self, target_type):
+        """
+        FIXED v4.1.2: Map target type string to TargetState enum for 2D radar display
+
+        Args:
+            target_type: String type ('footstep', 'shot', 'rifle', 'unknown', etc.)
+
+        Returns:
+            TargetState constant (WALK, RUN, SHOT, or UNKNOWN)
+        """
+        from widgets.radar import TargetState
+
+        # Map detection types to radar states
+        if target_type == 'footstep':
+            # Default footsteps to WALK (could be refined with cadence analysis)
+            return TargetState.WALK
+        elif target_type == 'run':
+            return TargetState.RUN
+        elif target_type in ['shot', 'rifle', 'pistol', 'shotgun', 'sniper']:
+            return TargetState.SHOT
+        else:
+            return TargetState.UNKNOWN
+
     def _update_ui_elements(self, active_targets, events, bands, energy, balance):
         """
         Update all UI elements: radars, LEDs, toolbar stats (FIXED v3.5.0: Helper method)
@@ -1456,7 +1479,7 @@ class MainWindow(QMainWindow):
             energy: Audio energy (RMS)
             balance: L/R audio balance
         """
-        # Update radars with all active targets (threat-ranked)
+        # FIXED v4.1.2: Update radars with all active targets (threat-ranked)
         if active_targets:
             # Update 3D radar (supports multiple targets)
             self.radar_3d_widget.clear_targets()
@@ -1469,15 +1492,35 @@ class MainWindow(QMainWindow):
                     target['elevation']     # elevation
                 )
 
-            # Update 2D radar (show primary target only - highest confidence)
-            primary_target = max(active_targets, key=lambda t: t['confidence'])
-            self.radar_widget.update_target(primary_target['angle'], primary_target['distance'])
-            self._safe_update_detached_radar('update_target', primary_target['angle'], primary_target['distance'])
+            # FIXED v4.1.2: Update 2D radar with ALL targets, not just primary
+            self.radar_widget.clear_targets()
+            for target in active_targets:
+                # Map target type to TargetState for 2D radar display
+                target_state = self._map_target_type_to_state(target['type'])
+                self.radar_widget.add_target(
+                    target['id'],           # target_id
+                    target['angle'],        # angle
+                    target['distance'],     # distance
+                    state=target_state,     # state (WALK/RUN/SHOT/UNKNOWN)
+                    speed=0,                # speed (not yet calculated)
+                    label=f"T{target['id']}" # label
+                )
+
+            # Update detached radar if exists
+            if self.detached_radar:
+                self.detached_radar.radar_widget.clear_targets()
+                for target in active_targets:
+                    target_state = self._map_target_type_to_state(target['type'])
+                    self.detached_radar.radar_widget.add_target(
+                        target['id'], target['angle'], target['distance'],
+                        state=target_state, speed=0, label=f"T{target['id']}"
+                    )
         else:
             # Clear all radars when no targets
-            self.radar_widget.update_target(None, None)
+            self.radar_widget.clear_targets()
             self.radar_3d_widget.clear_targets()
-            self._safe_update_detached_radar('update_target', None, None)
+            if self.detached_radar:
+                self.detached_radar.radar_widget.clear_targets()
 
         # Update LED overlays
         self.led_widget.update_from_events(events, bands, energy, balance)

@@ -62,13 +62,17 @@ class AudioEngine:
     Audio capture engine supporting:
     - sounddevice (standard input devices)
     - soundcard loopback (capture from speaker output)
+
+    FIXED v4.1.2: Auto-detection of channel count for 5.1/7.1 support
     """
 
     def __init__(self):
         log("AudioEngine.__init__", "INFO")
         self.sample_rate = 48000
         self.blocksize = 2048
-        self.channels = 2
+        self.channels = 2  # Default, will be auto-detected
+        self.requested_channels = 0  # 0 = auto-detect from device
+        self.actual_channels = 2  # What we actually got from device
         self.device = None
         self.stream = None
         self.queue = queue.Queue(maxsize=8)
@@ -76,6 +80,10 @@ class AudioEngine:
         self.running = False
         self.backend = "sounddevice"
         self.use_loopback = False
+
+        # FIXED v4.1.2: Channel layout info for spatial audio
+        self.channel_layout = "stereo"  # "stereo", "5.1", "7.1"
+        self.has_surround = False  # True if 5.1 or higher
 
     def list_devices(self):
         """List available audio devices"""
@@ -210,12 +218,33 @@ class AudioEngine:
                         self.running = False
                         return
 
-                    # Use loopback device's native settings
-                    channels = min(self.channels, int(loopback_device["maxInputChannels"]))
+                    # FIXED v4.1.2: Auto-detect channel count from device
+                    device_channels = int(loopback_device["maxInputChannels"])
                     sample_rate = int(loopback_device["defaultSampleRate"])
 
+                    # Use device's native channel count if auto-detect (0) or requested > available
+                    if self.requested_channels == 0 or self.requested_channels > device_channels:
+                        channels = device_channels
+                    else:
+                        channels = self.requested_channels
+
+                    # Update engine's actual channel count
+                    self.actual_channels = channels
+
+                    # Determine channel layout for spatial audio
+                    if channels >= 8:
+                        self.channel_layout = "7.1"
+                        self.has_surround = True
+                    elif channels >= 6:
+                        self.channel_layout = "5.1"
+                        self.has_surround = True
+                    else:
+                        self.channel_layout = "stereo"
+                        self.has_surround = False
+
                     log(f"WASAPI loopback: {loopback_device['name']}", "INFO")
-                    log(f"  Channels: {channels}, Rate: {sample_rate}", "INFO")
+                    log(f"  Device channels: {device_channels}, Using: {channels} ({self.channel_layout})", "INFO")
+                    log(f"  Sample rate: {sample_rate}Hz, Surround: {self.has_surround}", "INFO")
 
                     # Open loopback stream (no as_loopback needed - device IS loopback)
                     stream = p.open(

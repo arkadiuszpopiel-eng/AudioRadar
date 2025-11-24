@@ -1415,15 +1415,16 @@ class MainWindow(QMainWindow):
             # Classify sound type - use cached FFT
             sound_class = self.sound_classifier.classify_sound(block, self.audio.sample_rate, fft_cache=fft_result)
 
-            # Determine detection type (prioritize classification over simple detection)
+            # FIXED v4.1.2: Improved detection type classification
+            # Prioritize classification, but distinguish walk vs run
             if sound_class['confidence'] > 50:
                 target_type = sound_class['type']
             elif events.get('shot', False):
                 target_type = 'shot'
             elif events.get('run', False):
-                target_type = 'footstep'
+                target_type = 'run'  # FIXED: Distinguish run from walk
             elif events.get('walk', False):
-                target_type = 'footstep'
+                target_type = 'walk'  # FIXED: Keep walk separate
             else:
                 target_type = 'unknown'
 
@@ -1450,16 +1451,15 @@ class MainWindow(QMainWindow):
         FIXED v4.1.2: Map target type string to TargetState enum for 2D radar display
 
         Args:
-            target_type: String type ('footstep', 'shot', 'rifle', 'unknown', etc.)
+            target_type: String type ('walk', 'run', 'shot', 'rifle', 'unknown', etc.)
 
         Returns:
             TargetState constant (WALK, RUN, SHOT, or UNKNOWN)
         """
         from widgets.radar import TargetState
 
-        # Map detection types to radar states
-        if target_type == 'footstep':
-            # Default footsteps to WALK (could be refined with cadence analysis)
+        # FIXED v4.1.2: Map detection types to radar states with proper walk/run distinction
+        if target_type in ['walk', 'footstep']:
             return TargetState.WALK
         elif target_type == 'run':
             return TargetState.RUN

@@ -35,14 +35,22 @@ class Target:
         self.confidence = 1.0
         self.is_active = True
 
-    def update(self, angle, distance, elevation):
-        """Update target position"""
+    def update(self, angle, distance, elevation, target_type=None):
+        """
+        Update target position and type
+
+        FIXED v4.1.2: Now accepts target_type to allow type changes
+        """
         self.angle = angle
         self.distance = distance
         self.elevation = elevation
         self.last_update_time = time.time()
         self.update_count += 1
         self.confidence = min(1.0, self.confidence + 0.1)
+
+        # FIXED v4.1.2: Update type if provided
+        if target_type is not None:
+            self.type = target_type
 
         # Add to history
         self.history.append((angle, distance, elevation))
@@ -127,27 +135,38 @@ class TargetTracker:
                 elevation = detection.get('elevation', 0)
                 target_type = detection.get('type', 'unknown')
 
-                # Try to match with existing target
-                matched_target = self._find_matching_target_unlocked(angle, distance, elevation)
+                # FIXED v4.1.2: Try to match with existing target (type-aware)
+                matched_target = self._find_matching_target_unlocked(angle, distance, elevation, target_type)
 
                 if matched_target:
-                    # Update existing target
-                    matched_target.update(angle, distance, elevation)
+                    # FIXED v4.1.2: Update existing target WITH type
+                    matched_target.update(angle, distance, elevation, target_type)
                 elif len(self.targets) < self.max_targets:
                     # Create new target
                     new_target = Target(self.next_id, angle, distance, elevation, target_type)
                     self.targets[self.next_id] = new_target
                     self.next_id += 1
                     log(f"New target #{new_target.id} created: {target_type} at {distance:.1f}m", "INFO")
+                else:
+                    # FIXED v4.1.2: Max targets reached - replace lowest confidence target if this is more important
+                    self._try_replace_target_unlocked(angle, distance, elevation, target_type)
 
             return self._get_active_targets_unlocked()
 
-    def _find_matching_target_unlocked(self, angle, distance, elevation):
-        """Find existing target that matches the detection (must hold lock)"""
+    def _find_matching_target_unlocked(self, angle, distance, elevation, target_type='unknown'):
+        """
+        Find existing target that matches the detection (must hold lock)
+
+        FIXED v4.1.2: Now type-aware - only matches compatible types
+        """
         best_match = None
         min_score = float('inf')
 
         for target in self.targets.values():
+            # FIXED v4.1.2: Check type compatibility first
+            if not self._types_compatible(target.type, target_type):
+                continue  # Skip incompatible types
+
             # Calculate angular difference (handle wrap-around at 0°/360°)
             angle_diff = abs(angle - target.angle)
             if angle_diff > 180:
@@ -170,6 +189,57 @@ class TargetTracker:
                 min_score = score
 
         return best_match
+
+    def _types_compatible(self, type1, type2):
+        """
+        FIXED v4.1.2: Check if two target types are compatible for merging
+
+        Returns:
+            True if types can be merged, False otherwise
+        """
+        # Same type is always compatible
+        if type1 == type2:
+            return True
+
+        # 'unknown' can match anything
+        if type1 == 'unknown' or type2 == 'unknown':
+            return True
+
+        # Footsteps are compatible with each other
+        footstep_types = {'footstep', 'run', 'walk'}
+        if type1 in footstep_types and type2 in footstep_types:
+            return True
+
+        # Different incompatible types (e.g., 'shot' vs 'footstep')
+        return False
+
+    def _try_replace_target_unlocked(self, angle, distance, elevation, target_type):
+        """
+        FIXED v4.1.2: Try to replace lowest confidence target with new detection
+
+        Only replaces if new detection is more important (shots > footsteps)
+        """
+        # Find lowest confidence target
+        min_confidence = 1.0
+        weakest_target = None
+
+        for target in self.targets.values():
+            if target.confidence < min_confidence:
+                min_confidence = target.confidence
+                weakest_target = target
+
+        # Replace if new detection is shot (high priority) or weakest is very low confidence
+        type_priority = {'shot': 3, 'rifle': 3, 'pistol': 3, 'shotgun': 3, 'sniper': 3,
+                        'footstep': 2, 'run': 2, 'walk': 2, 'unknown': 1}
+
+        new_priority = type_priority.get(target_type, 1)
+        old_priority = type_priority.get(weakest_target.type, 1) if weakest_target else 0
+
+        if weakest_target and (new_priority > old_priority or min_confidence < 0.3):
+            log(f"Replacing target #{weakest_target.id} ({weakest_target.type}, conf={min_confidence:.2f}) "
+                f"with {target_type}", "INFO")
+            weakest_target.update(angle, distance, elevation, target_type)
+            weakest_target.confidence = 0.8  # Reset confidence
 
     def _get_active_targets_unlocked(self):
         """Get list of active targets (must hold lock)"""

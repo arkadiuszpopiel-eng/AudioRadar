@@ -204,6 +204,20 @@ class MilitaryHUDRadar(QWidget):
         """Clear all targets"""
         self.targets = []
 
+    def cleanup_stale_targets(self, max_age_seconds=3.0):
+        """
+        Remove targets that haven't been updated recently (FIXED v4.2.0)
+        Defensive cleanup for stuck targets on radar UI
+        """
+        current_time = time.time()
+        before_count = len(self.targets)
+        self.targets = [t for t in self.targets
+                       if (current_time - t.get('last_seen', current_time)) < max_age_seconds]
+        removed = before_count - len(self.targets)
+        if removed > 0:
+            from core.logger import log
+            log(f"MilitaryHUDRadar: Cleaned {removed} stale targets (>{max_age_seconds}s old)", "DEBUG")
+
     def set_system_status(self, scan_mode=None, lock_status=None, range_mode=None):
         """Update system status indicators"""
         if scan_mode:
@@ -705,6 +719,20 @@ class MinimalRadarWidget(QWidget):
     def clear_targets(self):
         """Clear all targets"""
         self.targets = []
+
+    def cleanup_stale_targets(self, max_age_seconds=3.0):
+        """
+        Remove targets that haven't been updated recently (FIXED v4.2.0)
+        Defensive cleanup for stuck targets on minimal radar
+        """
+        current_time = time.time()
+        before_count = len(self.targets)
+        self.targets = [t for t in self.targets
+                       if (current_time - t.get('last_seen', current_time)) < max_age_seconds]
+        removed = before_count - len(self.targets)
+        if removed > 0:
+            from core.logger import log
+            log(f"MinimalRadar: Cleaned {removed} stale targets (>{max_age_seconds}s old)", "DEBUG")
 
     def paintEvent(self, event):
         """Paint ONLY the radar - no side panels"""

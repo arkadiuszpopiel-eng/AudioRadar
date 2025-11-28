@@ -1515,6 +1515,12 @@ class MainWindow(QMainWindow):
                         target['id'], target['angle'], target['distance'],
                         state=target_state, speed=0, label=f"T{target['id']}"
                     )
+
+        # FIXED v4.2.0: Defensive cleanup of stale targets from radar UI
+        # This catches any targets that weren't properly removed by the tracker
+        self.radar_widget.cleanup_stale_targets(max_age_seconds=3.0)
+        if self.detached_radar:
+            self.detached_radar.radar_widget.cleanup_stale_targets(max_age_seconds=3.0)
         else:
             # Clear all radars when no targets
             self.radar_widget.clear_targets()

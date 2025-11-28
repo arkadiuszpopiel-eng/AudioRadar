@@ -34,12 +34,22 @@ class HumanFootstepDetector:
     FIXED v4.2.0: Added surface type classification (metal/dirt/snow) using spectral features
     """
 
-    def __init__(self, sample_rate=48000):
+    def __init__(self, sample_rate=48000, debug_mode=False):
         log("HumanFootstepDetector.__init__", "INFO")
 
         # FIXED v4.2.0: Spectral feature extractor for surface classification
         self.spectral_extractor = SpectralFeatureExtractor(sample_rate)
         self.sample_rate = sample_rate
+
+        # FIXED v4.2.0: Debug mode for periodic confidence logging
+        self.debug_mode = debug_mode
+        self.last_debug_log_time = 0.0
+        self.debug_log_interval = 0.5  # Log every 500ms when debug enabled
+
+        # FIXED v4.2.0: Error rate limiting to prevent log spam
+        self.last_error_log_time = 0.0
+        self.error_log_interval = 5.0  # Max one error log per 5 seconds
+        self.error_count_since_last_log = 0
 
         # Temporal analysis buffers
         self.step_history = []  # timestamps of detected steps
@@ -56,9 +66,10 @@ class HumanFootstepDetector:
         # Distance estimation
         self.estimated_distance = 0.0
 
-        # Cadence parameters (steps per second)
-        self.cadence_walk = (1.5, 2.5)   # 1.5-2.5 steps/sec for walking
-        self.cadence_run = (3.0, 4.5)    # 3.0-4.5 steps/sec for running
+        # FIXED v4.2.0: ARC Raiders-tuned cadence parameters
+        # Slightly wider ranges based on game observations
+        self.cadence_walk = (1.4, 2.6)   # 1.4-2.6 steps/sec for walking (relaxed)
+        self.cadence_run = (2.8, 4.8)    # 2.8-4.8 steps/sec for running (relaxed)
 
         # Frequency ranges for human footsteps
         self.freq_impact = (60, 180)     # main impact (heel strike)
@@ -77,10 +88,11 @@ class HumanFootstepDetector:
         self.noise_floor_detail = 0.0
         self.noise_floor_body = 0.0
 
+        # FIXED v4.2.0: Lowered base thresholds for ARC Raiders (better sensitivity)
         # Base thresholds (will be adjusted based on noise floor)
-        self.base_impact_threshold = 0.15
-        self.base_detail_threshold = 0.05
-        self.base_body_threshold = 0.02
+        self.base_impact_threshold = 0.12  # Was 0.15, now 0.12 for better detection
+        self.base_detail_threshold = 0.04  # Was 0.05, now 0.04
+        self.base_body_threshold = 0.015   # Was 0.02, now 0.015
 
         # Adaptive threshold multiplier (how much above noise floor to detect)
         self.threshold_multiplier = 1.5  # 1.5x above noise floor
@@ -324,10 +336,38 @@ class HumanFootstepDetector:
                     self.surface_type = surface_result['surface_type']
                     self.surface_confidence = surface_result['confidence']
 
+            # FIXED v4.2.0: Debug mode - periodic logging of detection state
+            if self.debug_mode and (current_time - self.last_debug_log_time) >= self.debug_log_interval:
+                self.last_debug_log_time = current_time
+                log(f"FootstepDetector DEBUG: is_step={result['is_human_step']}, "
+                    f"confidence={result['confidence']:.1f}, "
+                    f"cadence={result['cadence']:.2f}, "
+                    f"gait={result['gait_type']}, "
+                    f"impact_ratio={impact_ratio:.3f} (threshold={adaptive_impact_threshold:.3f})", "DEBUG")
+
             return result
 
         except Exception as e:
-            log(f"Error in HumanFootstepDetector.analyze_footstep: {e}", "ERROR")
+            # FIXED v4.2.0: Rate-limited error logging to prevent log spam
+            self.error_count_since_last_log += 1
+            current_time = time.time()
+
+            if (current_time - self.last_error_log_time) >= self.error_log_interval:
+                # Log error with count of occurrences since last log
+                error_msg = f"Error in HumanFootstepDetector.analyze_footstep: {e}"
+                if self.error_count_since_last_log > 1:
+                    error_msg += f" (occurred {self.error_count_since_last_log} times in last {self.error_log_interval}s)"
+
+                # Include shape information if available
+                try:
+                    error_msg += f" | block.shape={block.shape if hasattr(block, 'shape') else 'N/A'}"
+                except:
+                    pass
+
+                log(error_msg, "ERROR")
+                self.last_error_log_time = current_time
+                self.error_count_since_last_log = 0
+
             return {
                 'is_human_step': False,
                 'confidence': 0.0,

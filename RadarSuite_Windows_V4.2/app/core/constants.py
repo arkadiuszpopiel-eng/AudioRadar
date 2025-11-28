@@ -9,10 +9,15 @@ FIXED v4.2.0: ARC Raiders-specific optimizations
 """
 
 # ============================================================================
-# VERSION
+# VERSION (FIXED v4.2.0: Centralized in version.py)
 # ============================================================================
 
-VERSION = "v4.2.0-ARC-Raiders"
+# Import version from centralized version.py
+try:
+    from version import __version_full__ as VERSION
+except ImportError:
+    # Fallback if version.py not found (shouldn't happen)
+    VERSION = "v4.2.0-ARC-Raiders"
 
 # ============================================================================
 # CONSTANTS (FIXED v3.5.0: Extracted magic numbers)
@@ -34,6 +39,10 @@ STARTUP_AUDIO_DELAY_MS = 1000 # Audio scan delay
 ENERGY_THRESHOLD = 0.001         # Minimum energy for detection (FIXED v4.1.1: increased 100x to reduce noise)
 LOCALIZATION_MIN_CONFIDENCE = 30  # Minimum confidence for target tracking (FIXED v4.1.1)
 RADAR_ROTATION_DEG = 4.0         # Degrees per frame
+
+# FIXED v4.2.0: Radar orientation configuration
+RADAR_ORIENTATION_MODE = "player_up"  # "north_up" or "player_up" (head-up mode for ARC Raiders)
+RADAR_DEBUG_ORIENTATION = False  # Enable debug logging for orientation calculations
 
 # Worker threads
 MAX_WORKERS = 3              # Thread pool size

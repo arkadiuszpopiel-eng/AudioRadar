@@ -107,12 +107,35 @@ class HumanFootstepDetector:
         try:
             current_time = time.time()
 
-            # Convert to mono for frequency analysis
+            # FIXED v4.2.0: Proper mono/stereo handling with shape validation
             if block.ndim == 2:
-                mono = np.mean(block, axis=1)
-                left = block[:, 0]
-                right = block[:, 1]
+                # 2D array: check if (samples, channels) or (channels, samples)
+                if block.shape[1] >= 2:
+                    # (samples, channels) with at least 2 channels - stereo
+                    mono = np.mean(block, axis=1)
+                    left = block[:, 0]
+                    right = block[:, 1]
+                elif block.shape[1] == 1:
+                    # (samples, 1) - mono in 2D format
+                    mono = block[:, 0]
+                    left = mono
+                    right = mono
+                    stereo = False
+                else:
+                    # Unusual shape - try transpose
+                    if block.shape[0] >= 2:
+                        block = block.T
+                        mono = np.mean(block, axis=1)
+                        left = block[:, 0]
+                        right = block[:, 1]
+                    else:
+                        # Fallback to mono
+                        mono = block.ravel()
+                        left = mono
+                        right = mono
+                        stereo = False
             else:
+                # 1D array - mono
                 mono = block.ravel()
                 left = mono
                 right = mono

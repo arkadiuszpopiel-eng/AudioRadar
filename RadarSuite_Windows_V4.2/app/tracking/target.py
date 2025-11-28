@@ -35,11 +35,16 @@ class Target:
         self.confidence = 1.0
         self.is_active = True
 
+        # FIXED v4.2.0: Type stability - track recent type detections
+        self.type_history = deque(maxlen=5)
+        self.type_history.append(target_type)
+
     def update(self, angle, distance, elevation, target_type=None):
         """
         Update target position and type
 
         FIXED v4.1.2: Now accepts target_type to allow type changes
+        FIXED v4.2.0: Type stabilization with voting to prevent spam
         """
         self.angle = angle
         self.distance = distance
@@ -48,9 +53,26 @@ class Target:
         self.update_count += 1
         self.confidence = min(1.0, self.confidence + 0.1)
 
-        # FIXED v4.1.2: Update type if provided
-        if target_type is not None:
-            self.type = target_type
+        # FIXED v4.2.0: Type stabilization - use majority voting
+        if target_type is not None and target_type != 'unknown':
+            self.type_history.append(target_type)
+
+            # Vote on type based on recent history
+            if len(self.type_history) >= 3:
+                # Count occurrences
+                type_counts = {}
+                for t in self.type_history:
+                    type_counts[t] = type_counts.get(t, 0) + 1
+
+                # Get most common type
+                most_common = max(type_counts, key=type_counts.get)
+                self.type = most_common
+            else:
+                # Not enough history, use current
+                self.type = target_type
+        elif target_type is not None:
+            # Unknown type - keep current
+            pass
 
         # Add to history
         self.history.append((angle, distance, elevation))
@@ -58,11 +80,18 @@ class Target:
             self.history.pop(0)
 
     def decay(self, dt):
-        """Decay confidence over time (for targets not updated)"""
+        """
+        Decay confidence over time (for targets not updated)
+
+        FIXED v4.2.0: Added TTL check - targets expire after timeout
+        """
         self.confidence -= dt * 0.5  # Lose 50% confidence per second
         self.lifetime += dt
 
-        if self.confidence <= 0:
+        # FIXED v4.2.0: Check time since last update (TTL)
+        time_since_update = time.time() - self.last_update_time
+
+        if self.confidence <= 0 or time_since_update > 2.0:
             self.is_active = False
 
     def get_color(self):
@@ -125,7 +154,12 @@ class TargetTracker:
             for target in self.targets.values():
                 target.decay(dt)
 
-            # Remove inactive targets
+            # FIXED v4.2.0: Remove inactive targets with logging
+            inactive_targets = [(tid, t) for tid, t in self.targets.items() if not t.is_active]
+            for tid, target in inactive_targets:
+                log(f"Removing target #{tid} ({target.type}) - "
+                    f"timeout={time.time() - target.last_update_time:.1f}s, "
+                    f"conf={target.confidence:.2f}", "DEBUG")
             self.targets = {tid: t for tid, t in self.targets.items() if t.is_active}
 
             # Process new detections

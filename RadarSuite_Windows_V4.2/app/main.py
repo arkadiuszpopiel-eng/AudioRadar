@@ -1756,9 +1756,19 @@ class MainWindow(QMainWindow):
             # Weight: 70% ITD, 30% ILD (ITD is generally more accurate)
             angle_combined = 0.7 * angle_from_itd + 0.3 * angle_from_ild
 
+            # FIXED v4.2.0: Player-centric radar transformation
+            # TODO: Get player yaw from game (requires hooks/memory reading)
+            # For now, assume player facing North (yaw = 0)
+            # When player yaw is available, subtract it from angle_radar
+            player_yaw = 0.0  # Placeholder - will be replaced with actual game data
+
             # Convert to radar coordinates (0° = forward, 90° = right, 180° = back, 270° = left)
+            # Relative to sound source
             angle_radar = 90.0 + angle_combined  # Center at front (90°)
-            angle_radar = angle_radar % 360.0
+
+            # Transform to player-centric coordinates
+            # If player faces East (yaw=90°), sounds from North should appear on left
+            angle_radar = (angle_radar - player_yaw) % 360.0
 
             # === Distance Estimation ===
             total_energy = (rms_left + rms_right) / 2.0
@@ -1933,7 +1943,11 @@ class MainWindow(QMainWindow):
             )
 
     def scan_games(self):
-        """Scan for running games and update UI (v3.4.1 - z integracją platform gaming)"""
+        """
+        Scan for running games and update UI (v3.4.1 - z integracją platform gaming)
+
+        FIXED v4.2.0: Reduced logging spam - only log on changes
+        """
         try:
             game_data = self.game_detector.scan_processes()
 
@@ -1942,6 +1956,11 @@ class MainWindow(QMainWindow):
 
             # Inteligentna detekcja przez launchery (v3.4.1)
             launcher_game = self.platform_detector.detect_game_from_launcher(game_data['games'])
+
+            # FIXED v4.2.0: Only log when game state changes
+            current_games = set(game_data.get('games', []))
+            if not hasattr(self, '_last_detected_games'):
+                self._last_detected_games = set()
 
             # Update game detection labels in Tab 3
             if game_data['has_games']:
@@ -1957,9 +1976,15 @@ class MainWindow(QMainWindow):
                 self.detected_games_label.setText(f"🎮 {games_text}")
                 self.detected_games_label.setStyleSheet("font-size: 11pt; color: #00FF00; font-weight: bold; padding: 10px;")
 
+                # FIXED v4.2.0: Only log when games change
+                if current_games != self._last_detected_games:
+                    log(f"Game detection changed: {games_text}", "INFO")
+
                 # AUTO-SUGGESTION: Enable loopback when game detected (v3.1.0)
                 if not self.dev_panel.loopback_mode.isChecked():
-                    log("Game detected! Auto-suggesting loopback mode for game audio capture", "INFO")
+                    # Only log once when first game detected
+                    if not self._last_detected_games and current_games:
+                        log("Game detected! Auto-suggesting loopback mode for game audio capture", "INFO")
                     # Show subtle hint in status bar
                     if not self.is_running:
                         self.status_bar.showMessage(
@@ -1969,6 +1994,8 @@ class MainWindow(QMainWindow):
             else:
                 self.detected_games_label.setText("No games detected")
                 self.detected_games_label.setStyleSheet("font-size: 11pt; color: #888888; padding: 10px;")
+
+            self._last_detected_games = current_games
 
             if game_data['engines']:
                 engines_text = ", ".join(game_data['engines'][:3])

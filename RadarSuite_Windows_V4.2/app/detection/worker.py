@@ -150,13 +150,28 @@ class DetectionWorker:
         if cancelled_count > 0:
             log(f"Cancelled {cancelled_count} pending tasks", "INFO")
 
-        # Wait for running tasks with timeout
+        # FIXED v4.2.0: Proper shutdown without unsupported timeout parameter
+        # Wait for running tasks with manual timeout handling
+        start_time = time.time()
         try:
-            self.executor.shutdown(wait=True, timeout=timeout)
-            log("DetectionWorker shutdown complete", "INFO")
+            # Shutdown and wait for completion
+            self.executor.shutdown(wait=False)
+
+            # Wait for all futures to complete with timeout
+            all_done = True
+            with self._lock:
+                remaining = [f for f in self.active_futures if not f.done()]
+
+            while remaining and (time.time() - start_time) < timeout:
+                time.sleep(0.1)
+                with self._lock:
+                    remaining = [f for f in self.active_futures if not f.done()]
+
+            if remaining:
+                log(f"Forced shutdown - {len(remaining)} tasks still running after {timeout}s", "WARNING")
+            else:
+                log("DetectionWorker shutdown complete", "INFO")
+
         except Exception as e:
             log(f"DetectionWorker shutdown error: {e}", "WARNING")
-            # Force shutdown if timeout exceeded
-            self.executor.shutdown(wait=False, cancel_futures=True)
-            log("Forced shutdown after timeout", "WARNING")
 

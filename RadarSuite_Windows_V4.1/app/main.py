@@ -1107,27 +1107,27 @@ class MainWindow(QMainWindow):
 
     def _safe_update_detached_radar(self, method_name, *args):
         """
-        Safely update detached radar (FIXED v3.5.0: Null-safety)
+        Safely update detached radar (FIXED v4.1.2: Updated for MinimalRadarWidget)
 
-        Prevents AttributeError when detached_radar or detached_radar.radar is None
+        Prevents AttributeError when detached_radar or detached_radar.radar_widget is None
 
         Args:
-            method_name: Method name to call on detached_radar.radar
+            method_name: Method name to call on detached_radar.radar_widget
             *args: Arguments to pass to method
         """
         if not self.detached_radar:
             return
 
-        if not hasattr(self.detached_radar, 'radar'):
-            log(f"Detached radar missing 'radar' attribute", "WARNING")
+        if not hasattr(self.detached_radar, 'radar_widget'):
+            log(f"Detached radar missing 'radar_widget' attribute", "WARNING")
             return
 
-        if self.detached_radar.radar is None:
-            log(f"Detached radar.radar is None", "WARNING")
+        if self.detached_radar.radar_widget is None:
+            log(f"Detached radar.radar_widget is None", "WARNING")
             return
 
         try:
-            method = getattr(self.detached_radar.radar, method_name)
+            method = getattr(self.detached_radar.radar_widget, method_name)
             method(*args)
         except AttributeError as e:
             log(f"Method '{method_name}' not found on detached radar: {e}", "WARNING")

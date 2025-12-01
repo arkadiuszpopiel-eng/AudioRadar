@@ -40,6 +40,11 @@ ENERGY_THRESHOLD = 0.001         # Minimum energy for detection (FIXED v4.1.1: i
 LOCALIZATION_MIN_CONFIDENCE = 30  # Minimum confidence for target tracking (FIXED v4.1.1)
 RADAR_ROTATION_DEG = 4.0         # Degrees per frame
 
+# FIXED v4.2.0: Target confidence thresholds (normalized 0-100%)
+TARGET_CONFIDENCE_ALGORITHM_MIN = 30.0  # Minimum confidence to create target (30%)
+TARGET_CONFIDENCE_UI_MIN = 50.0         # Minimum confidence to show in UI (50%)
+TARGET_CONFIDENCE_THREAT_MIN = 70.0     # Minimum confidence for threat classification (70%)
+
 # FIXED v4.2.0: Radar orientation configuration
 RADAR_ORIENTATION_MODE = "player_up"  # "north_up" or "player_up" (head-up mode for ARC Raiders)
 RADAR_DEBUG_ORIENTATION = False  # Enable debug logging for orientation calculations

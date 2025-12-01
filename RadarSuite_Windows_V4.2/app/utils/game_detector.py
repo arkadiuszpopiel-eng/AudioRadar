@@ -1,6 +1,7 @@
 """
-RadarSuite v3.5.0 - Game Process Detector
+RadarSuite v4.2.0 - Game Process Detector
 Detects running games for ARC Raiders, Tarkov, CS2, etc.
+FIXED v4.2.0: State change tracking to reduce log spam
 """
 
 import time
@@ -149,6 +150,11 @@ class GameProcessDetector:
         self.last_scan_time = 0.0
         self.scan_interval = 3.0  # Scan every 3 seconds
 
+        # FIXED v4.2.0: State change tracking to reduce log spam
+        self._last_detected_games = set()
+        self._last_detected_engines = set()
+        self._last_detected_launchers = set()
+
     def scan_processes(self):
         """
         Scan for running game processes - STRICT matching on process name only
@@ -188,7 +194,9 @@ class GameProcessDetector:
                     if exe_name.lower() in running_processes:
                         if game_name not in detected_games:
                             detected_games.append(game_name)
-                            log(f"Detected game: {game_name} ({exe_name})", "INFO")
+                            # FIXED v4.2.0: Only log on state change
+                            if game_name not in self._last_detected_games:
+                                log(f"Game started: {game_name} ({exe_name})", "INFO")
                         break
 
             # Check for game engines - EXACT match on process name (editor detection)
@@ -197,7 +205,9 @@ class GameProcessDetector:
                     if exe_name.lower() in running_processes:
                         if engine_name not in detected_engines:
                             detected_engines.append(engine_name)
-                            log(f"Detected engine (editor): {engine_name} ({exe_name})", "INFO")
+                            # FIXED v4.2.0: Only log on state change
+                            if engine_name not in self._last_detected_engines:
+                                log(f"Engine started (editor): {engine_name} ({exe_name})", "INFO")
                         break
 
             # Infer engines from detected games (runtime detection)
@@ -206,7 +216,9 @@ class GameProcessDetector:
                     engine_name = self.game_to_engine[game_name]
                     if engine_name not in detected_engines:
                         detected_engines.append(engine_name)
-                        log(f"Inferred engine from game: {engine_name} (from {game_name})", "INFO")
+                        # FIXED v4.2.0: Only log on state change
+                        if engine_name not in self._last_detected_engines:
+                            log(f"Engine inferred from game: {engine_name} (from {game_name})", "INFO")
 
             # Check for platform launchers - EXACT match on process name
             for launcher_name, exe_names in self.platform_launchers.items():
@@ -215,6 +227,20 @@ class GameProcessDetector:
                         if launcher_name not in detected_launchers:
                             detected_launchers.append(launcher_name)
                         break
+
+            # FIXED v4.2.0: Log stopped games/engines (state change)
+            stopped_games = self._last_detected_games - set(detected_games)
+            for game_name in stopped_games:
+                log(f"Game stopped: {game_name}", "INFO")
+
+            stopped_engines = self._last_detected_engines - set(detected_engines)
+            for engine_name in stopped_engines:
+                log(f"Engine stopped: {engine_name}", "INFO")
+
+            # Update state tracking
+            self._last_detected_games = set(detected_games)
+            self._last_detected_engines = set(detected_engines)
+            self._last_detected_launchers = set(detected_launchers)
 
             self.active_games = detected_games
             self.active_engines = detected_engines

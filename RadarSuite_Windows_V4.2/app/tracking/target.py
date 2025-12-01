@@ -1,7 +1,8 @@
 """
-RadarSuite v4.1.0 - Target Tracking
+RadarSuite v4.2.0 - Target Tracking
 Target and TargetTracker for multi-target tracking
 FIXED v4.1.0: Thread-safe operations with locks
+FIXED v4.2.0: Normalized confidence logging (0-100%)
 """
 
 import time
@@ -10,6 +11,8 @@ import threading
 from collections import deque
 
 from core.logger import log
+from core.confidence import ConfidenceNormalizer
+from core.constants import TARGET_CONFIDENCE_ALGORITHM_MIN, TARGET_CONFIDENCE_UI_MIN
 
 
 class Target:
@@ -154,12 +157,14 @@ class TargetTracker:
             for target in self.targets.values():
                 target.decay(dt)
 
-            # FIXED v4.2.0: Remove inactive targets with logging
+            # FIXED v4.2.0: Remove inactive targets with logging (normalized confidence)
             inactive_targets = [(tid, t) for tid, t in self.targets.items() if not t.is_active]
             for tid, target in inactive_targets:
+                # Normalize confidence to 0-100% for readable logging
+                conf_normalized = ConfidenceNormalizer.normalize(target.confidence, 'probability')
                 log(f"Removing target #{tid} ({target.type}) - "
                     f"timeout={time.time() - target.last_update_time:.1f}s, "
-                    f"conf={target.confidence:.2f}", "DEBUG")
+                    f"conf={conf_normalized:.1f}%", "DEBUG")
             self.targets = {tid: t for tid, t in self.targets.items() if t.is_active}
 
             # Process new detections
@@ -270,7 +275,9 @@ class TargetTracker:
         old_priority = type_priority.get(weakest_target.type, 1) if weakest_target else 0
 
         if weakest_target and (new_priority > old_priority or min_confidence < 0.3):
-            log(f"Replacing target #{weakest_target.id} ({weakest_target.type}, conf={min_confidence:.2f}) "
+            # FIXED v4.2.0: Normalize confidence for readable logging
+            conf_normalized = ConfidenceNormalizer.normalize(min_confidence, 'probability')
+            log(f"Replacing target #{weakest_target.id} ({weakest_target.type}, conf={conf_normalized:.1f}%) "
                 f"with {target_type}", "INFO")
             weakest_target.update(angle, distance, elevation, target_type)
             weakest_target.confidence = 0.8  # Reset confidence

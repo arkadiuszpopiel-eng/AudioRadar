@@ -71,6 +71,11 @@ class DetectionWorker:
 
         # FIXED v4.2.0: Safe cleanup using dedicated thread instead of recursive Timer
         self._cleanup_thread = None
+
+        # FIXED v4.2.0: Statistics for VERBOSE logging
+        self._total_cleaned = 0
+        self._last_verbose_log = time.time()
+
         self._start_cleanup_thread()
 
     def _start_cleanup_thread(self):
@@ -92,17 +97,31 @@ class DetectionWorker:
             daemon=True
         )
         self._cleanup_thread.start()
-        log("Cleanup thread started", "DEBUG")
+        log("Cleanup thread started", "TRACE")  # FIXED v4.2.0: TRACE level to reduce spam
 
     def _cleanup_done_futures(self):
-        """Remove completed futures from list (memory leak prevention)"""
+        """
+        Remove completed futures from list (memory leak prevention)
+        FIXED v4.2.0: TRACE level for frequent logs, VERBOSE for 60s summaries
+        """
         with self._lock:
             before_count = len(self.active_futures)
             self.active_futures = [f for f in self.active_futures if not f.done()]
             cleaned_count = before_count - len(self.active_futures)
 
             if cleaned_count > 0:
-                log(f"Cleaned {cleaned_count} completed futures (remaining: {len(self.active_futures)})", "DEBUG")
+                self._total_cleaned += cleaned_count
+                # TRACE level - only visible when debugging memory leaks
+                log(f"Cleaned {cleaned_count} completed futures (remaining: {len(self.active_futures)})", "TRACE")
+
+            # VERBOSE summary every 60 seconds
+            current_time = time.time()
+            if current_time - self._last_verbose_log >= 60.0:
+                log(f"Cleanup stats (60s): total_cleaned={self._total_cleaned}, "
+                    f"current_active={len(self.active_futures)}, "
+                    f"pool_size={self.max_workers}", "VERBOSE")
+                self._total_cleaned = 0  # Reset counter
+                self._last_verbose_log = current_time
 
     def _check_backpressure(self) -> bool:
         """
@@ -348,7 +367,7 @@ class DetectionWorker:
             if self._cleanup_thread.is_alive():
                 log("Cleanup thread did not terminate in time (daemon will be killed)", "WARNING")
             else:
-                log("Cleanup thread terminated cleanly", "DEBUG")
+                log("Cleanup thread terminated cleanly", "TRACE")  # FIXED v4.2.0: TRACE level
 
         # Cancel pending futures
         cancelled_count = 0
@@ -391,4 +410,4 @@ class DetectionWorker:
             # FIXED v4.2.0: Clear futures list to free memory
             with self._lock:
                 self.active_futures.clear()
-            log("DetectionWorker cleanup completed", "DEBUG")
+            log("DetectionWorker cleanup completed", "TRACE")  # FIXED v4.2.0: TRACE level

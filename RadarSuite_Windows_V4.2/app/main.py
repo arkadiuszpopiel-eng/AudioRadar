@@ -1382,6 +1382,7 @@ class MainWindow(QMainWindow):
     def _process_detection_and_tracking(self, block, fft_result, energy):
         """
         Perform detection, 3D localization, classification, and tracking (FIXED v3.5.0: Helper method)
+        FIXED v4.2.0: Use DetectionWorker for parallel processing with proper error handling
 
         Args:
             block: Audio block (numpy array)
@@ -1391,8 +1392,38 @@ class MainWindow(QMainWindow):
         Returns:
             Tuple of (events, bands, active_targets)
         """
-        # Detection - use cached FFT (Module 12 optimization)
-        events, bands = self.det_panel.analyze(block, self.audio.sample_rate, fft_cache=fft_result)
+        # FIXED v4.2.0: Use DetectionWorker for parallel detection (offload from main thread)
+        detection_future = self.detection_worker.submit_detection(
+            self.det_panel, block, self.audio.sample_rate, fft_result
+        )
+
+        # Handle detection result
+        if detection_future:
+            try:
+                # Wait for detection to complete (max 1 second)
+                detection_result = detection_future.result(timeout=1.0)
+
+                if detection_result.success:
+                    events = detection_result.data['events']
+                    bands = detection_result.data['bands']
+                else:
+                    # Detection failed - log and use defaults
+                    log(f"Detection worker returned error: {detection_result.error}", "WARNING")
+                    events = {'walk': False, 'run': False, 'shot': False}
+                    bands = {}
+            except TimeoutError:
+                log("Detection worker timed out (>1s) - skipping frame", "WARNING")
+                events = {'walk': False, 'run': False, 'shot': False}
+                bands = {}
+            except Exception as e:
+                log(f"Unexpected error getting detection result: {e}", "ERROR")
+                events = {'walk': False, 'run': False, 'shot': False}
+                bands = {}
+        else:
+            # Worker rejected task (backpressure or shutdown)
+            log("DetectionWorker rejected task (backpressure or shutdown)", "DEBUG")
+            events = {'walk': False, 'run': False, 'shot': False}
+            bands = {}
 
         # Multi-target tracking
         has_detection = events.get('walk', False) or events.get('run', False) or events.get('shot', False)
@@ -1412,8 +1443,32 @@ class MainWindow(QMainWindow):
             distance = location_3d['distance']
             elevation = location_3d['elevation']
 
-            # Classify sound type - use cached FFT
-            sound_class = self.sound_classifier.classify_sound(block, self.audio.sample_rate, fft_cache=fft_result)
+            # FIXED v4.2.0: Use DetectionWorker for parallel classification
+            classification_future = self.detection_worker.submit_classification(
+                self.sound_classifier, block, self.audio.sample_rate, fft_result
+            )
+
+            # Handle classification result
+            if classification_future:
+                try:
+                    # Wait for classification to complete (max 1 second)
+                    classification_result = classification_future.result(timeout=1.0)
+
+                    if classification_result.success:
+                        sound_class = classification_result.data
+                    else:
+                        log(f"Classification worker returned error: {classification_result.error}", "WARNING")
+                        sound_class = {'type': 'unknown', 'confidence': 0, 'details': {}}
+                except TimeoutError:
+                    log("Classification worker timed out (>1s) - using unknown", "WARNING")
+                    sound_class = {'type': 'unknown', 'confidence': 0, 'details': {}}
+                except Exception as e:
+                    log(f"Unexpected error getting classification result: {e}", "ERROR")
+                    sound_class = {'type': 'unknown', 'confidence': 0, 'details': {}}
+            else:
+                # Worker rejected task
+                log("DetectionWorker rejected classification task", "DEBUG")
+                sound_class = {'type': 'unknown', 'confidence': 0, 'details': {}}
 
             # FIXED v4.1.2: Improved detection type classification
             # Prioritize classification, but distinguish walk vs run

@@ -106,12 +106,92 @@ class ThreadSafeLogger:
 # Global logger instance (singleton)
 _thread_safe_logger = ThreadSafeLogger()
 
+# ============================================================================
+# PER-MODULE LOG LEVEL CONTROL (ENHANCED v4.2.0 - Punkt 7)
+# ============================================================================
 
-def log(msg: str, level: str = "INFO"):
+# Module-specific log levels (default to INFO)
+_module_log_levels = {}
+
+# Default global log level
+_global_log_level = logging.INFO
+
+
+def set_module_log_level(module_name: str, level: str):
     """
-    Thread-safe logging wrapper
+    Set log level for a specific module.
+
+    Args:
+        module_name: Name of the module (e.g., 'audio', 'detection', 'tracking')
+        level: Log level string ('TRACE', 'DEBUG', 'VERBOSE', 'INFO', 'WARNING', 'ERROR')
+
+    Example:
+        set_module_log_level('detection', 'DEBUG')  # Verbose detection logs
+        set_module_log_level('audio', 'WARNING')    # Quiet audio logs
+    """
+    level_map = {
+        "TRACE": TRACE,
+        "DEBUG": logging.DEBUG,
+        "VERBOSE": VERBOSE,
+        "INFO": logging.INFO,
+        "WARNING": logging.WARNING,
+        "ERROR": logging.ERROR,
+    }
+    _module_log_levels[module_name.lower()] = level_map.get(level.upper(), logging.INFO)
+
+
+def get_module_log_level(module_name: str) -> int:
+    """Get the log level for a specific module."""
+    return _module_log_levels.get(module_name.lower(), _global_log_level)
+
+
+def set_global_log_level(level: str):
+    """Set the global default log level."""
+    global _global_log_level
+    level_map = {
+        "TRACE": TRACE,
+        "DEBUG": logging.DEBUG,
+        "VERBOSE": VERBOSE,
+        "INFO": logging.INFO,
+        "WARNING": logging.WARNING,
+        "ERROR": logging.ERROR,
+    }
+    _global_log_level = level_map.get(level.upper(), logging.INFO)
+
+
+def log(msg: str, level: str = "INFO", module: str = None):
+    """
+    Thread-safe logging wrapper with per-module level control.
 
     FIXED v3.5.0: Race condition eliminated via logging.handlers.RotatingFileHandler
-    Safe for concurrent access from multiple threads
+    ENHANCED v4.2.0: Per-module log level control (Punkt 7)
+
+    Args:
+        msg: Log message
+        level: Log level ('TRACE', 'DEBUG', 'VERBOSE', 'INFO', 'WARNING', 'ERROR')
+        module: Optional module name for per-module filtering
+
+    Example:
+        log("Audio initialized", "INFO", module="audio")
+        log("Detection result", "DEBUG", module="detection")
     """
+    # Check module-specific level if provided
+    if module:
+        level_map = {
+            "TRACE": TRACE,
+            "DEBUG": logging.DEBUG,
+            "VERBOSE": VERBOSE,
+            "INFO": logging.INFO,
+            "WARNING": logging.WARNING,
+            "WARN": logging.WARNING,
+            "ERROR": logging.ERROR,
+            "CRITICAL": logging.CRITICAL
+        }
+        msg_level = level_map.get(level.upper(), logging.INFO)
+        module_level = get_module_log_level(module)
+
+        # Skip if message level is below module's configured level
+        if msg_level < module_level:
+            return
+
     _thread_safe_logger.log(msg, level)

@@ -1,8 +1,9 @@
 """
 RadarSuite v4.2.0 - Audio Engine (Linux)
-Audio capture via sounddevice/soundcard/PulseAudio
+Audio capture via sounddevice/soundcard/PulseAudio/PipeWire
 
 LINUX VERSION: Uses PulseAudio/PipeWire monitor sources for loopback
+ENHANCED v4.2.0: Native PipeWire support with automatic backend detection
 """
 
 import time
@@ -11,6 +12,8 @@ import threading
 import numpy as np
 import sys
 import subprocess
+import os
+import struct
 
 # FIXED v3.5.4: Proper numpy compatibility wrapper for soundcard library
 # numpy.fromstring was removed in numpy 2.0, soundcard may use it internally
@@ -47,11 +50,101 @@ except ImportError:
 
 from core.logger import log
 
-# Log PulseAudio availability at module load
-if PULSECTL_AVAILABLE:
-    log("pulsectl loaded successfully (PulseAudio control)", "INFO")
+# ============================================================================
+# PipeWire Native Support Detection (v4.2.0)
+# ============================================================================
+
+def _detect_audio_server():
+    """
+    Detect which audio server is running: PipeWire, PulseAudio, or none.
+    Returns tuple: (server_type, server_info)
+    server_type: 'pipewire', 'pulseaudio', or None
+    """
+    try:
+        result = subprocess.run(
+            ['pactl', 'info'],
+            capture_output=True,
+            text=True,
+            timeout=5
+        )
+        if result.returncode == 0:
+            server_name = None
+            server_version = None
+            for line in result.stdout.split('\n'):
+                if 'Server Name:' in line:
+                    server_name = line.split(':', 1)[1].strip().lower()
+                elif 'Server Version:' in line:
+                    server_version = line.split(':', 1)[1].strip()
+
+            if server_name:
+                if 'pipewire' in server_name:
+                    return ('pipewire', {'name': server_name, 'version': server_version})
+                elif 'pulseaudio' in server_name or 'pulse' in server_name:
+                    return ('pulseaudio', {'name': server_name, 'version': server_version})
+    except FileNotFoundError:
+        pass  # pactl not installed
+    except Exception:
+        pass
+
+    # Check for PipeWire directly via pw-cli
+    try:
+        result = subprocess.run(
+            ['pw-cli', 'info', '0'],
+            capture_output=True,
+            text=True,
+            timeout=5
+        )
+        if result.returncode == 0:
+            return ('pipewire', {'name': 'PipeWire (native)', 'version': None})
+    except FileNotFoundError:
+        pass
+    except Exception:
+        pass
+
+    return (None, None)
+
+
+def _check_pipewire_tools():
+    """Check if PipeWire command-line tools are available"""
+    tools = {
+        'pw-cli': False,
+        'pw-record': False,
+        'pw-cat': False,
+        'pw-dump': False
+    }
+
+    for tool in tools.keys():
+        try:
+            result = subprocess.run(
+                ['which', tool],
+                capture_output=True,
+                timeout=2
+            )
+            tools[tool] = result.returncode == 0
+        except Exception:
+            pass
+
+    return tools
+
+
+# Detect audio server at module load
+AUDIO_SERVER_TYPE, AUDIO_SERVER_INFO = _detect_audio_server()
+PIPEWIRE_TOOLS = _check_pipewire_tools() if AUDIO_SERVER_TYPE == 'pipewire' else {}
+
+# Log audio server availability at module load
+if AUDIO_SERVER_TYPE == 'pipewire':
+    log(f"PipeWire detected: {AUDIO_SERVER_INFO.get('name', 'unknown')}", "INFO")
+    if PIPEWIRE_TOOLS.get('pw-record'):
+        log("  pw-record available - native PipeWire capture supported", "INFO")
+elif AUDIO_SERVER_TYPE == 'pulseaudio':
+    log(f"PulseAudio detected: {AUDIO_SERVER_INFO.get('name', 'unknown')}", "INFO")
 else:
-    log("pulsectl NOT available - using soundcard for PulseAudio loopback", "INFO")
+    log("No PulseAudio/PipeWire server detected", "WARN")
+
+if PULSECTL_AVAILABLE:
+    log("pulsectl loaded successfully (enhanced device listing)", "INFO")
+else:
+    log("pulsectl NOT available - using soundcard for loopback", "INFO")
 
 
 class AudioEngine:
@@ -60,8 +153,10 @@ class AudioEngine:
     - sounddevice (standard input devices)
     - soundcard loopback (capture from speaker output via PulseAudio monitor)
     - PulseAudio/PipeWire native loopback
+    - PipeWire native backend (via pw-record) - NEW in v4.2.0
 
     LINUX VERSION v4.2.0: Optimized for PulseAudio/PipeWire
+    ENHANCED v4.2.0: Native PipeWire support with automatic backend detection
     FIXED v4.1.2: Auto-detection of channel count for 5.1/7.1 support
     """
 
@@ -83,6 +178,12 @@ class AudioEngine:
         # FIXED v4.1.2: Channel layout info for spatial audio
         self.channel_layout = "stereo"  # "stereo", "5.1", "7.1"
         self.has_surround = False  # True if 5.1 or higher
+
+        # NEW v4.2.0: PipeWire native support
+        self.audio_server = AUDIO_SERVER_TYPE  # 'pipewire', 'pulseaudio', or None
+        self.prefer_pipewire_native = True  # Use pw-record if available
+        self._pipewire_process = None  # For pw-record subprocess
+        self._pipewire_thread = None  # For reading pw-record output
 
     def list_devices(self):
         """List available audio devices including PulseAudio monitors"""
@@ -140,6 +241,31 @@ class AudioEngine:
             except Exception as e:
                 log(f"Error listing PulseAudio monitors: {e}", "ERROR")
 
+        # NEW v4.2.0: List PipeWire sinks via pw-cli (for native PipeWire capture)
+        if AUDIO_SERVER_TYPE == 'pipewire' and PIPEWIRE_TOOLS.get('pw-record'):
+            try:
+                # Get default sink via pactl (works with PipeWire's pulse compatibility)
+                result = subprocess.run(
+                    ['pactl', 'get-default-sink'],
+                    capture_output=True,
+                    text=True,
+                    timeout=5
+                )
+                if result.returncode == 0:
+                    default_sink = result.stdout.strip()
+                    devices.append({
+                        'index': 'pipewire_default',
+                        'name': f"{default_sink} (PipeWire Native Loopback)",
+                        'channels': 2,  # Will be auto-detected at capture start
+                        'samplerate': 48000,
+                        'hostapi': 'PipeWire',
+                        'type': 'loopback',
+                        'backend': 'pipewire',
+                        'pw_target': f"{default_sink}.monitor"
+                    })
+            except Exception as e:
+                log(f"Error listing PipeWire devices: {e}", "DEBUG")
+
         return devices
 
     def start(self):
@@ -187,14 +313,161 @@ class AudioEngine:
             self.running = False
 
     def _start_loopback(self):
-        """Start loopback capture via soundcard (PulseAudio monitor on Linux)"""
+        """
+        Start loopback capture - tries backends in order:
+        1. PipeWire native (if available and preferred)
+        2. soundcard via PulseAudio monitor
+        3. Fallback error
+        """
+        # NEW v4.2.0: Try PipeWire native first if available
+        if (self.prefer_pipewire_native and
+            AUDIO_SERVER_TYPE == 'pipewire' and
+            PIPEWIRE_TOOLS.get('pw-record')):
+            log("Starting loopback via PipeWire native (pw-record)", "INFO")
+            self._start_loopback_pipewire()
+            return
 
+        # Fallback: soundcard with PulseAudio
         if sc is not None:
             log("Starting loopback via soundcard (PulseAudio monitor)", "INFO")
             self._start_loopback_soundcard()
         else:
             log("No loopback backend available! Install soundcard: pip install soundcard", "ERROR")
             self.running = False
+
+    def _start_loopback_pipewire(self):
+        """
+        Start PipeWire native loopback capture via pw-record.
+        NEW in v4.2.0: Direct PipeWire capture without PulseAudio compatibility layer.
+
+        Uses pw-record to capture from the default sink's monitor.
+        """
+        def pipewire_thread():
+            try:
+                # Get default sink monitor
+                result = subprocess.run(
+                    ['pactl', 'get-default-sink'],
+                    capture_output=True,
+                    text=True,
+                    timeout=5
+                )
+                if result.returncode != 0:
+                    log("Failed to get default sink for PipeWire capture", "ERROR")
+                    self.running = False
+                    return
+
+                default_sink = result.stdout.strip()
+                target = f"{default_sink}.monitor"
+
+                # Determine channel count (try to get from sink info)
+                channels = self.channels if self.requested_channels > 0 else 2
+                try:
+                    sink_info = subprocess.run(
+                        ['pactl', 'list', 'sinks'],
+                        capture_output=True,
+                        text=True,
+                        timeout=5
+                    )
+                    if sink_info.returncode == 0:
+                        # Parse for channel count of default sink
+                        in_sink = False
+                        for line in sink_info.stdout.split('\n'):
+                            if f'Name: {default_sink}' in line:
+                                in_sink = True
+                            elif in_sink and 'Channels:' in line:
+                                channels = int(line.split(':')[1].strip())
+                                break
+                            elif in_sink and line.strip().startswith('Name:'):
+                                break  # Next sink
+                except Exception:
+                    pass
+
+                self.actual_channels = channels
+
+                # Determine channel layout
+                if channels >= 8:
+                    self.channel_layout = "7.1"
+                    self.has_surround = True
+                elif channels >= 6:
+                    self.channel_layout = "5.1"
+                    self.has_surround = True
+                else:
+                    self.channel_layout = "stereo"
+                    self.has_surround = False
+
+                log(f"PipeWire native loopback: {target}", "INFO")
+                log(f"  Channels: {channels} ({self.channel_layout}), Rate: {self.sample_rate}Hz", "INFO")
+
+                # Start pw-record with raw float32 output
+                # Format: pw-record --target <monitor> --format f32 --rate 48000 --channels 2 -
+                cmd = [
+                    'pw-record',
+                    '--target', target,
+                    '--format', 'f32',
+                    '--rate', str(self.sample_rate),
+                    '--channels', str(channels),
+                    '-'  # Output to stdout
+                ]
+
+                self._pipewire_process = subprocess.Popen(
+                    cmd,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                    bufsize=0
+                )
+
+                log(f"pw-record started (PID: {self._pipewire_process.pid})", "INFO")
+
+                # Read raw float32 samples from stdout
+                bytes_per_sample = 4  # float32
+                bytes_per_frame = bytes_per_sample * channels
+                bytes_per_block = bytes_per_frame * self.blocksize
+
+                while self.running:
+                    try:
+                        raw_data = self._pipewire_process.stdout.read(bytes_per_block)
+                        if not raw_data:
+                            log("pw-record stream ended", "WARN")
+                            break
+
+                        # Convert raw bytes to numpy float32 array
+                        data = np.frombuffer(raw_data, dtype=np.float32)
+                        data = data.reshape(-1, channels)
+
+                        self.last_block = data.copy()
+
+                        try:
+                            self.queue.put_nowait(data.copy())
+                        except queue.Full:
+                            pass
+
+                    except Exception as e:
+                        if self.running:
+                            log(f"Error reading pw-record data: {e}", "ERROR")
+                        break
+
+            except Exception as e:
+                log(f"Error in PipeWire loopback thread: {e}", "ERROR")
+                import traceback
+                log(f"Traceback: {traceback.format_exc()}", "DEBUG")
+            finally:
+                self._cleanup_pipewire()
+
+        self._pipewire_thread = threading.Thread(target=pipewire_thread, daemon=True)
+        self._pipewire_thread.start()
+
+    def _cleanup_pipewire(self):
+        """Clean up PipeWire subprocess"""
+        if self._pipewire_process is not None:
+            try:
+                self._pipewire_process.terminate()
+                self._pipewire_process.wait(timeout=2)
+            except Exception:
+                try:
+                    self._pipewire_process.kill()
+                except Exception:
+                    pass
+            self._pipewire_process = None
 
     def _start_loopback_soundcard(self):
         """Start soundcard loopback capture via PulseAudio monitor"""
@@ -265,12 +538,24 @@ class AudioEngine:
         Stop audio capture with automatic retry
 
         ENHANCED v3.5.0: Retry logic prevents hangs on device errors
+        ENHANCED v4.2.0: PipeWire native cleanup support
         """
         if not self.running:
             return
 
         log("Stopping AudioEngine", "INFO")
         self.running = False
+
+        # NEW v4.2.0: Clean up PipeWire subprocess if active
+        if self._pipewire_process is not None:
+            log("Stopping PipeWire capture", "INFO")
+            self._cleanup_pipewire()
+            # Wait for thread to finish
+            if self._pipewire_thread is not None:
+                self._pipewire_thread.join(timeout=2)
+                self._pipewire_thread = None
+            log("PipeWire capture stopped", "INFO")
+            return
 
         if self.stream is not None:
             retry_count = 0
@@ -300,17 +585,28 @@ class AudioEngine:
         except queue.Empty:
             return None
 
-    def get_pulseaudio_info(self):
-        """Get PulseAudio/PipeWire system info (Linux only)"""
+    def get_audio_server_info(self):
+        """
+        Get comprehensive audio server info (Linux only)
+        ENHANCED v4.2.0: Returns PipeWire-specific info when available
+        """
         info = {
             'available': False,
+            'server_type': AUDIO_SERVER_TYPE,  # 'pipewire', 'pulseaudio', or None
             'server': None,
             'version': None,
-            'default_sink': None
+            'default_sink': None,
+            'pipewire_native': False,
+            'pipewire_tools': {}
         }
 
+        # Check PipeWire native tools
+        if AUDIO_SERVER_TYPE == 'pipewire':
+            info['pipewire_tools'] = PIPEWIRE_TOOLS
+            info['pipewire_native'] = PIPEWIRE_TOOLS.get('pw-record', False)
+
         try:
-            # Try pactl for PulseAudio info
+            # Try pactl for PulseAudio/PipeWire-pulse info
             result = subprocess.run(
                 ['pactl', 'info'],
                 capture_output=True,
@@ -327,6 +623,43 @@ class AudioEngine:
                     elif 'Default Sink:' in line:
                         info['default_sink'] = line.split(':', 1)[1].strip()
         except Exception as e:
-            log(f"Could not get PulseAudio info: {e}", "DEBUG")
+            log(f"Could not get audio server info: {e}", "DEBUG")
 
         return info
+
+    # Alias for backwards compatibility
+    def get_pulseaudio_info(self):
+        """Alias for get_audio_server_info() - backwards compatibility"""
+        return self.get_audio_server_info()
+
+    def set_prefer_pipewire_native(self, prefer: bool):
+        """
+        Set whether to prefer PipeWire native backend over PulseAudio compatibility.
+        NEW in v4.2.0
+
+        Args:
+            prefer: True to use pw-record when available, False to use soundcard/PulseAudio
+        """
+        self.prefer_pipewire_native = prefer
+        log(f"PipeWire native preference set to: {prefer}", "INFO")
+
+    def get_active_backend(self) -> str:
+        """
+        Get the currently active audio backend.
+        NEW in v4.2.0
+
+        Returns:
+            'pipewire' - Using pw-record for native PipeWire capture
+            'soundcard' - Using soundcard library (PulseAudio monitor)
+            'sounddevice' - Using sounddevice for standard input
+            'none' - Not running
+        """
+        if not self.running:
+            return 'none'
+
+        if self._pipewire_process is not None:
+            return 'pipewire'
+        elif self.use_loopback:
+            return 'soundcard'
+        else:
+            return 'sounddevice'

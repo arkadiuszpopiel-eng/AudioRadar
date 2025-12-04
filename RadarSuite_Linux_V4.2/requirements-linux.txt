@@ -24,6 +24,25 @@ soundcard>=0.4.0
 # PulseAudio control (optional, for better device listing)
 pulsectl>=21.3.4
 
+# ============================================================================
+# PipeWire Native Support (v4.2.0)
+# ============================================================================
+# RadarSuite v4.2.0 auto-detects and uses PipeWire native capture when available.
+# For PipeWire native support, install pipewire-utils:
+#
+# Ubuntu 22.04+/Debian 12+:
+#   sudo apt install pipewire-utils
+#
+# Fedora:
+#   sudo dnf install pipewire-utils
+#
+# Arch Linux:
+#   sudo pacman -S pipewire
+#
+# The 'pw-record' tool is used for native capture. If not available,
+# RadarSuite falls back to soundcard/PulseAudio monitor capture.
+# ============================================================================
+
 # System info
 psutil>=5.9.0
 

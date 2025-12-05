@@ -186,6 +186,11 @@ try:
         DetectionPanel,
     )
 
+    # ============================================================================
+    # UI MODULE IMPORTS (v4.2.0: UIBuilder extraction from MainWindow)
+    # ============================================================================
+    from .ui import UIBuilder
+
 except ImportError:
     # Fallback to direct imports when running as standalone script
     from core import (
@@ -219,6 +224,7 @@ except ImportError:
         MilitarySpectrumWidget, MilitaryWaterfallWidget, MilitaryWaveformWidget,
         DevicePanel, DetectionPanel,
     )
+    from ui import UIBuilder
 
 # ============================================================================
 # CONFIG MANAGER - Imported from core module
@@ -460,7 +466,17 @@ class MainWindow(QMainWindow):
         self.audio_scanner = AudioSourceScanner(platform_detector=self.platform_detector)
 
     def create_ui(self):
-        """Create modern tabbed UI (v3.1.0 - Complete redesign)"""
+        """
+        Create modern tabbed UI (v4.2.0 - Refactored with UIBuilder).
+
+        Delegates UI construction to UIBuilder class, reducing MainWindow complexity.
+        All widgets are still accessible via self.widget_name for backward compatibility.
+        """
+        ui_builder = UIBuilder(self)
+        ui_builder.build()
+
+    def _create_ui_legacy(self):
+        """Legacy create_ui method - kept for reference during transition."""
 
         # ====================================================================
         # MODERN TABBED INTERFACE - Clean & Organized

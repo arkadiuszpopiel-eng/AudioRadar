@@ -584,6 +584,85 @@ Heavy load (3 targets): ~25-35%
 
 ---
 
+## V4.2.0 Refactoring Summary
+
+### MainWindow God Object Refactoring
+
+**Before:** `MainWindow` - 2,136 LOC (god object)
+**After:** `MainWindow` - 1,767 LOC (-17%)
+
+#### Extracted Components
+
+##### 1. UIBuilder (`app/ui/builder.py`) - 470 LOC
+**Responsibility:** Complete UI construction extracted from `create_ui()`
+
+```python
+class UIBuilder:
+    def __init__(self, main_window: "MainWindow") -> None
+    def build(self) -> None
+    def _create_main_tabs(self) -> None
+    def _build_radar_tab(self) -> None
+    def _build_detection_tab(self) -> None
+    def _build_game_detection_tab(self) -> None
+    def _build_analysis_tab(self) -> None
+    def _build_toolbar(self) -> None
+    def _build_statusbar(self) -> None
+```
+
+##### 2. AudioProcessor (`app/audio/processor.py`) - 377 LOC
+**Responsibility:** Audio signal processing and 3D localization
+
+```python
+class AudioProcessor:
+    def apply_processing(block, auto_gain, manual_gain, noise_gate_db) -> np.ndarray
+    def compute_orientation(block) -> Tuple[float, float]
+    def compute_location_3d(block) -> Dict[str, float]
+    def compute_elevation(block) -> float
+```
+
+##### 3. ConfigManager Enhancements (`app/core/config.py`)
+**New methods for v4.2.0:**
+
+```python
+def get(section: str, key: str, default=None)  # Convenience getter
+def set(section: str, key: str, value) -> ConfigDict  # Convenience setter
+def save_window_state(window, config=None) -> ConfigDict  # Persist geometry
+def restore_window_state(window, config=None) -> None  # Restore geometry
+```
+
+### New Core Modules (Punkt 7, 9)
+
+##### ErrorReporter (`app/core/error_handler.py`)
+**Centralized error tracking with statistics:**
+
+```python
+class ErrorReporter:
+    def report(error, context, severity) -> None
+    def get_summary() -> dict  # {total, by_type, by_severity, recent}
+    def get_error_rate(window_seconds) -> float
+    def clear() -> None
+```
+
+##### PerformanceProfiler (`app/core/profiler.py`)
+**Execution time measurement and bottleneck detection:**
+
+```python
+class PerformanceProfiler:
+    @profile("operation_name")  # Decorator
+    def measure("name")  # Context manager
+    def get_report() -> dict  # {slowest, most_called, total_time}
+    def get_bottlenecks(threshold_ms) -> List[dict]
+```
+
+### Type Hints Added (Punkt 6)
+
+All extracted modules now have comprehensive type hints:
+- `ConfigManager`: Type aliases (`ConfigDict`, `SchemaDict`)
+- `UIBuilder`: `TYPE_CHECKING` forward references
+- `AudioProcessor`: Full numpy/scipy type annotations
+
+---
+
 ## Next Steps
 
 - **[Module Reference](MODULES.md)** - Detailed API for each module

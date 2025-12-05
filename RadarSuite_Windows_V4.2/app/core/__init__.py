@@ -87,6 +87,33 @@ from core.di import (
     configure_services,
 )
 
+# Error Handler (v4.2.0 - Punkt 7)
+from core.error_handler import (
+    RadarSuiteError,
+    AudioError,
+    DetectionError,
+    ConfigurationError,
+    UIError,
+    ErrorSeverity,
+    handle_errors,
+    safe_call,
+    log_and_suppress,
+    ErrorContext,
+    ErrorReporter,
+    get_error_reporter,
+    report_error,
+    get_error_summary,
+)
+
+# Performance Profiler (v4.2.0 - Punkt 9)
+from core.profiler import (
+    PerformanceProfiler,
+    get_profiler,
+    profile,
+    measure,
+    timed,
+)
+
 __all__ = [
     # Constants
     'VERSION',
@@ -132,4 +159,27 @@ __all__ = [
     'ServiceContainer',
     'get_container',
     'configure_services',
+
+    # Error Handler (v4.2.0)
+    'RadarSuiteError',
+    'AudioError',
+    'DetectionError',
+    'ConfigurationError',
+    'UIError',
+    'ErrorSeverity',
+    'handle_errors',
+    'safe_call',
+    'log_and_suppress',
+    'ErrorContext',
+    'ErrorReporter',
+    'get_error_reporter',
+    'report_error',
+    'get_error_summary',
+
+    # Performance Profiler (v4.2.0)
+    'PerformanceProfiler',
+    'get_profiler',
+    'profile',
+    'measure',
+    'timed',
 ]

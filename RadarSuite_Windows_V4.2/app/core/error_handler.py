@@ -3,6 +3,7 @@ RadarSuite v4.2.0 - Standardized Error Handler
 Consistent error handling patterns across all modules
 
 Created as part of 10-point development plan (Punkt 3)
+ENHANCED v4.2.0: Added ErrorReporter for statistics tracking (Punkt 7)
 """
 
 import sys
@@ -266,3 +267,158 @@ def log_error_rate_limited(
         # Reset counters
         _error_counts[error_key] = 0
         _error_last_time[error_key] = current_time
+
+
+# ============================================================================
+# ERROR REPORTER (v4.2.0 - Punkt 7)
+# ============================================================================
+
+class ErrorReporter:
+    """
+    Centralized error reporting and statistics tracking.
+
+    Tracks error counts by type, maintains history, and provides summaries.
+    Singleton pattern for global access.
+
+    Usage:
+        reporter = ErrorReporter()
+        reporter.report(error, context="audio_processing")
+        summary = reporter.get_summary()
+    """
+
+    _instance = None
+
+    def __new__(cls):
+        if cls._instance is None:
+            cls._instance = super().__new__(cls)
+            cls._instance._init()
+        return cls._instance
+
+    def _init(self) -> None:
+        """Initialize error tracking state."""
+        self._error_counts: dict = {}
+        self._error_history: list = []
+        self._max_history: int = 100
+
+    def report(
+        self,
+        error: Exception,
+        context: Optional[str] = None,
+        severity: ErrorSeverity = ErrorSeverity.MEDIUM
+    ) -> None:
+        """
+        Report an error occurrence.
+
+        Args:
+            error: The exception that occurred
+            context: Optional context string (e.g., function name)
+            severity: Error severity level
+        """
+        import time
+
+        error_type = type(error).__name__
+
+        # Update counts
+        if error_type not in self._error_counts:
+            self._error_counts[error_type] = 0
+        self._error_counts[error_type] += 1
+
+        # Add to history
+        entry = {
+            "timestamp": time.time(),
+            "type": error_type,
+            "message": str(error),
+            "context": context or "unknown",
+            "severity": severity.value
+        }
+        self._error_history.append(entry)
+
+        # Trim history if exceeds max
+        if len(self._error_history) > self._max_history:
+            self._error_history = self._error_history[-self._max_history:]
+
+        # Log the error
+        log(
+            f"Error reported: [{severity.value}] {error_type} in {context or 'unknown'}: {error}",
+            "ERROR"
+        )
+
+    def get_summary(self) -> dict:
+        """
+        Get error summary statistics.
+
+        Returns:
+            Dictionary with:
+            - total_errors: Total count of all errors
+            - by_type: Dict of error counts by type
+            - by_severity: Dict of error counts by severity
+            - recent_errors: Last 10 errors
+        """
+        by_severity = {}
+        for entry in self._error_history:
+            sev = entry["severity"]
+            by_severity[sev] = by_severity.get(sev, 0) + 1
+
+        return {
+            "total_errors": sum(self._error_counts.values()),
+            "by_type": self._error_counts.copy(),
+            "by_severity": by_severity,
+            "recent_count": len(self._error_history),
+            "recent_errors": self._error_history[-10:]
+        }
+
+    def get_error_rate(self, window_seconds: float = 60.0) -> float:
+        """
+        Get error rate (errors per second) in recent time window.
+
+        Args:
+            window_seconds: Time window to calculate rate
+
+        Returns:
+            Errors per second
+        """
+        import time
+        current_time = time.time()
+        cutoff = current_time - window_seconds
+
+        recent = [e for e in self._error_history if e["timestamp"] > cutoff]
+        return len(recent) / window_seconds if window_seconds > 0 else 0.0
+
+    def clear(self) -> None:
+        """Clear all error statistics."""
+        self._error_counts.clear()
+        self._error_history.clear()
+        log("Error statistics cleared", "INFO")
+
+
+# Global error reporter instance (singleton)
+_error_reporter: Optional[ErrorReporter] = None
+
+
+def get_error_reporter() -> ErrorReporter:
+    """Get global ErrorReporter instance."""
+    global _error_reporter
+    if _error_reporter is None:
+        _error_reporter = ErrorReporter()
+    return _error_reporter
+
+
+def report_error(
+    error: Exception,
+    context: Optional[str] = None,
+    severity: ErrorSeverity = ErrorSeverity.MEDIUM
+) -> None:
+    """
+    Report an error to the global error reporter.
+
+    Args:
+        error: The exception that occurred
+        context: Optional context string
+        severity: Error severity level
+    """
+    get_error_reporter().report(error, context, severity)
+
+
+def get_error_summary() -> dict:
+    """Get error summary from global reporter."""
+    return get_error_reporter().get_summary()

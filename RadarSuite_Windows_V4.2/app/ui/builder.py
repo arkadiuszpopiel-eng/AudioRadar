@@ -22,6 +22,13 @@ from app.ui.detection_panel import DetectionPanel
 from app.ui.device_panel import DevicePanel
 from app.core.version import VERSION
 
+# ML Training Panel (v4.2.0 - Roadmap Item 1)
+try:
+    from app.widgets.ml_training_panel import MLTrainingPanel
+    ML_TRAINING_AVAILABLE = True
+except ImportError:
+    ML_TRAINING_AVAILABLE = False
+
 if TYPE_CHECKING:
     from app.main import MainWindow
 
@@ -146,6 +153,7 @@ class UIBuilder:
         self._build_detection_tab()
         self._build_game_detection_tab()
         self._build_analysis_tab()
+        self._build_ml_training_tab()  # v4.2.0: ML Training Tab
 
         # Toolbar and statusbar
         self._build_toolbar()
@@ -465,6 +473,25 @@ class UIBuilder:
         version_label = QLabel(f"v{VERSION}")
         version_label.setStyleSheet("color: #666; padding: 5px; font-size: 9pt;")
         toolbar.addWidget(version_label)
+
+    def _build_ml_training_tab(self) -> None:
+        """Build Tab 5: ML Training (v4.2.0 - Roadmap Item 1)."""
+        if not ML_TRAINING_AVAILABLE:
+            # Create placeholder tab if ML training not available
+            placeholder = QWidget()
+            layout = QVBoxLayout()
+            label = QLabel("🧠 ML Training module not available.\n\nPlease ensure all dependencies are installed.")
+            label.setStyleSheet("font-size: 12pt; color: #888888; padding: 20px;")
+            label.setAlignment(Qt.AlignCenter)
+            layout.addWidget(label)
+            placeholder.setLayout(layout)
+            self.main.main_tabs.addTab(placeholder, "🧠 ML Training")
+            self.main.ml_training_panel = None
+            return
+
+        # Create ML Training Panel
+        self.main.ml_training_panel = MLTrainingPanel()
+        self.main.main_tabs.addTab(self.main.ml_training_panel, "🧠 ML Training")
 
     def _build_statusbar(self) -> None:
         """Build status bar."""

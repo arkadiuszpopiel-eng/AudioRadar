@@ -6,6 +6,8 @@ This module handles all UI widget creation, reducing MainWindow complexity.
 All widgets are assigned to self.main.widget_name for backward compatibility.
 """
 
+from typing import TYPE_CHECKING
+
 from PyQt5.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QTabWidget, QGroupBox,
     QLabel, QPushButton, QCheckBox, QSlider, QToolBar, QStatusBar,
@@ -19,6 +21,9 @@ from app.ui.led import LedOverlayWidget
 from app.ui.detection_panel import DetectionPanel
 from app.ui.device_panel import DevicePanel
 from app.core.version import VERSION
+
+if TYPE_CHECKING:
+    from app.main import MainWindow
 
 
 class UIBuilder:
@@ -118,16 +123,16 @@ class UIBuilder:
         }
     """
 
-    def __init__(self, main_window):
+    def __init__(self, main_window: "MainWindow") -> None:
         """
         Initialize UIBuilder with reference to MainWindow.
 
         Args:
             main_window: MainWindow instance - all widgets will be assigned here
         """
-        self.main = main_window
+        self.main: "MainWindow" = main_window
 
-    def build(self):
+    def build(self) -> None:
         """
         Build the complete UI. Main entry point.
 
@@ -149,13 +154,13 @@ class UIBuilder:
         # Setup keyboard shortcuts
         self.main.setup_shortcuts()
 
-    def _create_main_tabs(self):
+    def _create_main_tabs(self) -> None:
         """Create main tab widget and set as central widget."""
         self.main.main_tabs = QTabWidget()
         self.main.main_tabs.setStyleSheet(self.TAB_WIDGET_STYLE)
         self.main.setCentralWidget(self.main.main_tabs)
 
-    def _build_radar_tab(self):
+    def _build_radar_tab(self) -> None:
         """Build Tab 1: Radar View (Main tactical display)."""
         radar_tab = QWidget()
         radar_layout = QVBoxLayout()
@@ -182,7 +187,7 @@ class UIBuilder:
         radar_tab.setLayout(radar_layout)
         self.main.main_tabs.addTab(radar_tab, "🎯 Radar View")
 
-    def _build_radar_controls(self):
+    def _build_radar_controls(self) -> QHBoxLayout:
         """Build radar control panel (detach, frameless, opacity)."""
         radar_controls = QHBoxLayout()
 
@@ -206,7 +211,7 @@ class UIBuilder:
 
         return radar_controls
 
-    def _build_detection_tab(self):
+    def _build_detection_tab(self) -> None:
         """Build Tab 2: Detection & Audio."""
         detection_tab = QWidget()
         detection_layout = QHBoxLayout()
@@ -224,7 +229,7 @@ class UIBuilder:
         detection_tab.setLayout(detection_layout)
         self.main.main_tabs.addTab(detection_tab, "🔊 Detection & Audio")
 
-    def _build_game_detection_tab(self):
+    def _build_game_detection_tab(self) -> None:
         """Build Tab 3: Game Detection."""
         game_tab = QWidget()
         game_layout = QVBoxLayout()
@@ -246,7 +251,7 @@ class UIBuilder:
         game_tab.setLayout(game_layout)
         self.main.main_tabs.addTab(game_tab, "🎮 Game Detection")
 
-    def _build_game_group(self):
+    def _build_game_group(self) -> QGroupBox:
         """Build Active Games & Engines group."""
         game_group = QGroupBox("🎮 Active Games & Engines")
         game_group_layout = QVBoxLayout()
@@ -274,7 +279,7 @@ class UIBuilder:
         game_group.setLayout(game_group_layout)
         return game_group
 
-    def _build_platform_group(self):
+    def _build_platform_group(self) -> QGroupBox:
         """Build Gaming Platform Launchers group."""
         platform_group = QGroupBox("🚀 Gaming Platform Launchers")
         platform_layout = QVBoxLayout()
@@ -296,7 +301,7 @@ class UIBuilder:
         platform_group.setLayout(platform_layout)
         return platform_group
 
-    def _build_audio_sources_group(self):
+    def _build_audio_sources_group(self) -> QGroupBox:
         """Build Audio Sources Monitor group."""
         sources_group = QGroupBox("🔊 Audio Sources Monitor")
         sources_layout = QVBoxLayout()
@@ -344,7 +349,7 @@ class UIBuilder:
         sources_group.setLayout(sources_layout)
         return sources_group
 
-    def _build_analysis_tab(self):
+    def _build_analysis_tab(self) -> None:
         """Build Tab 4: Analysis (Spectrum, Waterfall, LED)."""
         analysis_tab = QWidget()
         analysis_layout = QVBoxLayout()
@@ -371,7 +376,7 @@ class UIBuilder:
         analysis_tab.setLayout(analysis_layout)
         self.main.main_tabs.addTab(analysis_tab, "📊 Analysis")
 
-    def _build_led_group(self):
+    def _build_led_group(self) -> QGroupBox:
         """Build LED Edge Alert group with controls."""
         led_group = QGroupBox("⚡ LED Edge Alert")
         led_layout = QVBoxLayout()
@@ -405,7 +410,7 @@ class UIBuilder:
         led_group.setLayout(led_layout)
         return led_group
 
-    def _build_toolbar(self):
+    def _build_toolbar(self) -> None:
         """Build main toolbar with Start, Record, Language controls."""
         toolbar = QToolBar()
         toolbar.setStyleSheet(self.TOOLBAR_STYLE)
@@ -461,7 +466,7 @@ class UIBuilder:
         version_label.setStyleSheet("color: #666; padding: 5px; font-size: 9pt;")
         toolbar.addWidget(version_label)
 
-    def _build_statusbar(self):
+    def _build_statusbar(self) -> None:
         """Build status bar."""
         self.main.status_bar = QStatusBar()
         self.main.status_bar.setStyleSheet(self.STATUSBAR_STYLE)

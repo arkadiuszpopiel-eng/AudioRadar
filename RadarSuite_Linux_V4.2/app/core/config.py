@@ -1,16 +1,22 @@
 """
-RadarSuite v3.5.0 - Configuration Manager
+RadarSuite v4.2.0 - Configuration Manager
 ADDED v3.5.0: Auto-save/restore user settings
 FIXED v3.5.0: Schema validation to prevent corrupt config
+ENHANCED v4.2.0: Type hints, window state persistence
 """
 
 import sys
 import os
 import json
 from pathlib import Path
+from typing import Any, Dict, Optional, Tuple, Union
 
 from .constants import VERSION
 from .logger import log
+
+# Type aliases for clarity
+ConfigDict = Dict[str, Any]
+SchemaDict = Dict[str, Dict[str, Any]]
 
 
 # ============================================================================
@@ -119,7 +125,7 @@ class ConfigManager:
             "version": VERSION
         }
 
-    def _validate_value(self, key, value, schema):
+    def _validate_value(self, key: str, value: Any, schema: Dict[str, Any]) -> Tuple[bool, Optional[Any]]:
         """
         Validate single value against schema (FIXED v3.5.0)
 
@@ -149,7 +155,7 @@ class ConfigManager:
 
         return True, value
 
-    def _validate_config(self, user_config):
+    def _validate_config(self, user_config: ConfigDict) -> ConfigDict:
         """
         Validate user config against schema (FIXED v3.5.0)
 
@@ -182,7 +188,7 @@ class ConfigManager:
 
         return validated
 
-    def load(self):
+    def load(self) -> ConfigDict:
         """Load settings from disk (FIXED v3.5.0: with validation)"""
         try:
             if self.config_file.exists():
@@ -209,7 +215,7 @@ class ConfigManager:
             log(f"Error loading settings: {e}", "ERROR")
             return self.default_config.copy()
 
-    def save(self, config):
+    def save(self, config: ConfigDict) -> None:
         """Save settings to disk"""
         try:
             self.config_dir.mkdir(parents=True, exist_ok=True)
@@ -221,7 +227,7 @@ class ConfigManager:
         except Exception as e:
             print(f"Error saving settings: {e}")
 
-    def _merge_configs(self, default, user):
+    def _merge_configs(self, default: ConfigDict, user: ConfigDict) -> ConfigDict:
         """Recursively merge user config with defaults"""
         merged = default.copy()
 

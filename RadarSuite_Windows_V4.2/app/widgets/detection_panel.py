@@ -6,7 +6,7 @@ ENHANCED v4.2.0: ML-based detection with YAMNet (Roadmap Item 1)
 
 import numpy as np
 import pyqtgraph as pg
-import pyqtgraph.opengl as gl
+# FIXED v4.2.1: Removed unused import 'pyqtgraph.opengl as gl'
 from PyQt5.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QComboBox, QSlider, QCheckBox, QSpinBox, QGroupBox, QFormLayout
 from PyQt5.QtCore import Qt, QTimer, pyqtSignal, QPoint
 from PyQt5.QtGui import QPainter, QColor, QPen, QBrush, QPalette
@@ -309,6 +309,9 @@ class DetectionPanel(QWidget):
         - Falls back to rule-based detection if ML fails
         """
         try:
+            # FIXED v4.2.1: Initialize bands to prevent UnboundLocalError
+            bands = {'low_r': 0.0, 'mid_r': 0.0, 'high_r': 0.0}
+
             # ================================================================
             # ML DETECTION (v4.2.0) - Try ML first, fallback to rule-based
             # ================================================================

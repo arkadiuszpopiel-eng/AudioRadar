@@ -1096,13 +1096,13 @@ class MainWindow(QMainWindow):
                         state=target_state, speed=0, label=f"T{target['id']}"
                     )
 
-        # FIXED v4.2.0: Defensive cleanup of stale targets from radar UI
-        # This catches any targets that weren't properly removed by the tracker
-        self.radar_widget.cleanup_stale_targets(max_age_seconds=3.0)
-        if self.detached_radar:
-            self.detached_radar.radar_widget.cleanup_stale_targets(max_age_seconds=3.0)
+            # FIXED v4.2.0: Defensive cleanup of stale targets from radar UI
+            # This catches any targets that weren't properly removed by the tracker
+            self.radar_widget.cleanup_stale_targets(max_age_seconds=3.0)
+            if self.detached_radar:
+                self.detached_radar.radar_widget.cleanup_stale_targets(max_age_seconds=3.0)
         else:
-            # Clear all radars when no targets
+            # FIXED v4.2.1: Clear all radars when no active_targets (was incorrectly tied to detached_radar check)
             self.radar_widget.clear_targets()
             self.radar_3d_widget.clear_targets()
             if self.detached_radar:
@@ -1170,6 +1170,10 @@ class MainWindow(QMainWindow):
 
             # 3. Update recording
             self._update_recording(block)
+
+            # 3b. FIXED v4.2.1: Feed audio to ML Training panel for labeled recording
+            if hasattr(self, 'ml_training_panel') and self.ml_training_panel is not None:
+                self.ml_training_panel.feed_audio(block)
 
             # 4. Compute FFT once and cache (Module 12 - eliminates 4 redundant computations!)
             fft_result = self.fft_cache.compute_fft(block, self.audio.sample_rate)

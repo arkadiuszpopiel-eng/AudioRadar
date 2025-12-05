@@ -121,6 +121,9 @@ class MLDetector:
         self._feature_extractor = FeatureExtractor(sample_rate)
         self._yamnet = YAMNetDetector(model_path)
 
+        # FIXED v4.2.1: Cache FeatureExtractors per sample_rate to prevent memory leak
+        self._extractor_cache: Dict[int, FeatureExtractor] = {sample_rate: self._feature_extractor}
+
         # Thread safety
         self._lock = threading.Lock()
 
@@ -150,9 +153,11 @@ class MLDetector:
         start_time = time.perf_counter()
 
         try:
-            # Update sample rate if needed
+            # FIXED v4.2.1: Use cached FeatureExtractor to prevent memory leak
             if sample_rate and sample_rate != self._feature_extractor.source_sr:
-                self._feature_extractor = FeatureExtractor(sample_rate)
+                if sample_rate not in self._extractor_cache:
+                    self._extractor_cache[sample_rate] = FeatureExtractor(sample_rate)
+                self._feature_extractor = self._extractor_cache[sample_rate]
 
             # Extract features
             with measure("ml_feature_extraction"):

@@ -213,6 +213,43 @@ class SessionManager:
 
         log(f"SessionManager initialized: {self.base_path}", "INFO")
 
+    def _validate_session_id(self, session_id: str) -> bool:
+        """
+        Validate session_id to prevent path traversal attacks.
+
+        FIXED v4.2.1: Security - prevent directory traversal.
+
+        Args:
+            session_id: Session ID to validate
+
+        Returns:
+            True if valid, False otherwise
+
+        Raises:
+            ValueError: If session_id contains invalid characters
+        """
+        if not session_id:
+            raise ValueError("session_id cannot be empty")
+
+        # Check for path traversal attempts
+        dangerous_patterns = ['..', '/', '\\', '\x00']
+        for pattern in dangerous_patterns:
+            if pattern in session_id:
+                raise ValueError(f"Invalid session_id: contains '{pattern}'")
+
+        # Validate format: should match session_YYYY-MM-DD_HH-MM-SS pattern
+        import re
+        if not re.match(r'^session_\d{4}-\d{2}-\d{2}_\d{2}-\d{2}-\d{2}$', session_id):
+            log(f"Session ID '{session_id}' doesn't match expected format", "WARNING")
+            # Allow non-standard IDs but log warning
+
+        # Final check: resolved path must be under base_path
+        resolved = (self.base_path / session_id).resolve()
+        if not str(resolved).startswith(str(self.base_path.resolve())):
+            raise ValueError(f"Invalid session_id: path traversal detected")
+
+        return True
+
     def create_session(
         self,
         sample_rate: int = 48000,
@@ -250,7 +287,12 @@ class SessionManager:
         return session
 
     def get_session_path(self, session_id: str) -> Path:
-        """Get path to session directory."""
+        """
+        Get path to session directory.
+
+        FIXED v4.2.1: Added session_id validation for security.
+        """
+        self._validate_session_id(session_id)
         return self.base_path / session_id
 
     def save_session(

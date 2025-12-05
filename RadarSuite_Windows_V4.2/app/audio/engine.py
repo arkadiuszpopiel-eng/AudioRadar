@@ -1,13 +1,22 @@
 """
-RadarSuite v3.5.0 - Audio Engine
+RadarSuite v4.2.1 - Audio Engine
 Audio capture via sounddevice/soundcard/pyaudiowpatch
+
+FIXED v4.2.1: Added comprehensive type hints
 """
+
+from __future__ import annotations
 
 import time
 import queue
 import threading
-import numpy as np
 import sys
+from typing import Dict, List, Optional, Any, Callable, TYPE_CHECKING
+
+import numpy as np
+
+if TYPE_CHECKING:
+    from numpy.typing import NDArray
 
 # FIXED v3.5.4: Proper numpy compatibility wrapper for soundcard library
 # numpy.fromstring was removed in numpy 2.0, soundcard may use it internally
@@ -64,9 +73,19 @@ class AudioEngine:
     - soundcard loopback (capture from speaker output)
 
     FIXED v4.1.2: Auto-detection of channel count for 5.1/7.1 support
+    FIXED v4.2.1: Added comprehensive type hints
     """
 
-    def __init__(self):
+    sample_rate: int
+    blocksize: int
+    channels: int
+    device: Optional[Any]
+    stream: Optional[Any]
+    running: bool
+    backend: str
+    use_loopback: bool
+
+    def __init__(self) -> None:
         log("AudioEngine.__init__", "INFO")
         self.sample_rate = 48000
         self.blocksize = 2048
@@ -85,9 +104,9 @@ class AudioEngine:
         self.channel_layout = "stereo"  # "stereo", "5.1", "7.1"
         self.has_surround = False  # True if 5.1 or higher
 
-    def list_devices(self):
-        """List available audio devices"""
-        devices = []
+    def list_devices(self) -> List[Dict[str, Any]]:
+        """List available audio devices (v4.2.1: type hints)."""
+        devices: List[Dict[str, Any]] = []
 
         if sd is not None:
             try:
@@ -124,8 +143,8 @@ class AudioEngine:
 
         return devices
 
-    def start(self):
-        """Start audio capture"""
+    def start(self) -> None:
+        """Start audio capture (v4.2.1: type hints)."""
         if self.running:
             log("AudioEngine already running", "WARN")
             return
@@ -139,8 +158,8 @@ class AudioEngine:
             log(f"Starting sounddevice: device={self.device}, {self.sample_rate}Hz, {self.blocksize} samples", "INFO")
             self._start_sounddevice()
 
-    def _start_sounddevice(self):
-        """Start sounddevice input stream"""
+    def _start_sounddevice(self) -> None:
+        """Start sounddevice input stream (v4.2.1: type hints)."""
         try:
             def callback(indata, frames, time_info, status):
                 if status:

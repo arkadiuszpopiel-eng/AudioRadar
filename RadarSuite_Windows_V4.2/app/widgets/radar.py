@@ -1,10 +1,16 @@
 """
-RadarSuite v3.5.0 - Military Sci-Fi HUD Radar
+RadarSuite v4.2.1 - Military Sci-Fi HUD Radar
 Ultra-readable military radar interface with Walk/Run/Shot indicators
+
+FIXED v4.2.1: Added comprehensive type hints
 """
+
+from __future__ import annotations
 
 import math
 import time
+from typing import Dict, List, Optional, Any, Tuple, TYPE_CHECKING
+
 import numpy as np
 import pyqtgraph as pg
 import pyqtgraph.opengl as gl
@@ -13,9 +19,12 @@ from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QLabel,
 from PyQt5.QtCore import Qt, QTimer, pyqtSignal, QPoint, QRectF, QPointF
 from PyQt5.QtGui import (QPainter, QColor, QPen, QBrush, QPalette, QFont,
                          QLinearGradient, QRadialGradient, QPainterPath,
-                         QPolygonF)
+                         QPolygonF, QPaintEvent)
 
 from core import log, tr, VERSION
+
+if TYPE_CHECKING:
+    from numpy.typing import NDArray
 
 
 # =============================================================================
@@ -23,20 +32,21 @@ from core import log, tr, VERSION
 # =============================================================================
 
 class TargetState:
-    """Target movement states"""
-    UNKNOWN = 0
-    WALK = 1
-    RUN = 2
-    SHOT = 3
+    """Target movement states with type hints (v4.2.1)."""
 
-    LABELS = {
+    UNKNOWN: int = 0
+    WALK: int = 1
+    RUN: int = 2
+    SHOT: int = 3
+
+    LABELS: Dict[int, str] = {
         UNKNOWN: "???",
         WALK: "WALK",
         RUN: "RUN",
         SHOT: "SHOT"
     }
 
-    COLORS = {
+    COLORS: Dict[int, QColor] = {
         UNKNOWN: QColor(100, 100, 100),
         WALK: QColor(0, 200, 100),      # Green
         RUN: QColor(255, 200, 0),       # Yellow/Orange
@@ -123,9 +133,16 @@ class MilitaryHUDRadar(QWidget):
     # TARGET MANAGEMENT
     # =========================================================================
 
-    def add_target(self, target_id, angle, distance, state=TargetState.UNKNOWN,
-                   speed=0, label=""):
-        """Add or update a target on the radar"""
+    def add_target(
+        self,
+        target_id: int,
+        angle: float,
+        distance: float,
+        state: int = TargetState.UNKNOWN,
+        speed: float = 0.0,
+        label: str = ""
+    ) -> None:
+        """Add or update a target on the radar (v4.2.1: type hints)."""
         # Check if target exists
         for t in self.targets:
             if t['id'] == target_id:
@@ -196,15 +213,15 @@ class MilitaryHUDRadar(QWidget):
                 t['last_seen'] = time.time()
                 return
 
-    def remove_target(self, target_id):
-        """Remove target from radar"""
+    def remove_target(self, target_id: int) -> None:
+        """Remove target from radar (v4.2.1: type hints)."""
         self.targets = [t for t in self.targets if t['id'] != target_id]
 
-    def clear_targets(self):
-        """Clear all targets"""
+    def clear_targets(self) -> None:
+        """Clear all targets (v4.2.1: type hints)."""
         self.targets = []
 
-    def cleanup_stale_targets(self, max_age_seconds=3.0):
+    def cleanup_stale_targets(self, max_age_seconds: float = 3.0) -> None:
         """
         Remove targets that haven't been updated recently (FIXED v4.2.0)
         Defensive cleanup for stuck targets on radar UI

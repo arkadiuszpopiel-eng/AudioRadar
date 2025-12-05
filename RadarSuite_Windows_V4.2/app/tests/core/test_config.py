@@ -231,3 +231,208 @@ class TestConfigManager:
         for section in mgr.CONFIG_SCHEMA.keys():
             if section in mgr.default_config:
                 assert section in validated or section not in mgr.default_config
+
+    # ========================================================================
+    # Tests for v4.2.0 convenience methods
+    # ========================================================================
+
+    def test_get_existing_value(self, config_manager):
+        """Test get() returns existing config value"""
+        config_manager.config_dir.mkdir(parents=True, exist_ok=True)
+        test_config = {"audio": {"sample_rate": 44100}}
+        with open(config_manager.config_file, 'w') as f:
+            json.dump(test_config, f)
+
+        result = config_manager.get('audio', 'sample_rate')
+        assert result == 44100
+
+    def test_get_missing_value_returns_default(self, config_manager):
+        """Test get() returns default for missing value"""
+        result = config_manager.get('nonexistent', 'key', default='fallback')
+        assert result == 'fallback'
+
+    def test_get_missing_section_returns_default(self, config_manager):
+        """Test get() returns default for missing section"""
+        result = config_manager.get('missing_section', 'key', default=42)
+        assert result == 42
+
+    def test_set_creates_section_if_missing(self, config_manager):
+        """Test set() creates section if it doesn't exist"""
+        config = {}
+        result = config_manager.set('new_section', 'key', 'value', config)
+
+        assert 'new_section' in result
+        assert result['new_section']['key'] == 'value'
+
+    def test_set_updates_existing_value(self, config_manager):
+        """Test set() updates existing config value"""
+        config = {"audio": {"sample_rate": 48000}}
+        result = config_manager.set('audio', 'sample_rate', 44100, config)
+
+        assert result['audio']['sample_rate'] == 44100
+
+    def test_set_adds_new_key_to_existing_section(self, config_manager):
+        """Test set() adds new key to existing section"""
+        config = {"audio": {"sample_rate": 48000}}
+        result = config_manager.set('audio', 'new_key', 'new_value', config)
+
+        assert result['audio']['sample_rate'] == 48000  # Preserved
+        assert result['audio']['new_key'] == 'new_value'  # Added
+
+
+class TestConfigManagerWindowState:
+    """Tests for window state persistence (v4.2.0)"""
+
+    @pytest.fixture
+    def config_manager(self, tmp_path):
+        """Create ConfigManager with temporary directory"""
+        with patch.object(ConfigManager, '__init__', lambda self: None):
+            mgr = ConfigManager()
+            mgr.config_dir = tmp_path / 'RadarSuite'
+            mgr.config_file = mgr.config_dir / 'config.json'
+            mgr.CONFIG_SCHEMA = ConfigManager.CONFIG_SCHEMA
+            mgr.default_config = {
+                "ui": {
+                    "window_x": 100,
+                    "window_y": 100,
+                    "window_width": 1400,
+                    "window_height": 900,
+                    "window_maximized": False
+                }
+            }
+            return mgr
+
+    @pytest.fixture
+    def mock_window(self):
+        """Create mock QMainWindow"""
+        from unittest.mock import MagicMock
+
+        window = MagicMock()
+
+        # Mock geometry
+        geo = MagicMock()
+        geo.x.return_value = 200
+        geo.y.return_value = 150
+        geo.width.return_value = 1600
+        geo.height.return_value = 1000
+        window.geometry.return_value = geo
+
+        # Mock maximized state
+        window.isMaximized.return_value = False
+
+        return window
+
+    def test_save_window_state_stores_geometry(self, config_manager, mock_window):
+        """Test save_window_state() stores window geometry"""
+        config = {}
+        result = config_manager.save_window_state(mock_window, config)
+
+        assert result['ui']['window_x'] == 200
+        assert result['ui']['window_y'] == 150
+        assert result['ui']['window_width'] == 1600
+        assert result['ui']['window_height'] == 1000
+        assert result['ui']['window_maximized'] is False
+
+    def test_save_window_state_stores_maximized(self, config_manager, mock_window):
+        """Test save_window_state() stores maximized state"""
+        mock_window.isMaximized.return_value = True
+        config = {}
+
+        result = config_manager.save_window_state(mock_window, config)
+
+        assert result['ui']['window_maximized'] is True
+
+    def test_restore_window_state_applies_geometry(self, config_manager, mock_window):
+        """Test restore_window_state() applies saved geometry"""
+        config = {
+            "ui": {
+                "window_x": 300,
+                "window_y": 200,
+                "window_width": 1200,
+                "window_height": 800,
+                "window_maximized": False
+            }
+        }
+
+        # Mock QApplication.primaryScreen
+        with patch('core.config.QApplication') as mock_app:
+            mock_screen = MagicMock()
+            mock_geo = MagicMock()
+            mock_geo.width.return_value = 1920
+            mock_geo.height.return_value = 1080
+            mock_screen.availableGeometry.return_value = mock_geo
+            mock_app.primaryScreen.return_value = mock_screen
+
+            config_manager.restore_window_state(mock_window, config)
+
+        mock_window.setGeometry.assert_called_once_with(300, 200, 1200, 800)
+        mock_window.showMaximized.assert_not_called()
+
+    def test_restore_window_state_maximizes_if_saved(self, config_manager, mock_window):
+        """Test restore_window_state() maximizes window if saved as maximized"""
+        config = {
+            "ui": {
+                "window_x": 100,
+                "window_y": 100,
+                "window_width": 1400,
+                "window_height": 900,
+                "window_maximized": True
+            }
+        }
+
+        with patch('core.config.QApplication') as mock_app:
+            mock_screen = MagicMock()
+            mock_geo = MagicMock()
+            mock_geo.width.return_value = 1920
+            mock_geo.height.return_value = 1080
+            mock_screen.availableGeometry.return_value = mock_geo
+            mock_app.primaryScreen.return_value = mock_screen
+
+            config_manager.restore_window_state(mock_window, config)
+
+        mock_window.showMaximized.assert_called_once()
+
+    def test_restore_window_state_clamps_to_screen_bounds(self, config_manager, mock_window):
+        """Test restore_window_state() clamps geometry to screen bounds"""
+        # Config with window outside screen bounds
+        config = {
+            "ui": {
+                "window_x": 5000,  # Way off screen
+                "window_y": 5000,
+                "window_width": 1400,
+                "window_height": 900,
+                "window_maximized": False
+            }
+        }
+
+        with patch('core.config.QApplication') as mock_app:
+            mock_screen = MagicMock()
+            mock_geo = MagicMock()
+            mock_geo.width.return_value = 1920
+            mock_geo.height.return_value = 1080
+            mock_screen.availableGeometry.return_value = mock_geo
+            mock_app.primaryScreen.return_value = mock_screen
+
+            config_manager.restore_window_state(mock_window, config)
+
+        # Window should be clamped to visible area
+        call_args = mock_window.setGeometry.call_args[0]
+        assert call_args[0] <= 1920 - 100  # x clamped
+        assert call_args[1] <= 1080 - 100  # y clamped
+
+    def test_restore_window_state_uses_defaults_for_missing_config(self, config_manager, mock_window):
+        """Test restore_window_state() uses defaults when config is empty"""
+        config = {}
+
+        with patch('core.config.QApplication') as mock_app:
+            mock_screen = MagicMock()
+            mock_geo = MagicMock()
+            mock_geo.width.return_value = 1920
+            mock_geo.height.return_value = 1080
+            mock_screen.availableGeometry.return_value = mock_geo
+            mock_app.primaryScreen.return_value = mock_screen
+
+            config_manager.restore_window_state(mock_window, config)
+
+        # Should use default values: 100, 100, 1400, 900
+        mock_window.setGeometry.assert_called_once_with(100, 100, 1400, 900)

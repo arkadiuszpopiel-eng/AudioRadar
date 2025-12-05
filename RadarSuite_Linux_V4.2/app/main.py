@@ -348,7 +348,7 @@ class MainWindow(QMainWindow):
         log("MainWindow.__init__", "INFO")
 
         self.setWindowTitle(f"{tr('app_title')} {VERSION}")
-        self.setGeometry(100, 100, 1400, 900)
+        # NOTE: Window geometry is restored from config after dependencies are loaded
 
         # State
         self.is_running = False
@@ -369,6 +369,9 @@ class MainWindow(QMainWindow):
 
         # Configuration
         self.config = self.config_manager.load()
+
+        # Restore window geometry from config (v4.2.0)
+        self.config_manager.restore_window_state(self, self.config)
 
         # Toast notification system (v3.5.0 - Phase 7)
         self.toast = ToastNotification()
@@ -2086,9 +2089,11 @@ class MainWindow(QMainWindow):
             except Exception as e:
                 log(f"Error closing detached LED: {e}", "WARNING")
 
-        # Save configuration (v3.5.0)
+        # Save configuration (v3.5.0, enhanced v4.2.0 with window state)
         if hasattr(self, 'config_manager'):
             try:
+                # Save window geometry before saving config (v4.2.0)
+                self.config = self.config_manager.save_window_state(self, self.config)
                 self.config_manager.save(self.config)
                 log("Configuration saved successfully", "INFO")
             except Exception as e:

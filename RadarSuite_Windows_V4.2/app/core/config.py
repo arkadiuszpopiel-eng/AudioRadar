@@ -235,3 +235,122 @@ class ConfigManager:
                 merged[key] = value
 
         return merged
+
+    # ========================================================================
+    # CONVENIENCE METHODS (v4.2.0 - ConfigManager Enhancement)
+    # ========================================================================
+
+    def get(self, section: str, key: str, default=None):
+        """
+        Get a config value with dotted path support.
+
+        Args:
+            section: Config section (e.g., 'audio', 'ui')
+            key: Key within section (e.g., 'device', 'language')
+            default: Default value if not found
+
+        Returns:
+            Config value or default
+
+        Example:
+            config_manager.get('ui', 'language', 'en')
+        """
+        config = self.load()
+        return config.get(section, {}).get(key, default)
+
+    def set(self, section: str, key: str, value, config: dict = None):
+        """
+        Set a config value and optionally save.
+
+        Args:
+            section: Config section
+            key: Key within section
+            value: Value to set
+            config: Config dict to modify (if None, loads current config)
+
+        Returns:
+            Modified config dict
+        """
+        if config is None:
+            config = self.load()
+
+        if section not in config:
+            config[section] = {}
+
+        config[section][key] = value
+        return config
+
+    def save_window_state(self, window, config: dict = None):
+        """
+        Save window geometry and state to config (v4.2.0).
+
+        Args:
+            window: QMainWindow instance
+            config: Config dict to modify (if None, loads current)
+
+        Returns:
+            Modified config dict
+        """
+        if config is None:
+            config = self.load()
+
+        if 'ui' not in config:
+            config['ui'] = {}
+
+        # Get geometry
+        geo = window.geometry()
+        config['ui']['window_x'] = geo.x()
+        config['ui']['window_y'] = geo.y()
+        config['ui']['window_width'] = geo.width()
+        config['ui']['window_height'] = geo.height()
+        config['ui']['window_maximized'] = window.isMaximized()
+
+        log(f"Window state saved: {geo.width()}x{geo.height()} at ({geo.x()}, {geo.y()})", "DEBUG")
+        return config
+
+    def restore_window_state(self, window, config: dict = None):
+        """
+        Restore window geometry and state from config (v4.2.0).
+
+        Args:
+            window: QMainWindow instance
+            config: Config dict to read from (if None, loads current)
+
+        Note:
+            - Validates geometry is within screen bounds
+            - Falls back to defaults if invalid
+        """
+        if config is None:
+            config = self.load()
+
+        ui_config = config.get('ui', {})
+
+        # Get saved values with defaults
+        x = ui_config.get('window_x', 100)
+        y = ui_config.get('window_y', 100)
+        width = ui_config.get('window_width', 1400)
+        height = ui_config.get('window_height', 900)
+        maximized = ui_config.get('window_maximized', False)
+
+        # Validate bounds (ensure window is visible)
+        try:
+            from PyQt5.QtWidgets import QApplication
+            screen = QApplication.primaryScreen()
+            if screen:
+                screen_geo = screen.availableGeometry()
+                # Ensure window is at least partially visible
+                x = max(0, min(x, screen_geo.width() - 100))
+                y = max(0, min(y, screen_geo.height() - 100))
+                width = min(width, screen_geo.width())
+                height = min(height, screen_geo.height())
+        except Exception as e:
+            log(f"Could not validate screen bounds: {e}", "WARNING")
+
+        # Apply geometry
+        window.setGeometry(x, y, width, height)
+
+        # Restore maximized state
+        if maximized:
+            window.showMaximized()
+
+        log(f"Window state restored: {width}x{height} at ({x}, {y}), maximized={maximized}", "DEBUG")

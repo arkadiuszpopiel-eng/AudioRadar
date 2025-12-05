@@ -162,6 +162,7 @@ try:
         SoundClassifier,
         AudioRecorder,
         HumanVoiceDetector,
+        AudioProcessor,  # v4.2.0: Extracted audio algorithms
     )
 
     # ============================================================================
@@ -214,7 +215,7 @@ except ImportError:
     from detection import DetectionWorker, HumanFootstepDetector
     from audio import (
         AudioProcessingCache, AudioEngine, SoundClassifier,
-        AudioRecorder, HumanVoiceDetector,
+        AudioRecorder, HumanVoiceDetector, AudioProcessor,
     )
     from widgets import (
         ToastNotification, DetachableRadarWidget, RadarWidget,
@@ -419,6 +420,8 @@ class MainWindow(QMainWindow):
         self.audio = container.get('audio_engine')
         self.sound_classifier = container.get('sound_classifier')
         self.audio_recorder = container.get('audio_recorder')
+        # v4.2.0: AudioProcessor - create locally if not in container
+        self.audio_processor = container.get('audio_processor') if container.has('audio_processor') else AudioProcessor(sample_rate=SAMPLE_RATE)
 
         # Detection
         self.detection_worker = container.get('detection_worker')
@@ -454,6 +457,7 @@ class MainWindow(QMainWindow):
         self.audio = AudioEngine()
         self.sound_classifier = SoundClassifier()
         self.audio_recorder = AudioRecorder(sample_rate=48000)
+        self.audio_processor = AudioProcessor(sample_rate=SAMPLE_RATE)  # v4.2.0: Extracted algorithms
 
         # Detection
         self.detection_worker = DetectionWorker(max_workers=MAX_WORKERS)
@@ -1194,7 +1198,7 @@ class MainWindow(QMainWindow):
 
     def apply_audio_processing(self, block):
         """
-        Apply audio enhancements: auto-gain, manual gain, noise gate (v3.1.2)
+        Apply audio enhancements: auto-gain, manual gain, noise gate (v4.2.0 - delegates to AudioProcessor)
 
         Args:
             block: Audio data (numpy array)
@@ -1206,69 +1210,38 @@ class MainWindow(QMainWindow):
             if block is None or len(block) == 0:
                 return block
 
-            processed = block.copy()
-
-            # Apply noise gate (remove audio below threshold)
+            # Get parameters from UI
             noise_gate_value = self.dev_panel.noise_gate_slider.value()
             noise_gate_db = -80 + noise_gate_value  # Convert slider (0-100) to dB (-80 to -20)
-            noise_gate_linear = 10 ** (noise_gate_db / 20.0)
+            auto_gain = self.dev_panel.auto_gain_enable.isChecked()
+            manual_gain = float(self.dev_panel.gain_slider.value())
 
-            # Calculate RMS for noise gate
-            rms = np.sqrt(np.mean(processed ** 2))
-            if rms < noise_gate_linear:
-                # Below noise gate - mute
-                return np.zeros_like(processed)
+            # Delegate to AudioProcessor (v4.2.0)
+            processed = self.audio_processor.apply_processing(
+                block,
+                auto_gain=auto_gain,
+                manual_gain=manual_gain,
+                noise_gate_db=noise_gate_db
+            )
 
-            # Apply gain (auto or manual)
-            if self.dev_panel.auto_gain_enable.isChecked():
-                # Auto-gain: target -20 dBFS RMS
-                target_rms = 0.1  # -20 dBFS
-                current_rms = np.sqrt(np.mean(processed ** 2)) + 1e-10
-                auto_gain = target_rms / current_rms
-
-                # Limit auto-gain to reasonable range (1x to 100x)
-                auto_gain = np.clip(auto_gain, 1.0, 100.0)
-                processed *= auto_gain
-
-                # Update gain label to show actual gain applied
-                self.dev_panel.gain_label.setText(f"AUTO: {auto_gain:.1f}x")
-            else:
-                # Manual gain
-                manual_gain = self.dev_panel.gain_slider.value()
-                processed *= manual_gain
-
-            # Prevent clipping - normalize if over ±1.0
-            max_val = np.max(np.abs(processed))
-            if max_val > 1.0:
-                processed /= max_val
+            # Update UI label for auto-gain display
+            if auto_gain and processed is not None:
+                current_rms = np.sqrt(np.mean(block ** 2)) + 1e-10
+                target_rms = 0.1
+                gain_applied = min(100.0, max(1.0, target_rms / current_rms))
+                self.dev_panel.gain_label.setText(f"AUTO: {gain_applied:.1f}x")
 
             return processed
 
         except Exception as e:
             log(f"Error in apply_audio_processing: {e}", "ERROR")
-            return block  # Return original on error
+            return block
 
     def compute_orientation(self, block):
-        """Compute energy and L/R balance"""
-        try:
-            if block.ndim == 2 and block.shape[1] >= 2:
-                left = block[:, 0]
-                right = block[:, 1]
-
-                rms_L = np.sqrt(np.mean(left ** 2))
-                rms_R = np.sqrt(np.mean(right ** 2))
-
-                energy = (rms_L + rms_R) / 2.0
-                balance = (rms_R - rms_L) / (rms_R + rms_L + 1e-9)
-
-                return energy, balance
-            else:
-                energy = np.sqrt(np.mean(block ** 2))
-                return energy, 0.0
-
-        except Exception as e:
-            log(f"Error in compute_orientation: {e}", "ERROR")
-            return 0.0, 0.0
+        """
+        Compute energy and L/R balance (v4.2.0 - delegates to AudioProcessor)
+        """
+        return self.audio_processor.compute_orientation(block)
 
     def compute_precise_location_3d(self, block, sample_rate):
         """

@@ -16,7 +16,7 @@ from PyQt5.QtWidgets import (
 from PyQt5.QtCore import Qt
 
 from app.widgets.radar import MilitaryHUDRadar, Military3DRadar
-from app.widgets.spectrum import MilitarySpectrumWidget, MilitaryWaterfallWidget, MilitaryWaveformWidget
+from app.widgets.spectrum import SpectrumWidget, WaterfallWidget, WaveformWidget
 from app.widgets.led import LedOverlayWidget
 from app.widgets.detection_panel import DetectionPanel
 from app.widgets.device_panel import DevicePanel
@@ -366,13 +366,13 @@ class UIBuilder:
         # Spectrum & Waterfall & Waveform tabs
         spectrum_waterfall_tabs = QTabWidget()
 
-        self.main.spectrum = MilitarySpectrumWidget()
+        self.main.spectrum = SpectrumWidget()
         spectrum_waterfall_tabs.addTab(self.main.spectrum, "📡 LIVE SPECTRUM")
 
-        self.main.waterfall = MilitaryWaterfallWidget()
+        self.main.waterfall = WaterfallWidget()
         spectrum_waterfall_tabs.addTab(self.main.waterfall, "🌊 WATERFALL")
 
-        self.main.waveform = MilitaryWaveformWidget()
+        self.main.waveform = WaveformWidget()
         spectrum_waterfall_tabs.addTab(self.main.waveform, "〰️ WAVEFORM")
 
         analysis_layout.addWidget(spectrum_waterfall_tabs, 3)

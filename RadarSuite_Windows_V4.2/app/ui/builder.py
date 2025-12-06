@@ -15,11 +15,11 @@ from PyQt5.QtWidgets import (
 )
 from PyQt5.QtCore import Qt
 
-from app.ui.radar import MilitaryHUDRadar, Military3DRadar
-from app.ui.spectrum import MilitarySpectrumWidget, MilitaryWaterfallWidget, MilitaryWaveformWidget
-from app.ui.led import LedOverlayWidget
-from app.ui.detection_panel import DetectionPanel
-from app.ui.device_panel import DevicePanel
+from app.widgets.radar import MilitaryHUDRadar, Military3DRadar
+from app.widgets.spectrum import MilitarySpectrumWidget, MilitaryWaterfallWidget, MilitaryWaveformWidget
+from app.widgets.led import LedOverlayWidget
+from app.widgets.detection_panel import DetectionPanel
+from app.widgets.device_panel import DevicePanel
 from app.core.version import VERSION
 
 # ML Training Panel (v4.2.0 - Roadmap Item 1)

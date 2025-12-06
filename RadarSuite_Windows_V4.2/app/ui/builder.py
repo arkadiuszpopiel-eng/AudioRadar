@@ -20,7 +20,7 @@ from app.widgets.spectrum import SpectrumWidget, WaterfallWidget, WaveformWidget
 from app.widgets.led import LedOverlayWidget
 from app.widgets.detection_panel import DetectionPanel
 from app.widgets.device_panel import DevicePanel
-from app.core.version import VERSION
+from app.version import __version__ as VERSION
 
 # ML Training Panel (v4.2.0 - Roadmap Item 1)
 try:

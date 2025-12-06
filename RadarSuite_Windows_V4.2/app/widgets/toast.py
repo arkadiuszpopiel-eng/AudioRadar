@@ -1,5 +1,5 @@
 """
-RadarSuite v3.5.0 - Toast Widgets
+RadarSuite V4.2.1 - Toast Widgets
 """
 
 import time

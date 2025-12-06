@@ -1,5 +1,5 @@
 """
-RadarSuite v3.5.0 - Translations Module
+RadarSuite V4.2.1 - Translations Module
 Multi-language support (EN/PL)
 """
 

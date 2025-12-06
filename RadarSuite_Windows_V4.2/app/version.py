@@ -8,15 +8,15 @@ FIXED v4.2.0: Single source of truth for version across all modules
 """
 
 # Main version
-__version__ = "4.2.0"
+__version__ = "4.2.1"
 
 # Full version string with game-specific suffix
-__version_full__ = "4.2.0-ARC-Raiders"
+__version_full__ = "4.2.1-ARC-Raiders"
 
 # Version components
 VERSION_MAJOR = 4
 VERSION_MINOR = 2
-VERSION_PATCH = 0
+VERSION_PATCH = 1
 
 # Build metadata
 BUILD_TARGET = "ARC Raiders"
@@ -24,6 +24,7 @@ BUILD_PLATFORM = "Windows"  # or "Linux" depending on build
 
 # Version history (for reference)
 VERSION_HISTORY = {
+    "4.2.1": "Deep static analysis fixes, import path corrections, exception handling improvements",
     "4.2.0": "ARC Raiders Edition - MFCC features, shot detection, surface classification, machine detection",
     "4.1.2": "Adaptive noise floor, type-aware tracking, detached window cleanup",
     "4.1.0": "Multi-target tracking improvements, UI enhancements",

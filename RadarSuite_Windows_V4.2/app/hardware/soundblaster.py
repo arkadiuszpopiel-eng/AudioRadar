@@ -1,5 +1,5 @@
 """
-RadarSuite v3.5.0 - Sound Blaster Optimization Module
+RadarSuite V4.2.1 - Sound Blaster Optimization Module
 Sound Blaster Z SE audio card optimization
 ADDED v3.5.0: Sound Blaster Z SE hardware optimization
 """

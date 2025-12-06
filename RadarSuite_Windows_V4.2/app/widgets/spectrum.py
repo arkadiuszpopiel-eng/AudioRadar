@@ -1,5 +1,5 @@
 """
-RadarSuite v3.5.0 - Spectrum Widgets
+RadarSuite V4.2.1 - Spectrum Widgets
 """
 
 import numpy as np

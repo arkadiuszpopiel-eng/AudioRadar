@@ -1,5 +1,5 @@
 """
-RadarSuite v3.5.0 - Tracking Module
+RadarSuite V4.2.1 - Tracking Module
 Multi-target tracking and threat priority system
 """
 

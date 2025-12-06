@@ -1,5 +1,5 @@
 """
-RadarSuite v3.5.0 - Performance Monitor
+RadarSuite V4.2.1 - Performance Monitor
 Real-time FPS, CPU, memory, latency tracking
 """
 

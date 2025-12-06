@@ -1,5 +1,5 @@
 """
-RadarSuite v3.5.0 - Human Voice Detector
+RadarSuite V4.2.1 - Human Voice Detector
 Formant analysis for voice detection
 """
 

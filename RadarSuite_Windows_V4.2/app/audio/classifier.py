@@ -1,5 +1,5 @@
 """
-RadarSuite v3.5.0 - Sound Classifier
+RadarSuite V4.2.1 - Sound Classifier
 Weapon/vehicle identification via spectral fingerprinting
 """
 

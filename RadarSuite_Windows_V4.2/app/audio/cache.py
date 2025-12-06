@@ -1,5 +1,5 @@
 """
-RadarSuite v3.5.0 - Audio Processing Cache
+RadarSuite V4.2.1 - Audio Processing Cache
 Thread-safe FFT caching for performance
 FIXED v3.5.0: Thread safety with locks
 """

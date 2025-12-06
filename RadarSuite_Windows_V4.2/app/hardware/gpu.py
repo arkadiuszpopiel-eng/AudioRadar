@@ -1,5 +1,5 @@
 """
-RadarSuite v3.5.0 - GPU Acceleration Module
+RadarSuite V4.2.1 - GPU Acceleration Module
 Optional GPU acceleration for FFT operations
 Optimized for AMD Radeon RX 7900 GRE (16GB)
 """

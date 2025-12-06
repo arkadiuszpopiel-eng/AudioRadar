@@ -308,13 +308,13 @@ class AudioEngine:
                         try:
                             stream.stop_stream()
                             stream.close()
-                        except:
-                            pass
+                        except (OSError, RuntimeError, AttributeError):
+                            pass  # Stream already closed or invalid
                     if p is not None:
                         try:
                             p.terminate()
-                        except:
-                            pass
+                        except (OSError, RuntimeError, AttributeError):
+                            pass  # PyAudio already terminated
 
             thread = threading.Thread(target=loopback_thread, daemon=True)
             thread.start()
@@ -382,8 +382,8 @@ class AudioEngine:
                     try:
                         import ctypes
                         ctypes.windll.ole32.CoUninitialize()
-                    except:
-                        pass
+                    except (OSError, AttributeError, ImportError):
+                        pass  # COM cleanup failed, non-critical
 
         thread = threading.Thread(target=loopback_thread, daemon=True)
         thread.start()

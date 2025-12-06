@@ -361,8 +361,8 @@ class HumanFootstepDetector:
                 # Include shape information if available
                 try:
                     error_msg += f" | block.shape={block.shape if hasattr(block, 'shape') else 'N/A'}"
-                except:
-                    pass
+                except (AttributeError, TypeError):
+                    pass  # Shape info unavailable
 
                 log(error_msg, "ERROR")
                 self.last_error_log_time = current_time

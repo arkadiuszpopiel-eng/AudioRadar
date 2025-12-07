@@ -57,6 +57,7 @@ hiddenimports += [
     # Widgets (all in separate files)
     'widgets', 'widgets.toast', 'widgets.radar', 'widgets.led', 'widgets.spectrum',
     'widgets.detection_panel', 'widgets.device_panel', 'widgets.ml_training_panel',
+    'widgets.ml_waveform', 'widgets.waveform_timeline', 'widgets.military_spectrum',
     # ML modules
     'ml', 'ml.detector', 'ml.feature_extractor', 'ml.yamnet',
     'ml.training', 'ml.training.recorder', 'ml.training.session_manager', 'ml.training.trainer',

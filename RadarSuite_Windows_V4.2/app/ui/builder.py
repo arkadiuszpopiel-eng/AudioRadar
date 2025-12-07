@@ -11,27 +11,52 @@ from typing import TYPE_CHECKING
 from PyQt5.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QTabWidget, QGroupBox,
     QLabel, QPushButton, QCheckBox, QSlider, QToolBar, QStatusBar,
-    QSizePolicy
+    QSizePolicy, QScrollArea
 )
 from PyQt5.QtCore import Qt
 
-from app.widgets.radar import MilitaryHUDRadar, Military3DRadar
-from app.widgets.spectrum import MilitarySpectrumWidget, MilitaryWaterfallWidget, MilitaryWaveformWidget
-from app.widgets.led import LedOverlayWidget
-from app.widgets.detection_panel import DetectionPanel
-from app.widgets.device_panel import DevicePanel
-from app.core.version import VERSION
-from app.core.translations import tr
+# Support both packaged execution (app.*) and direct script execution
+try:
+    from ..widgets.radar import MilitaryHUDRadar, Military3DRadar
+    from ..widgets.spectrum import (
+        MilitarySpectrumWidget,
+        MilitaryWaterfallWidget,
+        MilitaryWaveformWidget,
+    )
+    from ..widgets.led import LedOverlayWidget
+    from ..widgets.detection_panel import DetectionPanel
+    from ..widgets.device_panel import DevicePanel
+    from ..core.constants import VERSION
+    from ..core.translations import tr
+except ImportError:
+    # Standalone script execution (e.g., python main.py)
+    from widgets.radar import MilitaryHUDRadar, Military3DRadar
+    from widgets.spectrum import (
+        MilitarySpectrumWidget,
+        MilitaryWaterfallWidget,
+        MilitaryWaveformWidget,
+    )
+    from widgets.led import LedOverlayWidget
+    from widgets.detection_panel import DetectionPanel
+    from widgets.device_panel import DevicePanel
+
+    try:
+        from core.constants import VERSION
+    except ImportError:
+        # Minimal fallback when constants.py cannot be resolved
+        from version import __version__ as VERSION
+
+    from core.translations import tr
 
 # ML Training Panel (v4.2.0 - Roadmap Item 1)
 try:
-    from app.widgets.ml_training_panel import MLTrainingPanel
+    from ..widgets.ml_training_panel import MLTrainingPanel
     ML_TRAINING_AVAILABLE = True
 except ImportError:
     ML_TRAINING_AVAILABLE = False
 
 if TYPE_CHECKING:
-    from app.main import MainWindow
+    from ..main import MainWindow
 
 
 class UIBuilder:
@@ -223,18 +248,34 @@ class UIBuilder:
     def _build_detection_tab(self) -> None:
         """Build Tab 2: Detection & Audio."""
         detection_tab = QWidget()
-        detection_layout = QHBoxLayout()
+        detection_layout = QVBoxLayout()
         detection_layout.setContentsMargins(5, 5, 5, 5)
+
+        # Scrollable container to ensure responsive layout on small widths/DPI
+        scroll_area = QScrollArea()
+        scroll_area.setWidgetResizable(True)
+        scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+        scroll_area.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+
+        container = QWidget()
+        container_layout = QHBoxLayout(container)
+        container_layout.setContentsMargins(10, 10, 10, 10)
+        container_layout.setSpacing(12)
 
         # Left: Detection panel
         self.main.det_panel = DetectionPanel()
-        detection_layout.addWidget(self.main.det_panel, 3)
+        container_layout.addWidget(self.main.det_panel, 3)
 
         # Right: Device/Audio panel
         self.main.dev_panel = DevicePanel(self.main.audio)
         self.main.dev_panel.set_audio_scanner(self.main.audio_scanner)
-        detection_layout.addWidget(self.main.dev_panel, 2)
+        self.main.dev_panel.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Preferred)
+        container_layout.addWidget(self.main.dev_panel, 2)
 
+        container.setLayout(container_layout)
+        scroll_area.setWidget(container)
+
+        detection_layout.addWidget(scroll_area)
         detection_tab.setLayout(detection_layout)
         self.main.main_tabs.addTab(detection_tab, f"🔊 {tr('tab_detection_audio')}")
 
@@ -262,17 +303,17 @@ class UIBuilder:
 
     def _build_game_group(self) -> QGroupBox:
         """Build Active Games & Engines group."""
-        game_group = QGroupBox("🎮 Active Games & Engines")
+        game_group = QGroupBox(tr('game_group_title'))
         game_group_layout = QVBoxLayout()
 
-        self.main.detected_games_label = QLabel("Scanning for games...")
+        self.main.detected_games_label = QLabel(tr('scanning_games'))
         self.main.detected_games_label.setStyleSheet(
             "font-size: 11pt; color: #888888; padding: 10px;"
         )
         self.main.detected_games_label.setWordWrap(True)
         game_group_layout.addWidget(self.main.detected_games_label)
 
-        self.main.detected_engines_label = QLabel("No engines detected")
+        self.main.detected_engines_label = QLabel(tr('no_engines'))
         self.main.detected_engines_label.setStyleSheet(
             "font-size: 10pt; color: #888888; padding: 5px;"
         )
@@ -280,7 +321,7 @@ class UIBuilder:
         game_group_layout.addWidget(self.main.detected_engines_label)
 
         # Quick Setup button
-        self.main.quick_setup_btn = QPushButton("⚡ QUICK SETUP - Enable Game Audio Capture")
+        self.main.quick_setup_btn = QPushButton(tr('quick_setup'))
         self.main.quick_setup_btn.setStyleSheet(self.QUICK_SETUP_BTN_STYLE)
         self.main.quick_setup_btn.clicked.connect(self.main.quick_setup_game_audio)
         game_group_layout.addWidget(self.main.quick_setup_btn)
@@ -290,17 +331,17 @@ class UIBuilder:
 
     def _build_platform_group(self) -> QGroupBox:
         """Build Gaming Platform Launchers group."""
-        platform_group = QGroupBox("🚀 Gaming Platform Launchers")
+        platform_group = QGroupBox(tr('platform_group_title'))
         platform_layout = QVBoxLayout()
 
-        self.main.detected_platforms_label = QLabel("Scanning for launchers...")
+        self.main.detected_platforms_label = QLabel(tr('scanning_launchers'))
         self.main.detected_platforms_label.setStyleSheet(
             "font-size: 10pt; color: #888888; padding: 5px;"
         )
         self.main.detected_platforms_label.setWordWrap(True)
         platform_layout.addWidget(self.main.detected_platforms_label)
 
-        self.main.launcher_game_label = QLabel("—")
+        self.main.launcher_game_label = QLabel(tr('launchers_placeholder'))
         self.main.launcher_game_label.setStyleSheet(
             "font-size: 9pt; color: #00DDFF; padding: 5px;"
         )
@@ -312,21 +353,21 @@ class UIBuilder:
 
     def _build_audio_sources_group(self) -> QGroupBox:
         """Build Audio Sources Monitor group."""
-        sources_group = QGroupBox("🔊 Audio Sources Monitor")
+        sources_group = QGroupBox(tr('audio_sources_group'))
         sources_layout = QVBoxLayout()
 
         # Active sources
-        active_label = QLabel("ACTIVE SOURCES:")
+        active_label = QLabel(tr('active_sources'))
         active_label.setStyleSheet("font-weight: bold; color: #00FF00; font-size: 10pt;")
         sources_layout.addWidget(active_label)
 
-        self.main.active_sources_label = QLabel("Scanning: 0")
+        self.main.active_sources_label = QLabel(tr('scanning_sources').format(count=0))
         self.main.active_sources_label.setStyleSheet(
             "font-size: 9pt; color: #00DD00; padding: 5px;"
         )
         sources_layout.addWidget(self.main.active_sources_label)
 
-        self.main.active_sources_list = QLabel("—")
+        self.main.active_sources_list = QLabel(tr('sources_placeholder'))
         self.main.active_sources_list.setStyleSheet(
             "font-size: 8pt; color: #00DD00; padding: 5px;"
         )

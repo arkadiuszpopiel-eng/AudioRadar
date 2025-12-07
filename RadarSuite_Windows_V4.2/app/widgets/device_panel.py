@@ -567,38 +567,38 @@ class DevicePanel(QWidget):
         if game_info and game_info.get('detected'):
             # Game detected - show green
             self.game_detection_led.setStyleSheet("color: #0f0; font-size: 14pt;")
-            self.game_detection_status.setText("GAME DETECTED")
+            self.game_detection_status.setText(tr('game_detected'))
             self.game_detection_status.setStyleSheet("font-size: 10pt; font-weight: bold; color: #0f0;")
 
             # Update process details
-            self.process_name_label.setText(f"Process: {game_info.get('process_name', '—')}")
+            self.process_name_label.setText(f"{tr('process')}: {game_info.get('process_name', '—')}")
             self.process_name_label.setStyleSheet("font-size: 9pt; color: #0f0; font-family: monospace;")
 
-            self.process_pid_label.setText(f"PID: {game_info.get('pid', '—')}")
+            self.process_pid_label.setText(f"{tr('pid')}: {game_info.get('pid', '—')}")
             self.process_pid_label.setStyleSheet("font-size: 9pt; color: #0dd; font-family: monospace;")
 
             memory_mb = game_info.get('memory_mb', 0)
-            self.process_memory_label.setText(f"Memory: {memory_mb:.1f} MB")
+            self.process_memory_label.setText(f"{tr('memory')}: {memory_mb:.1f} MB")
             self.process_memory_label.setStyleSheet("font-size: 9pt; color: #dd0; font-family: monospace;")
 
             window = game_info.get('window_title', '—')
             if len(window) > 40:
                 window = window[:40] + "..."
-            self.process_window_label.setText(f"Window: {window}")
+            self.process_window_label.setText(f"{tr('window')}: {window}")
 
         else:
             # No game detected - show gray
             self.game_detection_led.setStyleSheet("color: #666; font-size: 14pt;")
-            self.game_detection_status.setText("No game detected")
+            self.game_detection_status.setText(tr('no_game_detected'))
             self.game_detection_status.setStyleSheet("font-size: 10pt; font-weight: bold; color: #888;")
 
-            self.process_name_label.setText("Process: —")
+            self.process_name_label.setText(f"{tr('process')}: —")
             self.process_name_label.setStyleSheet("font-size: 9pt; color: #888; font-family: monospace;")
-            self.process_pid_label.setText("PID: —")
+            self.process_pid_label.setText(f"{tr('pid')}: —")
             self.process_pid_label.setStyleSheet("font-size: 9pt; color: #888; font-family: monospace;")
-            self.process_memory_label.setText("Memory: —")
+            self.process_memory_label.setText(f"{tr('memory')}: —")
             self.process_memory_label.setStyleSheet("font-size: 9pt; color: #888; font-family: monospace;")
-            self.process_window_label.setText("Window: —")
+            self.process_window_label.setText(f"{tr('window')}: —")
 
         # Update lists if scan_result provided
         if scan_result:

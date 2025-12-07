@@ -19,6 +19,8 @@ TRANSLATIONS = {
         'tab_game_detection': 'Game Detection',
         'tab_analysis': 'Analysis',
         'tab_ml_training': 'ML Training',
+        'tab_military_hud': 'Military HUD',
+        'tab_wallhack': '3D Wallhack',
 
         # Toolbar Buttons
         'start': 'START',
@@ -26,6 +28,7 @@ TRANSLATIONS = {
         'rec': 'REC',
         'export': 'Export',
         'import': 'Import',
+        'quick_setup': '⚡ QUICK SETUP - Enable Game Audio Capture',
 
         # Radar Tab
         'radar': 'Radar',
@@ -37,6 +40,7 @@ TRANSLATIONS = {
         'opacity': 'Opacity:',
         'radar_alpha': 'Radar Alpha:',
         'led_alpha': 'LED Alpha:',
+        'count': 'COUNT',
 
         # Detection Panel
         'detection_profile': 'Detection Profile',
@@ -73,6 +77,22 @@ TRANSLATIONS = {
         'presets': 'Presets',
         'sb_preset': 'SB Z SE + Cloud II',
         'game_detection': 'Game Detection',
+        'game_detected': 'GAME DETECTED',
+        'no_game_detected': 'No game detected',
+        'process': 'Process',
+        'pid': 'PID',
+        'memory': 'Memory',
+        'window': 'Window',
+        'game_group_title': '🎮 Active Games & Engines',
+        'scanning_games': 'Scanning for games...',
+        'no_engines': 'No engines detected',
+        'platform_group_title': '🚀 Gaming Platform Launchers',
+        'scanning_launchers': 'Scanning for launchers...',
+        'launchers_placeholder': '—',
+        'audio_sources_group': '🔊 Audio Sources Monitor',
+        'active_sources': 'ACTIVE SOURCES:',
+        'scanning_sources': 'Scanning: {count}',
+        'sources_placeholder': '—',
 
         # Analysis Tab
         'spectrum': 'Spectrum',
@@ -102,6 +122,12 @@ TRANSLATIONS = {
         'range': 'RANGE',
         'lock': 'LOCK',
         'statistics': 'STATISTICS',
+        'mode_label': 'MODE:',
+        'range_label': 'RANGE:',
+        'lock_label': 'LOCK:',
+        'scan': 'SCAN',
+        'audio': 'AUDIO',
+        'system': 'SYS',
 
         # Messages
         'no_device_selected': 'No device selected',
@@ -120,6 +146,8 @@ TRANSLATIONS = {
         'tab_game_detection': 'Wykrywanie Gry',
         'tab_analysis': 'Analiza',
         'tab_ml_training': 'Trening ML',
+        'tab_military_hud': 'HUD Militarny',
+        'tab_wallhack': 'Wallhack 3D',
 
         # Toolbar Buttons
         'start': 'START',
@@ -127,6 +155,7 @@ TRANSLATIONS = {
         'rec': 'NAGRAJ',
         'export': 'Eksportuj',
         'import': 'Importuj',
+        'quick_setup': '⚡ SZYBKA KONFIGURACJA - Włącz przechwytywanie dźwięku gry',
 
         # Radar Tab
         'radar': 'Radar',
@@ -138,6 +167,7 @@ TRANSLATIONS = {
         'opacity': 'Przeźroczystość:',
         'radar_alpha': 'Przeźroczystość Radaru:',
         'led_alpha': 'Przeźroczystość LED:',
+        'count': 'LICZBA',
 
         # Detection Panel
         'detection_profile': 'Profil Detekcji',
@@ -174,6 +204,22 @@ TRANSLATIONS = {
         'presets': 'Presety',
         'sb_preset': 'SB Z SE + Cloud II',
         'game_detection': 'Wykrywanie Gry',
+        'game_detected': 'WYKRYTO GRĘ',
+        'no_game_detected': 'Nie wykryto gry',
+        'process': 'Proces',
+        'pid': 'PID',
+        'memory': 'Pamięć',
+        'window': 'Okno',
+        'game_group_title': '🎮 Aktywne gry i silniki',
+        'scanning_games': 'Skanowanie gier...',
+        'no_engines': 'Brak wykrytych silników',
+        'platform_group_title': '🚀 Platformy / Launchery',
+        'scanning_launchers': 'Skanowanie launcherów...',
+        'launchers_placeholder': '—',
+        'audio_sources_group': '🔊 Monitor źródeł audio',
+        'active_sources': 'AKTYWNE ŹRÓDŁA:',
+        'scanning_sources': 'Skanowanie: {count}',
+        'sources_placeholder': '—',
 
         # Analysis Tab
         'spectrum': 'Widmo',
@@ -203,6 +249,12 @@ TRANSLATIONS = {
         'range': 'ZASIĘG',
         'lock': 'NAMIAR',
         'statistics': 'STATYSTYKI',
+        'mode_label': 'TRYB:',
+        'range_label': 'ZASIĘG:',
+        'lock_label': 'NAMIAR:',
+        'scan': 'SKAN',
+        'audio': 'AUDIO',
+        'system': 'SYS',
 
         # Messages
         'no_device_selected': 'Nie wybrano urządzenia',

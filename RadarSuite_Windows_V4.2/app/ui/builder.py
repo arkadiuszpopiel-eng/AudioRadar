@@ -15,23 +15,48 @@ from PyQt5.QtWidgets import (
 )
 from PyQt5.QtCore import Qt
 
-from app.widgets.radar import MilitaryHUDRadar, Military3DRadar
-from app.widgets.spectrum import MilitarySpectrumWidget, MilitaryWaterfallWidget, MilitaryWaveformWidget
-from app.widgets.led import LedOverlayWidget
-from app.widgets.detection_panel import DetectionPanel
-from app.widgets.device_panel import DevicePanel
-from app.core.version import VERSION
-from app.core.translations import tr
+# Support both packaged execution (app.*) and direct script execution
+try:
+    from ..widgets.radar import MilitaryHUDRadar, Military3DRadar
+    from ..widgets.spectrum import (
+        MilitarySpectrumWidget,
+        MilitaryWaterfallWidget,
+        MilitaryWaveformWidget,
+    )
+    from ..widgets.led import LedOverlayWidget
+    from ..widgets.detection_panel import DetectionPanel
+    from ..widgets.device_panel import DevicePanel
+    from ..core.constants import VERSION
+    from ..core.translations import tr
+except ImportError:
+    # Standalone script execution (e.g., python main.py)
+    from widgets.radar import MilitaryHUDRadar, Military3DRadar
+    from widgets.spectrum import (
+        MilitarySpectrumWidget,
+        MilitaryWaterfallWidget,
+        MilitaryWaveformWidget,
+    )
+    from widgets.led import LedOverlayWidget
+    from widgets.detection_panel import DetectionPanel
+    from widgets.device_panel import DevicePanel
+
+    try:
+        from core.constants import VERSION
+    except ImportError:
+        # Minimal fallback when constants.py cannot be resolved
+        from version import __version__ as VERSION
+
+    from core.translations import tr
 
 # ML Training Panel (v4.2.0 - Roadmap Item 1)
 try:
-    from app.widgets.ml_training_panel import MLTrainingPanel
+    from ..widgets.ml_training_panel import MLTrainingPanel
     ML_TRAINING_AVAILABLE = True
 except ImportError:
     ML_TRAINING_AVAILABLE = False
 
 if TYPE_CHECKING:
-    from app.main import MainWindow
+    from ..main import MainWindow
 
 
 class UIBuilder:

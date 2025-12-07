@@ -1,35 +1,59 @@
-# RadarSuite API Overview (v4.2.1)
+# RadarSuite API Overview
 
 ## Architektura
-- **app/main.py** – główne okno PyQt5, łączy audio, detekcję, ML i UI Builder.
-- **core/** – konfiguracja, logowanie, tłumaczenia, eksport/import ustawień (ExportImportManager).
-- **utils/** – monitorowanie wydajności/pamięci (PerformanceMonitor, MemoryOptimizer), skanowanie urządzeń audio, wykrywanie gier i launcherów.
-- **audio/** – strumieniowanie i nagrywanie (AudioEngine, AudioRecorder), klasyfikacja (SoundClassifier), przetwarzanie sygnału (AudioProcessor, AudioProcessingCache).
-- **detection/** – algorytmy wykrywania kroków/głosów/zdarzeń (DetectionWorker, HumanFootstepDetector).
-- **tracking/** – obiekty i logika śledzenia celów (Target, TargetTracker, ThreatPrioritySystem).
-- **widgets/** – komponenty UI: radar (MilitaryHUDRadar), panele urządzeń/detekcji, widżety widma/wodospadu/przebiegu fali, panel treningu ML (MLTrainingPanel).
-- **ml/** – trenowanie modeli: SessionManager (zarządzanie sesjami/etykietami), LabeledRecorder (nagrywanie z etykietami), ModelTrainer (uczenie modeli), TrainingConfig/TrainingStatus.
-- **ui/builder.py** – tworzenie zakładek, toolbaru, statusbaru; integracja paneli.
 
-## Typowy przepływ danych
-1. **Wejście audio** – AudioEngine wybiera urządzenie z DevicePanel i buforuje dane w AudioProcessingCache.
-2. **Analiza w czasie rzeczywistym** – DetectionWorker/HumanFootstepDetector przetwarzają bufory, wyniki trafiają do radarów i paneli statusu.
-3. **Nagrywanie i etykietowanie** – MLTrainingPanel używa LabeledRecorder do zapisu WAV + metadanych; WaveformTimelineWidget pozwala zoomować, przewijać i zaznaczać segmenty.
-4. **Trening modelu** – ModelTrainer ładuje zapisane sesje, generuje cechy (ml.feature_extractor) i uczy model (ml.detector/ml.yamnet); status raportowany w panelu.
-5. **Integracja z grami** – GameProcessDetector/PlatformLauncherDetector śledzą aktywne gry; profile audio i modele są wiązane z wykrytym tytułem.
-6. **Eksport/Import** – ExportImportManager pakuje konfigurację, profile i modele do archiwum (ZIP+JSON) i odtwarza je na innej instalacji.
+- **core/** – warstwa wspólna (logowanie, konfiguracja, tłumaczenia) oraz rejestracja DI.
+- **audio/** – nagrywanie, przetwarzanie bloków audio i podgląd RMS wykorzystywany przez UI.
+- **ml/** – detekcja (YAMNet, klasyfikacja heurystyczna) oraz pipeline treningowy (`training/`).
+- **widgets/** – komponenty PyQt5: panele konfiguracji, wizualizacje (spectrum, waterfall, waveform) i edytor treningu ML.
+- **ui/builder.py** – kompozycja głównego okna i zakładek (Radar, Detection & Audio, ML Training itd.).
 
-## Kluczowe klasy i metody
-- **AudioRecorder.start/stop** – rozpoczyna/zatrzymuje zapis WAV; zwalnia bufory po zakończeniu.
-- **DetectionPanel.update_status** – wyświetla stany wykrywania (CHÓD/BIEG/STRZAŁ) z progami czułości.
-- **MilitaryHUDRadar.paintEvent** – rysuje cele, panele TAKTYKA/CELE i pasek statusu z tłumaczeniami.
-- **MLTrainingPanel._on_recording_state_change** – reaguje na start/stop nagrania, aktualizuje timer i kolor statusu.
-- **WaveformTimelineWidget.set_audio_data / zoom** – ładuje przebieg fali, umożliwia powiększanie i przesuwanie osi czasu z markerami etykiet.
-- **ExportImportManager.export_all / import_all** – serializuje ustawienia, profile gier i modele; waliduje wersję formatu.
-- **MemoryOptimizer.cleanup_buffers** – usuwa przestarzałe bufory audio, ogranicza użycie pamięci w długich sesjach.
+## Główne moduły
 
-## Konwencje API
-- Wszystkie widżety UI przyjmują `parent=None`, używają sygnałów Qt do aktualizacji.
-- Funkcja tłumaczeń `tr(key)` powinna być stosowana zamiast hard-coded stringów.
-- Modele i sesje ML są identyfikowane przez nazwę gry/profilu; metadane przechowywane w JSON obok plików WAV.
+### core
+- `core.logger.log(message, level)` – lekkie logowanie do konsoli oraz plików diagnostycznych.
+- `core.translations.tr(key)` – tłumaczenia EN/PL dla tekstów UI.
+- `core.config.AppConfig` – odczyt i zapis ustawień aplikacji.
+- `core.export_import` – eksport/import konfiguracji w formacie JSON/ZIP.
 
+### audio
+- `audio.recorder.AudioRecorder` – przechwytywanie dźwięku z wybranego urządzenia (loopback / mikrofon).
+- `audio.engine.AudioEngine` – miksowanie i przesyłanie bloków audio do widżetów podglądu.
+
+### ml (detekcja)
+- `ml.detector.MLDetector` – obsługa modelu ML (YAMNet) z trybem awaryjnym heurystycznym.
+- `ml.yamnet.YAMNetDetector` – ładuje model TFLite i wykonuje klasyfikację dźwięku.
+
+### ml/training (trening)
+- `ml.training.SessionManager` – zarządza sesjami nagrań oraz metadanymi etykiet.
+- `ml.training.LabeledRecorder` – nagrywa audio i dodaje etykiety w czasie rzeczywistym.
+- `ml.training.ModelTrainer` – ekstrakcja cech i trenowanie modelu; statusy w `TrainingStatus`.
+- `widgets.ml_training_panel.MLTrainingPanel` – UI do nagrywania, etykietowania i uruchamiania treningu.
+- `widgets.waveform_timeline.WaveformTimelineWidget` – wizualizacja przebiegu, zoom/scroll, wybór segmentów.
+
+### UI
+- `widgets.detection_panel.DetectionPanel` – konfiguracja detekcji, czułości i statusów.
+- `widgets.device_panel.DevicePanel` – wybór urządzeń audio i trybu pracy.
+- `ui.builder.UIBuilder` – tworzy paski narzędzi, zakładki i przypina widżety do głównego okna.
+
+## Przepływy pracy
+
+### Nagrywanie i etykietowanie (ML Training)
+1. Użytkownik otwiera zakładkę **Trening ML** (UIBuilder tworzy `MLTrainingPanel`).
+2. `LabeledRecorder` startuje nagrywanie z wybranego źródła audio; bloki trafiają do `WaveformTimelineWidget`.
+3. Użytkownik zaznacza fragmenty przebiegu i dodaje etykiety (przyciski lub hotkeys 1–8).
+4. `SessionManager` zapisuje WAV + metadane etykiet; sesja staje się dostępna w tabeli zapisów.
+
+### Trening modelu
+1. Użytkownik wybiera sesje i uruchamia trening w `MLTrainingPanel`.
+2. `ModelTrainer` aktualizuje postęp przez `TrainingStatus` (PREPARING → EXTRACTING_FEATURES → TRAINING → SAVING).
+3. Po zakończeniu model jest zapisywany w katalogu profilu i rejestrowany w konfiguracji.
+
+### Eksport/Import
+- `core.export_import.export_package(path)` pakuje konfigurację (JSON) oraz modele/dane pomocnicze do ZIP.
+- `core.export_import.import_package(path)` odtwarza ustawienia, profile gier i ścieżki modeli na innym stanowisku.
+
+### Integracja z detekcją podczas gry
+1. `audio.engine` przekazuje bloki audio do `ml.detector.MLDetector` oraz algorytmów heurystycznych.
+2. Wyniki zasila `widgets.detection_panel`, aktualizując wskaźniki (chód/bieg/strzał) i HUD.
+3. Jeśli ML jest wyłączone lub model brakujący, system pozostaje w trybie heurystycznym.

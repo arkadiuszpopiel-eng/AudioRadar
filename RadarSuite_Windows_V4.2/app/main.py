@@ -516,7 +516,7 @@ class MainWindow(QMainWindow):
 
         # Status bar
         if not self.is_running:
-        self.status_bar.showMessage("✓ Ready - All systems operational" if lang == 'en' else "✓ Gotowy - Wszystkie systemy sprawne")
+            self.status_bar.showMessage("✓ Ready - All systems operational" if lang == 'en' else "✓ Gotowy - Wszystkie systemy sprawne")
         else:
             self.status_bar.showMessage("● RUNNING - Detection active" if lang == 'en' else "● DZIAŁA - Detekcja aktywna")
 

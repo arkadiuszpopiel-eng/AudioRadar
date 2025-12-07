@@ -1,12 +1,15 @@
 """
-RadarSuite v4.2.0 - ML Training Panel
+RadarSuite v4.2.1 - ML Training Panel
 User-friendly UI for recording, labeling, and training custom audio models
 
+ENHANCED v4.2.1: Added waveform timeline editor for segment labeling
 Features:
 - One-click recording start/stop
 - Real-time labeling with hotkeys (1-8)
 - Label list with edit/delete
 - Training progress display
+- Waveform timeline with zoom/scroll
+- Segment selection and labeling
 - No terminal required
 """
 
@@ -27,6 +30,7 @@ try:
         SessionManager, LabeledSession, AudioLabel,
         LabeledRecorder, ModelTrainer, TrainingConfig, TrainingStatus
     )
+    from widgets.waveform_timeline import WaveformTimelineWidget
 except ImportError:
     from ..core.logger import log
     def tr(x): return x
@@ -34,6 +38,7 @@ except ImportError:
         SessionManager, LabeledSession, AudioLabel,
         LabeledRecorder, ModelTrainer, TrainingConfig, TrainingStatus
     )
+    from .waveform_timeline import WaveformTimelineWidget
 
 
 class AddLabelDialog(QDialog):
@@ -124,6 +129,10 @@ class MLTrainingPanel(QWidget):
         # Audio buffer for current frame
         self._current_audio_block = None
 
+        # v4.2.1: Waveform timeline state
+        self._pending_waveform_update = False
+        self._selected_segment = None
+
         self._build_ui()
         self._update_sessions_table()
 
@@ -147,6 +156,7 @@ class MLTrainingPanel(QWidget):
 
         left_layout.addWidget(self._build_recording_group())
         left_layout.addWidget(self._build_labeling_group())
+        left_layout.addWidget(self._build_waveform_timeline_group())  # v4.2.1: Timeline editor
         left_layout.addWidget(self._build_labels_table_group())
 
         splitter.addWidget(left_widget)
@@ -277,6 +287,61 @@ class MLTrainingPanel(QWidget):
         """)
         self.custom_label_btn.clicked.connect(self._add_custom_label)
         layout.addWidget(self.custom_label_btn)
+
+        group.setLayout(layout)
+        return group
+
+    def _build_waveform_timeline_group(self) -> QGroupBox:
+        """Build waveform timeline editor group (v4.2.1)."""
+        group = QGroupBox("📈 " + (tr('waveform_timeline') if callable(tr) else "Waveform Timeline"))
+        layout = QVBoxLayout()
+
+        # Waveform timeline widget
+        self.waveform_timeline = WaveformTimelineWidget()
+        self.waveform_timeline.segment_selected.connect(self._on_segment_selected)
+        self.waveform_timeline.timestamp_clicked.connect(self._on_timestamp_clicked)
+        layout.addWidget(self.waveform_timeline)
+
+        # Segment labeling controls
+        segment_row = QHBoxLayout()
+
+        self.segment_info_label = QLabel(tr('no_selection') if callable(tr) else "No selection")
+        self.segment_info_label.setStyleSheet("color: #888888; font-family: monospace;")
+        segment_row.addWidget(self.segment_info_label)
+
+        segment_row.addStretch()
+
+        self.add_segment_label_btn = QPushButton("🏷️ " + (tr('add_label_to_selection') if callable(tr) else "Label Selection"))
+        self.add_segment_label_btn.setStyleSheet("""
+            QPushButton {
+                background: #2a4a2a;
+                color: #88FF88;
+                padding: 6px 12px;
+                border: 1px solid #446644;
+                border-radius: 4px;
+            }
+            QPushButton:hover { background: #3a5a3a; }
+            QPushButton:disabled { background: #1a1a1a; color: #555; }
+        """)
+        self.add_segment_label_btn.setEnabled(False)
+        self.add_segment_label_btn.clicked.connect(self._add_label_to_segment)
+        segment_row.addWidget(self.add_segment_label_btn)
+
+        self.clear_segment_btn = QPushButton("✕ " + (tr('clear_selection') if callable(tr) else "Clear"))
+        self.clear_segment_btn.setStyleSheet("""
+            QPushButton {
+                background: #4a2a2a;
+                color: #FF8888;
+                padding: 6px 12px;
+                border: 1px solid #664444;
+                border-radius: 4px;
+            }
+            QPushButton:hover { background: #5a3a3a; }
+        """)
+        self.clear_segment_btn.clicked.connect(self._clear_segment_selection)
+        segment_row.addWidget(self.clear_segment_btn)
+
+        layout.addLayout(segment_row)
 
         group.setLayout(layout)
         return group
@@ -490,6 +555,11 @@ class MLTrainingPanel(QWidget):
         secs = int(elapsed % 60)
         self.elapsed_label.setText(f"{mins}:{secs:02d}")
 
+        # v4.2.1: Update waveform display periodically during recording
+        if hasattr(self, '_pending_waveform_update') and self._pending_waveform_update:
+            self._update_waveform_data()
+            self._pending_waveform_update = False
+
     # ========================================================================
     # LABELING HANDLERS
     # ========================================================================
@@ -551,6 +621,83 @@ class MLTrainingPanel(QWidget):
         if self.recorder.current_session:
             self.recorder.current_session.remove_label(label_id)
             self.labels_table.removeRow(row)
+
+    # ========================================================================
+    # WAVEFORM TIMELINE HANDLERS (v4.2.1)
+    # ========================================================================
+
+    def _on_segment_selected(self, start_sec: float, end_sec: float):
+        """Handle segment selection from waveform timeline."""
+        duration = end_sec - start_sec
+        self.segment_info_label.setText(
+            f"Selection: {start_sec:.2f}s - {end_sec:.2f}s ({duration:.2f}s)"
+        )
+        self.add_segment_label_btn.setEnabled(True)
+        self._selected_segment = (start_sec, end_sec)
+
+    def _on_timestamp_clicked(self, timestamp_sec: float):
+        """Handle timestamp click from waveform timeline."""
+        # If recording, add instant label at this position
+        if self.recorder.is_recording:
+            # Just update position, labeling done via buttons
+            pass
+        self.segment_info_label.setText(f"Position: {timestamp_sec:.2f}s")
+        self.add_segment_label_btn.setEnabled(False)
+        self._selected_segment = None
+
+    def _add_label_to_segment(self):
+        """Add label to selected segment."""
+        if not hasattr(self, '_selected_segment') or self._selected_segment is None:
+            return
+
+        start_sec, end_sec = self._selected_segment
+
+        # Show dialog to choose label class
+        dialog = AddLabelDialog(self, timestamp=start_sec)
+        if dialog.exec_() == QDialog.Accepted:
+            values = dialog.get_values()
+
+            if self.recorder.current_session:
+                # Add label with segment duration info in description
+                desc = values["description"]
+                if desc:
+                    desc += f" (segment: {end_sec - start_sec:.2f}s)"
+                else:
+                    desc = f"segment: {start_sec:.2f}s - {end_sec:.2f}s"
+
+                label = AudioLabel(
+                    id=len(self.recorder.current_session.labels),
+                    timestamp_sec=start_sec,
+                    label_class=values["label_class"],
+                    description=desc
+                )
+                self.recorder.current_session.labels.append(label)
+                self._add_label_to_table(label)
+                self._update_waveform_markers()
+
+    def _clear_segment_selection(self):
+        """Clear segment selection."""
+        self.waveform_timeline.clear_selection()
+        self.segment_info_label.setText(tr('no_selection') if callable(tr) else "No selection")
+        self.add_segment_label_btn.setEnabled(False)
+        self._selected_segment = None
+
+    def _update_waveform_markers(self):
+        """Update waveform timeline with current session markers."""
+        if self.recorder.current_session:
+            markers = [
+                (label.timestamp_sec, label.label_class)
+                for label in self.recorder.current_session.labels
+            ]
+            self.waveform_timeline.set_markers(markers)
+
+    def _update_waveform_data(self):
+        """Update waveform display with current audio data."""
+        if self.recorder.current_session and hasattr(self.recorder, '_audio_buffer'):
+            audio_data = self.recorder._audio_buffer
+            if audio_data is not None and len(audio_data) > 0:
+                sample_rate = getattr(self.recorder, '_sample_rate', 48000)
+                self.waveform_timeline.set_audio_data(audio_data, sample_rate)
 
     # ========================================================================
     # TRAINING HANDLERS
@@ -695,6 +842,9 @@ class MLTrainingPanel(QWidget):
         """
         if self.recorder.is_recording:
             self.recorder.add_audio_block(block)
+            # v4.2.1: Update waveform timeline periodically
+            # (actual update happens via timer to avoid too frequent redraws)
+            self._pending_waveform_update = True
 
     # ========================================================================
     # KEYBOARD SHORTCUTS

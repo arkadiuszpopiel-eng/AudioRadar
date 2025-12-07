@@ -111,6 +111,10 @@ class DetectionPanel(QWidget):
         self.walk_sens = QSlider(Qt.Horizontal)
         self.walk_sens.setRange(1, 100)
         self.walk_sens.setValue(50)  # FIXED v3.5.3: More sensitive (was 35)
+        # FIXED v4.2.1: Smooth scrolling - set single step and page step
+        self.walk_sens.setSingleStep(1)  # Arrow key / small scroll movement
+        self.walk_sens.setPageStep(10)   # Page up/down / large scroll movement
+        self.walk_sens.setTracking(True)  # Emit valueChanged while dragging
         walk_layout.addWidget(self.walk_sens)
         self.walk_sens_label = QLabel("50")
         self.walk_sens.valueChanged.connect(lambda v: self.walk_sens_label.setText(str(v)))
@@ -124,6 +128,10 @@ class DetectionPanel(QWidget):
         self.run_sens = QSlider(Qt.Horizontal)
         self.run_sens.setRange(1, 100)
         self.run_sens.setValue(50)  # FIXED v3.5.3: More sensitive (was 35)
+        # FIXED v4.2.1: Smooth scrolling
+        self.run_sens.setSingleStep(1)
+        self.run_sens.setPageStep(10)
+        self.run_sens.setTracking(True)
         run_layout.addWidget(self.run_sens)
         self.run_sens_label = QLabel("50")
         self.run_sens.valueChanged.connect(lambda v: self.run_sens_label.setText(str(v)))
@@ -137,6 +145,10 @@ class DetectionPanel(QWidget):
         self.shot_sens = QSlider(Qt.Horizontal)
         self.shot_sens.setRange(1, 100)
         self.shot_sens.setValue(60)  # FIXED v3.5.3: More sensitive (was 45)
+        # FIXED v4.2.1: Smooth scrolling
+        self.shot_sens.setSingleStep(1)
+        self.shot_sens.setPageStep(10)
+        self.shot_sens.setTracking(True)
         shot_layout.addWidget(self.shot_sens)
         self.shot_sens_label = QLabel("60")
         self.shot_sens.valueChanged.connect(lambda v: self.shot_sens_label.setText(str(v)))

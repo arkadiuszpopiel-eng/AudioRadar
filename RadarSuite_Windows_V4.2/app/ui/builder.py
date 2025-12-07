@@ -213,6 +213,10 @@ class UIBuilder:
         self.main.radar_alpha.setRange(0, 100)
         self.main.radar_alpha.setValue(100)
         self.main.radar_alpha.setMaximumWidth(150)
+        # FIXED v4.2.1: Smooth scrolling for opacity slider
+        self.main.radar_alpha.setSingleStep(1)
+        self.main.radar_alpha.setPageStep(10)
+        self.main.radar_alpha.setTracking(True)
         self.main.radar_alpha.valueChanged.connect(self.main.update_radar_alpha)
         radar_controls.addWidget(self.main.radar_alpha)
         radar_controls.addStretch()
@@ -463,6 +467,10 @@ class UIBuilder:
         self.main.led_alpha.setRange(0, 100)
         self.main.led_alpha.setValue(80)
         self.main.led_alpha.setMaximumWidth(150)
+        # FIXED v4.2.1: Smooth scrolling for LED opacity slider
+        self.main.led_alpha.setSingleStep(1)
+        self.main.led_alpha.setPageStep(10)
+        self.main.led_alpha.setTracking(True)
         self.main.led_alpha.valueChanged.connect(self.main.update_led_alpha)
         led_controls.addWidget(self.main.led_alpha)
         led_controls.addStretch()
@@ -507,6 +515,39 @@ class UIBuilder:
         self.main.lang_btn.setToolTip("Click to switch language / Kliknij aby zmienić język")
         self.main.lang_btn.clicked.connect(self.main.toggle_language)
         toolbar.addWidget(self.main.lang_btn)
+
+        toolbar.addSeparator()
+
+        # v4.2.1: Export/Import controls
+        self.main.export_btn = QPushButton("📤 Export")
+        self.main.export_btn.setStyleSheet("""
+            QPushButton {
+                background: #2a3a4a;
+                color: #88AACC;
+                padding: 6px 12px;
+                border: 1px solid #446688;
+                border-radius: 4px;
+            }
+            QPushButton:hover { background: #3a4a5a; }
+        """)
+        self.main.export_btn.setToolTip("Export configuration/models/sessions")
+        self.main.export_btn.clicked.connect(self.main.show_export_dialog)
+        toolbar.addWidget(self.main.export_btn)
+
+        self.main.import_btn = QPushButton("📥 Import")
+        self.main.import_btn.setStyleSheet("""
+            QPushButton {
+                background: #3a4a2a;
+                color: #AACC88;
+                padding: 6px 12px;
+                border: 1px solid #668844;
+                border-radius: 4px;
+            }
+            QPushButton:hover { background: #4a5a3a; }
+        """)
+        self.main.import_btn.setToolTip("Import configuration/models/sessions")
+        self.main.import_btn.clicked.connect(self.main.show_import_dialog)
+        toolbar.addWidget(self.main.import_btn)
 
         toolbar.addSeparator()
 

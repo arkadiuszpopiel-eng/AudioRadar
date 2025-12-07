@@ -39,9 +39,11 @@ hiddenimports = []
 # Custom application modules (CRITICAL for PyInstaller)
 # FIXED v4.2.1: Corrected module names to match actual structure
 hiddenimports += [
+    # Version module
+    'version',
     # Core modules
     'core', 'core.constants', 'core.config', 'core.logger', 'core.translations',
-    'core.di', 'core.confidence', 'core.error_handler', 'core.profiler',
+    'core.di', 'core.confidence', 'core.error_handler', 'core.profiler', 'core.export_import',
     # Hardware modules
     'hardware', 'hardware.gpu', 'hardware.soundblaster',
     # Utilities
@@ -57,6 +59,7 @@ hiddenimports += [
     # Widgets (all in separate files)
     'widgets', 'widgets.toast', 'widgets.radar', 'widgets.led', 'widgets.spectrum',
     'widgets.detection_panel', 'widgets.device_panel', 'widgets.ml_training_panel',
+    'widgets.ml_waveform', 'widgets.military_spectrum', 'widgets.waveform_timeline',
     # ML modules
     'ml', 'ml.detector', 'ml.feature_extractor', 'ml.yamnet',
     'ml.training', 'ml.training.recorder', 'ml.training.session_manager', 'ml.training.trainer',

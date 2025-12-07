@@ -9,35 +9,36 @@ Multi-language support (EN/PL)
 
 TRANSLATIONS = {
     'en': {
+        # Application
         'app_title': 'RadarSuite Final',
+        'language': 'Language:',
+
+        # Main Tabs
+        'tab_radar_view': 'Radar View',
+        'tab_detection_audio': 'Detection & Audio',
+        'tab_game_detection': 'Game Detection',
+        'tab_analysis': 'Analysis',
+        'tab_ml_training': 'ML Training',
+
+        # Toolbar Buttons
+        'start': 'START',
+        'stop': 'STOP',
+        'rec': 'REC',
+        'export': 'Export',
+        'import': 'Import',
+
+        # Radar Tab
         'radar': 'Radar',
-        'spectrum': 'Spectrum',
-        'waterfall': 'Waterfall',
-        'device_settings': 'Device & Settings',
-        'detection': 'Detection',
-        'led_alert': 'LED Edge Alert',
-        'start': 'Start',
-        'stop': 'Stop',
-        'radar_alpha': 'Radar Alpha:',
-        'led_alpha': 'LED Alpha:',
+        'military_hud': 'Military HUD',
+        '3d_wallhack': '3D Wallhack',
         'detach_radar': 'Detach Radar',
         'detach_led': 'Detach LED',
-        'frameless_mode': 'Frameless Mode',
-        'audio_device': 'Audio Device',
-        'select_device': 'Select Device:',
-        'refresh_devices': 'Refresh Devices',
-        'audio_settings': 'Audio Settings',
-        'sample_rate': 'Sample Rate:',
-        'block_size': 'Block Size:',
-        'channels': 'Channels:',
-        'mode': 'Mode',
-        'test_mode': 'Synthetic Test Mode',
-        'loopback_mode': 'Loopback (soundcard)',
-        'presets': 'Presets',
-        'sb_preset': 'SB Z SE + Cloud II',
-        'status': 'Status',
-        'rms': 'RMS:',
-        'backend': 'Backend:',
+        'frameless_mode': 'Frameless',
+        'opacity': 'Opacity:',
+        'radar_alpha': 'Radar Alpha:',
+        'led_alpha': 'LED Alpha:',
+
+        # Detection Panel
         'detection_profile': 'Detection Profile',
         'enable_detection': 'Enable Detection',
         'detect_walk': 'Detect WALK',
@@ -54,41 +55,91 @@ TRANSLATIONS = {
         'walk_none': 'WALK: —',
         'run_none': 'RUN: —',
         'shot_none': 'SHOT: —',
+        'human_footstep_analysis': 'Human Footstep Analysis',
+        'human_voice_analysis': 'Human Voice Analysis',
+
+        # Device Panel
+        'audio_device': 'Audio Device',
+        'select_device': 'Select Device:',
+        'refresh_devices': 'Refresh Devices',
+        'audio_settings': 'Audio Settings',
+        'sample_rate': 'Sample Rate:',
+        'block_size': 'Block Size:',
+        'channels': 'Channels:',
+        'mode': 'Mode',
+        'test_mode': 'Synthetic Test Mode',
+        'loopback_mode': 'Loopback (soundcard)',
+        'audio_enhancements': 'Audio Enhancements',
+        'presets': 'Presets',
+        'sb_preset': 'SB Z SE + Cloud II',
+        'game_detection': 'Game Detection',
+
+        # Analysis Tab
+        'spectrum': 'Spectrum',
+        'waterfall': 'Waterfall',
+        'waveform': 'Waveform',
+        'live_spectrum': 'LIVE SPECTRUM',
+        'led_alert': 'LED Edge Alert',
+
+        # ML Training Tab
+        'ml_training': 'ML Training',
+        'ml_training_studio': 'ML Training Studio',
+        'recording': 'Recording',
+        'training': 'Training',
+        'models': 'Models',
+
+        # Status
+        'status': 'Status',
         'ready': 'Ready',
         'running': 'Running',
         'stopped': 'Stopped',
-        'language': 'Language:',
-    },
-    'pl': {
-        'app_title': 'RadarSuite Final',
-        'radar': 'Radar',
-        'spectrum': 'Widmo',
-        'waterfall': 'Wodospad',
-        'device_settings': 'Urządzenie i Ustawienia',
-        'detection': 'Detekcja',
-        'led_alert': 'Alarm LED',
-        'start': 'Start',
-        'stop': 'Stop',
-        'radar_alpha': 'Przezroczystość Radaru:',
-        'led_alpha': 'Przezroczystość LED:',
-        'detach_radar': 'Odłącz Radar',
-        'detach_led': 'Odłącz LED',
-        'frameless_mode': 'Tryb Bez Ramek',
-        'audio_device': 'Urządzenie Audio',
-        'select_device': 'Wybierz Urządzenie:',
-        'refresh_devices': 'Odśwież Urządzenia',
-        'audio_settings': 'Ustawienia Audio',
-        'sample_rate': 'Częstotliwość Próbkowania:',
-        'block_size': 'Rozmiar Bloku:',
-        'channels': 'Kanały:',
-        'mode': 'Tryb',
-        'test_mode': 'Tryb Testowy (Syntetyczny)',
-        'loopback_mode': 'Loopback (karta dźwiękowa)',
-        'presets': 'Presety',
-        'sb_preset': 'SB Z SE + Cloud II',
-        'status': 'Status',
         'rms': 'RMS:',
         'backend': 'Backend:',
+
+        # Radar HUD
+        'targets': 'TARGETS',
+        'tactical': 'TACTICAL',
+        'range': 'RANGE',
+        'lock': 'LOCK',
+        'statistics': 'STATISTICS',
+
+        # Messages
+        'no_device_selected': 'No device selected',
+        'device_active': 'Device active',
+        'scanning': 'Scanning...',
+        'stopped_ready': 'Stopped - Ready to start',
+    },
+    'pl': {
+        # Application
+        'app_title': 'RadarSuite Final',
+        'language': 'Język:',
+
+        # Main Tabs
+        'tab_radar_view': 'Widok Radaru',
+        'tab_detection_audio': 'Detekcja i Audio',
+        'tab_game_detection': 'Wykrywanie Gry',
+        'tab_analysis': 'Analiza',
+        'tab_ml_training': 'Trening ML',
+
+        # Toolbar Buttons
+        'start': 'START',
+        'stop': 'STOP',
+        'rec': 'NAGRAJ',
+        'export': 'Eksportuj',
+        'import': 'Importuj',
+
+        # Radar Tab
+        'radar': 'Radar',
+        'military_hud': 'HUD Militarny',
+        '3d_wallhack': 'Wallhack 3D',
+        'detach_radar': 'Odłącz Radar',
+        'detach_led': 'Odłącz LED',
+        'frameless_mode': 'Bez Ramek',
+        'opacity': 'Przeźroczystość:',
+        'radar_alpha': 'Przeźroczystość Radaru:',
+        'led_alpha': 'Przeźroczystość LED:',
+
+        # Detection Panel
         'detection_profile': 'Profil Detekcji',
         'enable_detection': 'Włącz Detekcję',
         'detect_walk': 'Wykrywaj CHÓD',
@@ -105,10 +156,59 @@ TRANSLATIONS = {
         'walk_none': 'CHÓD: —',
         'run_none': 'BIEG: —',
         'shot_none': 'STRZAŁ: —',
+        'human_footstep_analysis': 'Analiza Kroków Człowieka',
+        'human_voice_analysis': 'Analiza Głosu Człowieka',
+
+        # Device Panel
+        'audio_device': 'Urządzenie Audio',
+        'select_device': 'Wybierz Urządzenie:',
+        'refresh_devices': 'Odśwież Urządzenia',
+        'audio_settings': 'Ustawienia Audio',
+        'sample_rate': 'Częstotliwość Próbkowania:',
+        'block_size': 'Rozmiar Bloku:',
+        'channels': 'Kanały:',
+        'mode': 'Tryb',
+        'test_mode': 'Tryb Testowy (Syntetyczny)',
+        'loopback_mode': 'Loopback (karta dźwiękowa)',
+        'audio_enhancements': 'Ulepszenia Audio',
+        'presets': 'Presety',
+        'sb_preset': 'SB Z SE + Cloud II',
+        'game_detection': 'Wykrywanie Gry',
+
+        # Analysis Tab
+        'spectrum': 'Widmo',
+        'waterfall': 'Wodospad',
+        'waveform': 'Przebieg Fali',
+        'live_spectrum': 'WIDMO NA ŻYWO',
+        'led_alert': 'Alarm LED',
+
+        # ML Training Tab
+        'ml_training': 'Trening ML',
+        'ml_training_studio': 'Studio Treningu ML',
+        'recording': 'Nagrywanie',
+        'training': 'Trening',
+        'models': 'Modele',
+
+        # Status
+        'status': 'Status',
         'ready': 'Gotowy',
         'running': 'Działa',
         'stopped': 'Zatrzymany',
-        'language': 'Język:',
+        'rms': 'RMS:',
+        'backend': 'Backend:',
+
+        # Radar HUD
+        'targets': 'CELE',
+        'tactical': 'TAKTYKA',
+        'range': 'ZASIĘG',
+        'lock': 'NAMIAR',
+        'statistics': 'STATYSTYKI',
+
+        # Messages
+        'no_device_selected': 'Nie wybrano urządzenia',
+        'device_active': 'Urządzenie aktywne',
+        'scanning': 'Skanowanie...',
+        'stopped_ready': 'Zatrzymano - Gotowy do startu',
     }
 }
 

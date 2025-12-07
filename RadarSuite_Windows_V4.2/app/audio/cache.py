@@ -87,5 +87,54 @@ class AudioProcessingCache:
                 'size': len(self.cache)
             }
 
+    def clear(self):
+        """
+        Clear all cached data (THREAD-SAFE).
+        OPTIMIZATION v4.2.1: Memory cleanup for long sessions.
+        """
+        with self._lock:
+            old_size = len(self.cache)
+            self.cache.clear()
+            log(f"AudioProcessingCache cleared: {old_size} items removed", "INFO")
+
+    def get_memory_usage(self):
+        """
+        Estimate memory usage of cached data (THREAD-SAFE).
+        OPTIMIZATION v4.2.1: Memory profiling.
+
+        Returns:
+            Approximate memory usage in bytes
+        """
+        with self._lock:
+            total_bytes = 0
+            for item in self.cache:
+                # Estimate size of numpy arrays
+                for key in ['fft_data', 'freqs', 'power', 'mono', 'windowed']:
+                    if key in item and isinstance(item[key], np.ndarray):
+                        total_bytes += item[key].nbytes
+            return total_bytes
+
+    def cleanup_old_entries(self, max_age_seconds=300):
+        """
+        Remove cache entries older than specified age (THREAD-SAFE).
+        OPTIMIZATION v4.2.1: Time-based cache cleanup.
+
+        Args:
+            max_age_seconds: Maximum age of cache entries in seconds (default: 5 minutes)
+        """
+        with self._lock:
+            current_time = time.time()
+            initial_size = len(self.cache)
+
+            # Filter cache to keep only recent entries
+            self.cache = deque(
+                (item for item in self.cache if current_time - item.get('timestamp', 0) <= max_age_seconds),
+                maxlen=self.max_size
+            )
+
+            removed = initial_size - len(self.cache)
+            if removed > 0:
+                log(f"AudioProcessingCache: Cleaned up {removed} old entries", "INFO")
+
 
 

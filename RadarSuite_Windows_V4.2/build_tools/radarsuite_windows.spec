@@ -37,15 +37,31 @@ sys.path.insert(0, APP_DIR)
 hiddenimports = []
 
 # Custom application modules (CRITICAL for PyInstaller)
+# FIXED v4.2.1: Corrected module names to match actual structure
 hiddenimports += [
-    'core', 'core.constants', 'core.config', 'core.logger', 'core.translations', 'core.di',
+    # Core modules
+    'core', 'core.constants', 'core.config', 'core.logger', 'core.translations',
+    'core.di', 'core.confidence', 'core.error_handler', 'core.profiler',
+    # Hardware modules
     'hardware', 'hardware.gpu', 'hardware.soundblaster',
-    'utils', 'utils.performance', 'utils.game_detection', 'utils.platform_detection', 'utils.audio_scanner',
-    'tracking', 'tracking.target', 'tracking.tracker', 'tracking.threat',
-    'detection', 'detection.worker', 'detection.footstep',
-    'audio', 'audio.cache', 'audio.engine', 'audio.classifier', 'audio.recorder', 'audio.voice',
-    'widgets', 'widgets.toast', 'widgets.radar', 'widgets.radar3d', 'widgets.led',
-    'widgets.spectrum', 'widgets.waterfall', 'widgets.waveform', 'widgets.panels'
+    # Utilities
+    'utils', 'utils.performance', 'utils.game_detector', 'utils.audio_scanner', 'utils.launcher',
+    # Tracking modules
+    'tracking', 'tracking.target', 'tracking.threat',
+    # Detection modules
+    'detection', 'detection.worker', 'detection.footstep', 'detection.shot',
+    'detection.machine', 'detection.spectral',
+    # Audio modules
+    'audio', 'audio.cache', 'audio.engine', 'audio.classifier',
+    'audio.processor', 'audio.recorder', 'audio.voice_detector',
+    # Widgets (all in separate files)
+    'widgets', 'widgets.toast', 'widgets.radar', 'widgets.led', 'widgets.spectrum',
+    'widgets.detection_panel', 'widgets.device_panel', 'widgets.ml_training_panel',
+    # ML modules
+    'ml', 'ml.detector', 'ml.feature_extractor', 'ml.yamnet',
+    'ml.training', 'ml.training.recorder', 'ml.training.session_manager', 'ml.training.trainer',
+    # UI modules
+    'ui', 'ui.builder'
 ]
 
 # PyQt5 modules

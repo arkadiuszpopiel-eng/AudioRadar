@@ -1,10 +1,14 @@
 """
-RadarSuite v3.5.0 - Spectrum Widgets
+RadarSuite v4.2.1 - Spectrum Widgets
+Enhanced with Military-themed styling for HUD consistency
 """
 
 import numpy as np
 import pyqtgraph as pg
-import pyqtgraph.opengl as gl
+try:
+    import pyqtgraph.opengl as gl
+except ImportError:
+    gl = None
 from PyQt5.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QComboBox, QSlider, QCheckBox, QSpinBox, QGroupBox, QFormLayout
 from PyQt5.QtCore import Qt, QTimer, pyqtSignal, QPoint
 from PyQt5.QtGui import QPainter, QColor, QPen, QBrush, QPalette
@@ -231,7 +235,95 @@ class WaveformWidget(pg.PlotWidget):
 
 
 # ============================================================================
-# DEVICE PANEL
+# MILITARY-THEMED WIDGETS (v4.2.1)
+# Enhanced styling for HUD consistency with Military Radar
 # ============================================================================
+
+
+class MilitarySpectrumWidget(SpectrumWidget):
+    """
+    Military-themed FFT Spectrum Analyzer.
+    Enhanced styling with cyan/green military HUD colors.
+    """
+
+    def __init__(self):
+        super().__init__()
+        log("MilitarySpectrumWidget.__init__", "INFO")
+
+        # Military HUD styling
+        self.setBackground("#0a0a0a")
+        self.setLabel('left', 'POWER', units='dB', **{'color': '#00DDFF', 'font-size': '10pt'})
+        self.setLabel('bottom', 'FREQUENCY', units='Hz', **{'color': '#00DDFF', 'font-size': '10pt'})
+
+        # Update curves with military colors
+        self.spectrum_curve.setPen(pg.mkPen(color=(0, 255, 100), width=2))  # Bright green
+        self.avg_curve.setPen(pg.mkPen(color=(0, 221, 255), width=1, style=Qt.DashLine))  # Cyan
+
+        # Grid styling
+        self.showGrid(x=True, y=True, alpha=0.3)
+        self.getAxis('left').setPen(pg.mkPen(color='#00DDFF', width=1))
+        self.getAxis('bottom').setPen(pg.mkPen(color='#00DDFF', width=1))
+
+
+class MilitaryWaterfallWidget(WaterfallWidget):
+    """
+    Military-themed Waterfall (Spectrogram).
+    Enhanced styling with military HUD colors.
+    """
+
+    def __init__(self):
+        super().__init__()
+        log("MilitaryWaterfallWidget.__init__", "INFO")
+
+        # Military HUD styling
+        self.setBackground("#0a0a0a")
+        self.setLabel('left', 'TIME', **{'color': '#00DDFF', 'font-size': '10pt'})
+        self.setLabel('bottom', 'FREQUENCY', units='Hz', **{'color': '#00DDFF', 'font-size': '10pt'})
+
+        # Use military-themed colormap (green-cyan gradient)
+        try:
+            # Create custom colormap: dark -> green -> cyan
+            colors = [
+                (0, 0, 0),      # Black
+                (0, 50, 0),     # Dark green
+                (0, 150, 0),    # Green
+                (0, 255, 100),  # Bright green
+                (0, 221, 255),  # Cyan
+            ]
+            positions = [0.0, 0.25, 0.5, 0.75, 1.0]
+            colormap = pg.ColorMap(positions, colors)
+            self.img.setLookupTable(colormap.getLookupTable())
+        except Exception as e:
+            log(f"Failed to set custom colormap: {e}", "WARNING")
+
+        # Grid styling
+        self.getAxis('left').setPen(pg.mkPen(color='#00DDFF', width=1))
+        self.getAxis('bottom').setPen(pg.mkPen(color='#00DDFF', width=1))
+
+
+class MilitaryWaveformWidget(WaveformWidget):
+    """
+    Military-themed Waveform Display.
+    Enhanced styling with military HUD colors.
+    """
+
+    def __init__(self):
+        super().__init__()
+        log("MilitaryWaveformWidget.__init__", "INFO")
+
+        # Military HUD styling
+        self.setBackground("#0a0a0a")
+        self.setLabel('left', 'AMPLITUDE', **{'color': '#00DDFF', 'font-size': '10pt'})
+        self.setLabel('bottom', 'SAMPLES', **{'color': '#00DDFF', 'font-size': '10pt'})
+
+        # Update curves with military colors
+        self.left_curve.setPen(pg.mkPen(color=(0, 221, 255), width=1))  # Cyan
+        self.right_curve.setPen(pg.mkPen(color=(255, 150, 0), width=1))  # Orange
+        self.rms_curve.setPen(pg.mkPen(color=(0, 255, 100), width=2, style=Qt.DashLine))  # Green
+
+        # Grid styling
+        self.showGrid(x=True, y=True, alpha=0.3)
+        self.getAxis('left').setPen(pg.mkPen(color='#00DDFF', width=1))
+        self.getAxis('bottom').setPen(pg.mkPen(color='#00DDFF', width=1))
 
 

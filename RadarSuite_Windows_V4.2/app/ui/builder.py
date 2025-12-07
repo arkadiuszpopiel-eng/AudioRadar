@@ -21,6 +21,7 @@ from app.widgets.led import LedOverlayWidget
 from app.widgets.detection_panel import DetectionPanel
 from app.widgets.device_panel import DevicePanel
 from app.core.version import VERSION
+from app.core.translations import tr
 
 # ML Training Panel (v4.2.0 - Roadmap Item 1)
 try:
@@ -180,11 +181,11 @@ class UIBuilder:
 
         # 2D Radar - Military HUD Style
         self.main.radar_widget = MilitaryHUDRadar()
-        self.main.radar_tabs.addTab(self.main.radar_widget, "🎯 Military HUD")
+        self.main.radar_tabs.addTab(self.main.radar_widget, f"🎯 {tr('military_hud')}")
 
         # 3D Radar - Military Wallhack HUD Style
         self.main.radar_3d_widget = Military3DRadar()
-        self.main.radar_tabs.addTab(self.main.radar_3d_widget, "🌐 3D Wallhack")
+        self.main.radar_tabs.addTab(self.main.radar_3d_widget, f"🌐 {tr('3d_wallhack')}")
 
         radar_layout.addWidget(self.main.radar_tabs)
 
@@ -193,22 +194,22 @@ class UIBuilder:
         radar_layout.addLayout(radar_controls)
 
         radar_tab.setLayout(radar_layout)
-        self.main.main_tabs.addTab(radar_tab, "🎯 Radar View")
+        self.main.main_tabs.addTab(radar_tab, f"🎯 {tr('tab_radar_view')}")
 
     def _build_radar_controls(self) -> QHBoxLayout:
         """Build radar control panel (detach, frameless, opacity)."""
         radar_controls = QHBoxLayout()
 
-        self.main.detach_radar_btn = QPushButton("⬜ Detach Window")
+        self.main.detach_radar_btn = QPushButton(f"⬜ {tr('detach_radar')}")
         self.main.detach_radar_btn.setCheckable(True)
         self.main.detach_radar_btn.clicked.connect(self.main.toggle_detach_radar)
         radar_controls.addWidget(self.main.detach_radar_btn)
 
-        self.main.radar_frameless_btn = QCheckBox("Frameless")
+        self.main.radar_frameless_btn = QCheckBox(tr('frameless_mode'))
         self.main.radar_frameless_btn.toggled.connect(self.main.toggle_radar_frameless)
         radar_controls.addWidget(self.main.radar_frameless_btn)
 
-        radar_controls.addWidget(QLabel("Opacity:"))
+        radar_controls.addWidget(QLabel(tr('opacity')))
         self.main.radar_alpha = QSlider(Qt.Horizontal)
         self.main.radar_alpha.setRange(0, 100)
         self.main.radar_alpha.setValue(100)
@@ -235,7 +236,7 @@ class UIBuilder:
         detection_layout.addWidget(self.main.dev_panel, 2)
 
         detection_tab.setLayout(detection_layout)
-        self.main.main_tabs.addTab(detection_tab, "🔊 Detection & Audio")
+        self.main.main_tabs.addTab(detection_tab, f"🔊 {tr('tab_detection_audio')}")
 
     def _build_game_detection_tab(self) -> None:
         """Build Tab 3: Game Detection."""
@@ -257,7 +258,7 @@ class UIBuilder:
 
         game_layout.addStretch()
         game_tab.setLayout(game_layout)
-        self.main.main_tabs.addTab(game_tab, "🎮 Game Detection")
+        self.main.main_tabs.addTab(game_tab, f"🎮 {tr('tab_game_detection')}")
 
     def _build_game_group(self) -> QGroupBox:
         """Build Active Games & Engines group."""
@@ -367,13 +368,13 @@ class UIBuilder:
         spectrum_waterfall_tabs = QTabWidget()
 
         self.main.spectrum = MilitarySpectrumWidget()
-        spectrum_waterfall_tabs.addTab(self.main.spectrum, "📡 LIVE SPECTRUM")
+        spectrum_waterfall_tabs.addTab(self.main.spectrum, f"📡 {tr('live_spectrum')}")
 
         self.main.waterfall = MilitaryWaterfallWidget()
-        spectrum_waterfall_tabs.addTab(self.main.waterfall, "🌊 WATERFALL")
+        spectrum_waterfall_tabs.addTab(self.main.waterfall, f"🌊 {tr('waterfall').upper()}")
 
         self.main.waveform = MilitaryWaveformWidget()
-        spectrum_waterfall_tabs.addTab(self.main.waveform, "〰️ WAVEFORM")
+        spectrum_waterfall_tabs.addTab(self.main.waveform, f"〰️ {tr('waveform').upper()}")
 
         analysis_layout.addWidget(spectrum_waterfall_tabs, 3)
 
@@ -382,11 +383,11 @@ class UIBuilder:
         analysis_layout.addWidget(led_group, 1)
 
         analysis_tab.setLayout(analysis_layout)
-        self.main.main_tabs.addTab(analysis_tab, "📊 Analysis")
+        self.main.main_tabs.addTab(analysis_tab, f"📊 {tr('tab_analysis')}")
 
     def _build_led_group(self) -> QGroupBox:
         """Build LED Edge Alert group with controls."""
-        led_group = QGroupBox("⚡ LED Edge Alert")
+        led_group = QGroupBox(f"⚡ {tr('led_alert')}")
         led_layout = QVBoxLayout()
 
         self.main.led_widget = LedOverlayWidget()
@@ -396,7 +397,7 @@ class UIBuilder:
         # LED controls
         led_controls = QHBoxLayout()
 
-        self.main.detach_led_btn = QPushButton("⬜ Detach LED")
+        self.main.detach_led_btn = QPushButton(f"⬜ {tr('detach_led')}")
         self.main.detach_led_btn.setCheckable(True)
         self.main.detach_led_btn.clicked.connect(self.main.toggle_detach_led)
         led_controls.addWidget(self.main.detach_led_btn)
@@ -425,7 +426,7 @@ class UIBuilder:
         self.main.addToolBar(toolbar)
 
         # Start/Stop button
-        self.main.start_btn = QPushButton("▶ START")
+        self.main.start_btn = QPushButton(f"▶ {tr('start')}")
         self.main.start_btn.setStyleSheet(self.START_BTN_STYLE)
         self.main.start_btn.clicked.connect(self.main.toggle_start_stop)
         toolbar.addWidget(self.main.start_btn)
@@ -433,7 +434,7 @@ class UIBuilder:
         toolbar.addSeparator()
 
         # Recording controls
-        self.main.record_btn = QPushButton("⏺ REC")
+        self.main.record_btn = QPushButton(f"⏺ {tr('rec')}")
         self.main.record_btn.setStyleSheet(self.RECORD_BTN_STYLE)
         self.main.record_btn.clicked.connect(self.main.toggle_recording)
         self.main.record_btn.setEnabled(False)
@@ -480,22 +481,22 @@ class UIBuilder:
             # Create placeholder tab if ML training not available
             placeholder = QWidget()
             layout = QVBoxLayout()
-            label = QLabel("🧠 ML Training module not available.\n\nPlease ensure all dependencies are installed.")
+            label = QLabel(f"🧠 {tr('ml_training')} module not available.\n\nPlease ensure all dependencies are installed.")
             label.setStyleSheet("font-size: 12pt; color: #888888; padding: 20px;")
             label.setAlignment(Qt.AlignCenter)
             layout.addWidget(label)
             placeholder.setLayout(layout)
-            self.main.main_tabs.addTab(placeholder, "🧠 ML Training")
+            self.main.main_tabs.addTab(placeholder, f"🧠 {tr('tab_ml_training')}")
             self.main.ml_training_panel = None
             return
 
         # Create ML Training Panel
         self.main.ml_training_panel = MLTrainingPanel()
-        self.main.main_tabs.addTab(self.main.ml_training_panel, "🧠 ML Training")
+        self.main.main_tabs.addTab(self.main.ml_training_panel, f"🧠 {tr('tab_ml_training')}")
 
     def _build_statusbar(self) -> None:
         """Build status bar."""
         self.main.status_bar = QStatusBar()
         self.main.status_bar.setStyleSheet(self.STATUSBAR_STYLE)
         self.main.setStatusBar(self.main.status_bar)
-        self.main.status_bar.showMessage("✓ Ready - All systems operational")
+        self.main.status_bar.showMessage(f"✓ {tr('ready')} - All systems operational")

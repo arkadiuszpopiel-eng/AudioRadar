@@ -107,6 +107,9 @@ TRANSLATIONS = {
         'recording': 'Recording',
         'training': 'Training',
         'models': 'Models',
+        'ml_training_unavailable_title': 'ML Training module not available.',
+        'ml_training_dependency_hint': 'Missing or failed dependency: {error}',
+        'ml_training_install_hint': 'Install optional ML dependencies (e.g., PyQtGraph, numpy, scikit-learn) and restart the app.',
 
         # Status
         'status': 'Status',
@@ -234,6 +237,9 @@ TRANSLATIONS = {
         'recording': 'Nagrywanie',
         'training': 'Trening',
         'models': 'Modele',
+        'ml_training_unavailable_title': 'Moduł treningu ML niedostępny.',
+        'ml_training_dependency_hint': 'Brakująca lub niedziałająca zależność: {error}',
+        'ml_training_install_hint': 'Zainstaluj opcjonalne zależności ML (np. PyQtGraph, numpy, scikit-learn) i uruchom aplikację ponownie.',
 
         # Status
         'status': 'Status',

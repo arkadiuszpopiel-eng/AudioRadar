@@ -11,7 +11,7 @@ from typing import TYPE_CHECKING
 from PyQt5.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QTabWidget, QGroupBox,
     QLabel, QPushButton, QCheckBox, QSlider, QToolBar, QStatusBar,
-    QSizePolicy, QScrollArea
+    QSizePolicy, QScrollArea, QTextEdit
 )
 from PyQt5.QtCore import Qt
 
@@ -52,8 +52,14 @@ except ImportError:
 try:
     from ..widgets.ml_training_panel import MLTrainingPanel
     ML_TRAINING_AVAILABLE = True
-except ImportError:
+    ML_TRAINING_ERROR = None
+    ML_TRAINING_ERROR_TRACE = ""
+except Exception as exc:  # ImportError or missing optional deps
+    import traceback
+
     ML_TRAINING_AVAILABLE = False
+    ML_TRAINING_ERROR = exc
+    ML_TRAINING_ERROR_TRACE = traceback.format_exc()
 
 if TYPE_CHECKING:
     from ..main import MainWindow
@@ -519,13 +525,33 @@ class UIBuilder:
     def _build_ml_training_tab(self) -> None:
         """Build Tab 5: ML Training (v4.2.0 - Roadmap Item 1)."""
         if not ML_TRAINING_AVAILABLE:
-            # Create placeholder tab if ML training not available
+            # Create placeholder tab if ML training is not available and surface the reason.
             placeholder = QWidget()
             layout = QVBoxLayout()
-            label = QLabel(f"🧠 {tr('ml_training')} module not available.\n\nPlease ensure all dependencies are installed.")
-            label.setStyleSheet("font-size: 12pt; color: #888888; padding: 20px;")
+            label = QLabel(f"🧠 {tr('ml_training_unavailable_title')}")
+            label.setStyleSheet("font-size: 12pt; color: #888888; padding: 10px;")
             label.setAlignment(Qt.AlignCenter)
             layout.addWidget(label)
+
+            error_hint = QLabel(
+                tr('ml_training_dependency_hint').format(error=str(ML_TRAINING_ERROR))
+            )
+            error_hint.setWordWrap(True)
+            error_hint.setStyleSheet("color: #AAAAAA; padding: 0 15px 5px 15px;")
+            layout.addWidget(error_hint)
+
+            install_hint = QLabel(tr('ml_training_install_hint'))
+            install_hint.setWordWrap(True)
+            install_hint.setStyleSheet("color: #AAAAAA; padding: 0 15px 10px 15px;")
+            layout.addWidget(install_hint)
+
+            if ML_TRAINING_ERROR_TRACE:
+                trace_box = QTextEdit()
+                trace_box.setReadOnly(True)
+                trace_box.setText(ML_TRAINING_ERROR_TRACE)
+                trace_box.setStyleSheet("font-family: monospace; font-size: 8pt; color: #CCCCCC;")
+                layout.addWidget(trace_box)
+
             placeholder.setLayout(layout)
             self.main.main_tabs.addTab(placeholder, f"🧠 {tr('tab_ml_training')}")
             self.main.ml_training_panel = None

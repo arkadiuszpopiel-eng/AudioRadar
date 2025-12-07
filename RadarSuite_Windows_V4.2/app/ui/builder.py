@@ -11,7 +11,7 @@ from typing import TYPE_CHECKING
 from PyQt5.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QTabWidget, QGroupBox,
     QLabel, QPushButton, QCheckBox, QSlider, QToolBar, QStatusBar,
-    QSizePolicy
+    QSizePolicy, QScrollArea
 )
 from PyQt5.QtCore import Qt
 
@@ -220,25 +220,77 @@ class UIBuilder:
         return radar_controls
 
     def _build_detection_tab(self) -> None:
-        """Build Tab 2: Detection & Audio."""
-        detection_tab = QWidget()
+        """Build Tab 2: Detection & Audio.
+
+        FIXED v4.2.1: Added QScrollArea for proper scaling at various DPI/resolutions.
+        Both horizontal and vertical scrollbars enabled.
+        """
+        # Create scroll area for the entire tab
+        scroll_area = QScrollArea()
+        scroll_area.setWidgetResizable(True)
+        scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+        scroll_area.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+        scroll_area.setStyleSheet("""
+            QScrollArea {
+                border: none;
+                background: transparent;
+            }
+            QScrollBar:horizontal {
+                height: 12px;
+                background: #1a1a1a;
+            }
+            QScrollBar:vertical {
+                width: 12px;
+                background: #1a1a1a;
+            }
+            QScrollBar::handle {
+                background: #444;
+                border-radius: 4px;
+            }
+            QScrollBar::handle:hover {
+                background: #555;
+            }
+        """)
+
+        # Content widget inside scroll area
+        detection_content = QWidget()
         detection_layout = QHBoxLayout()
         detection_layout.setContentsMargins(5, 5, 5, 5)
 
         # Left: Detection panel
         self.main.det_panel = DetectionPanel()
+        self.main.det_panel.setMinimumWidth(350)  # Ensure minimum width
         detection_layout.addWidget(self.main.det_panel, 3)
 
         # Right: Device/Audio panel
         self.main.dev_panel = DevicePanel(self.main.audio)
         self.main.dev_panel.set_audio_scanner(self.main.audio_scanner)
+        self.main.dev_panel.setMinimumWidth(300)  # Ensure minimum width
         detection_layout.addWidget(self.main.dev_panel, 2)
 
-        detection_tab.setLayout(detection_layout)
-        self.main.main_tabs.addTab(detection_tab, "🔊 Detection & Audio")
+        detection_content.setLayout(detection_layout)
+        scroll_area.setWidget(detection_content)
+
+        self.main.main_tabs.addTab(scroll_area, "🔊 Detection & Audio")
 
     def _build_game_detection_tab(self) -> None:
-        """Build Tab 3: Game Detection."""
+        """Build Tab 3: Game Detection.
+
+        FIXED v4.2.1: Added QScrollArea for proper scaling.
+        """
+        # Create scroll area
+        scroll_area = QScrollArea()
+        scroll_area.setWidgetResizable(True)
+        scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+        scroll_area.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+        scroll_area.setStyleSheet("""
+            QScrollArea { border: none; background: transparent; }
+            QScrollBar:horizontal { height: 12px; background: #1a1a1a; }
+            QScrollBar:vertical { width: 12px; background: #1a1a1a; }
+            QScrollBar::handle { background: #444; border-radius: 4px; }
+            QScrollBar::handle:hover { background: #555; }
+        """)
+
         game_tab = QWidget()
         game_layout = QVBoxLayout()
         game_layout.setContentsMargins(10, 10, 10, 10)
@@ -257,7 +309,8 @@ class UIBuilder:
 
         game_layout.addStretch()
         game_tab.setLayout(game_layout)
-        self.main.main_tabs.addTab(game_tab, "🎮 Game Detection")
+        scroll_area.setWidget(game_tab)
+        self.main.main_tabs.addTab(scroll_area, "🎮 Game Detection")
 
     def _build_game_group(self) -> QGroupBox:
         """Build Active Games & Engines group."""
@@ -475,7 +528,23 @@ class UIBuilder:
         toolbar.addWidget(version_label)
 
     def _build_ml_training_tab(self) -> None:
-        """Build Tab 5: ML Training (v4.2.0 - Roadmap Item 1)."""
+        """Build Tab 5: ML Training (v4.2.0 - Roadmap Item 1).
+
+        FIXED v4.2.1: Added QScrollArea for proper scaling.
+        """
+        # Create scroll area
+        scroll_area = QScrollArea()
+        scroll_area.setWidgetResizable(True)
+        scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+        scroll_area.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+        scroll_area.setStyleSheet("""
+            QScrollArea { border: none; background: transparent; }
+            QScrollBar:horizontal { height: 12px; background: #1a1a1a; }
+            QScrollBar:vertical { width: 12px; background: #1a1a1a; }
+            QScrollBar::handle { background: #444; border-radius: 4px; }
+            QScrollBar::handle:hover { background: #555; }
+        """)
+
         if not ML_TRAINING_AVAILABLE:
             # Create placeholder tab if ML training not available
             placeholder = QWidget()
@@ -485,13 +554,15 @@ class UIBuilder:
             label.setAlignment(Qt.AlignCenter)
             layout.addWidget(label)
             placeholder.setLayout(layout)
-            self.main.main_tabs.addTab(placeholder, "🧠 ML Training")
+            scroll_area.setWidget(placeholder)
+            self.main.main_tabs.addTab(scroll_area, "🧠 ML Training")
             self.main.ml_training_panel = None
             return
 
         # Create ML Training Panel
         self.main.ml_training_panel = MLTrainingPanel()
-        self.main.main_tabs.addTab(self.main.ml_training_panel, "🧠 ML Training")
+        scroll_area.setWidget(self.main.ml_training_panel)
+        self.main.main_tabs.addTab(scroll_area, "🧠 ML Training")
 
     def _build_statusbar(self) -> None:
         """Build status bar."""

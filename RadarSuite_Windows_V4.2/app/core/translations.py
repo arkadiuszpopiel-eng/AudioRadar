@@ -28,6 +28,8 @@ TRANSLATIONS = {
         'rec': 'REC',
         'export': 'Export',
         'import': 'Import',
+        'save': 'Save',
+        'new': 'New',
         'quick_setup': '⚡ QUICK SETUP - Enable Game Audio Capture',
 
         # Radar Tab
@@ -110,6 +112,11 @@ TRANSLATIONS = {
         'ml_training_unavailable_title': 'ML Training module not available.',
         'ml_training_dependency_hint': 'Missing or failed dependency: {error}',
         'ml_training_install_hint': 'Install optional ML dependencies (e.g., PyQtGraph, numpy, scikit-learn) and restart the app.',
+        'ml_overlay_title': 'ML Quick Recording Overlay',
+        'ml_overlay_launch': 'Open quick overlay',
+        'size_small': 'Small',
+        'size_medium': 'Medium',
+        'size_large': 'Large',
 
         # Status
         'status': 'Status',
@@ -158,6 +165,8 @@ TRANSLATIONS = {
         'rec': 'NAGRAJ',
         'export': 'Eksportuj',
         'import': 'Importuj',
+        'save': 'Zapisz',
+        'new': 'Nowy',
         'quick_setup': '⚡ SZYBKA KONFIGURACJA - Włącz przechwytywanie dźwięku gry',
 
         # Radar Tab
@@ -240,6 +249,11 @@ TRANSLATIONS = {
         'ml_training_unavailable_title': 'Moduł treningu ML niedostępny.',
         'ml_training_dependency_hint': 'Brakująca lub niedziałająca zależność: {error}',
         'ml_training_install_hint': 'Zainstaluj opcjonalne zależności ML (np. PyQtGraph, numpy, scikit-learn) i uruchom aplikację ponownie.',
+        'ml_overlay_title': 'Mini panel nagrywania ML',
+        'ml_overlay_launch': 'Otwórz mini panel',
+        'size_small': 'Mały',
+        'size_medium': 'Średni',
+        'size_large': 'Duży',
 
         # Status
         'status': 'Status',

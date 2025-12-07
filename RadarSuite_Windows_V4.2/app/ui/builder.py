@@ -53,12 +53,16 @@ except ImportError:
 # does not trigger "attempted relative import" errors.
 try:
     from widgets.ml_training_panel import MLTrainingPanel
+    from widgets.ml_quick_overlay import MLQuickRecordOverlay
+    from ml.training import RecordingController
     ML_TRAINING_AVAILABLE = True
     ML_TRAINING_ERROR = None
     ML_TRAINING_ERROR_TRACE = ""
 except Exception:
     try:
         from app.widgets.ml_training_panel import MLTrainingPanel
+        from app.widgets.ml_quick_overlay import MLQuickRecordOverlay
+        from app.ml.training import RecordingController
         ML_TRAINING_AVAILABLE = True
         ML_TRAINING_ERROR = None
         ML_TRAINING_ERROR_TRACE = ""
@@ -565,8 +569,33 @@ class UIBuilder:
             self.main.ml_training_panel = None
             return
 
-        # Create ML Training Panel
-        self.main.ml_training_panel = MLTrainingPanel()
+        controller = getattr(self.main, 'recording_controller', None)
+        if controller is None:
+            try:
+                controller = RecordingController()
+            except Exception as exc:
+                controller = None
+                ML_TRAINING_ERROR_TRACE = str(exc)
+        self.main.recording_controller = controller
+
+        def launch_overlay():
+            if controller is None:
+                return
+            overlay = getattr(self.main, 'ml_quick_overlay', None)
+            if overlay is None:
+                overlay = MLQuickRecordOverlay(
+                    controller,
+                    config_manager=getattr(self.main, 'config_manager', None)
+                )
+                self.main.ml_quick_overlay = overlay
+            overlay.show()
+            overlay.raise_()
+            overlay.activateWindow()
+
+        self.main.ml_training_panel = MLTrainingPanel(
+            recording_controller=controller,
+            overlay_launcher=launch_overlay,
+        )
         self.main.main_tabs.addTab(self.main.ml_training_panel, f"🧠 {tr('tab_ml_training')}")
 
     def _build_statusbar(self) -> None:

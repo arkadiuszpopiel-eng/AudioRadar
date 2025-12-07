@@ -19,14 +19,17 @@ This module exposes the high-level building blocks used by the UI:
 """
 
 from .session_manager import SessionManager, LabeledSession, AudioLabel
-from .recorder import LabeledRecorder
+from .recorder import LabeledRecorder, RecordingState
 from .trainer import ModelTrainer, TrainingConfig, TrainingStatus
+from .recording_controller import RecordingController
 
 __all__ = [
     'SessionManager',
     'LabeledSession',
     'AudioLabel',
     'LabeledRecorder',
+    'RecordingState',
+    'RecordingController',
     'ModelTrainer',
     'TrainingConfig',
     'TrainingStatus',

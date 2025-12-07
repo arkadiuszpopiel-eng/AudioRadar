@@ -49,17 +49,25 @@ except ImportError:
     from core.translations import tr
 
 # ML Training Panel (v4.2.0 - Roadmap Item 1)
+# Prefer absolute imports first so running `python main.py` (no package context)
+# does not trigger "attempted relative import" errors.
 try:
-    from ..widgets.ml_training_panel import MLTrainingPanel
+    from widgets.ml_training_panel import MLTrainingPanel
     ML_TRAINING_AVAILABLE = True
     ML_TRAINING_ERROR = None
     ML_TRAINING_ERROR_TRACE = ""
-except Exception as exc:  # ImportError or missing optional deps
-    import traceback
+except Exception:
+    try:
+        from app.widgets.ml_training_panel import MLTrainingPanel
+        ML_TRAINING_AVAILABLE = True
+        ML_TRAINING_ERROR = None
+        ML_TRAINING_ERROR_TRACE = ""
+    except Exception as exc:  # ImportError or missing optional deps
+        import traceback
 
-    ML_TRAINING_AVAILABLE = False
-    ML_TRAINING_ERROR = exc
-    ML_TRAINING_ERROR_TRACE = traceback.format_exc()
+        ML_TRAINING_AVAILABLE = False
+        ML_TRAINING_ERROR = exc
+        ML_TRAINING_ERROR_TRACE = traceback.format_exc()
 
 if TYPE_CHECKING:
     from ..main import MainWindow

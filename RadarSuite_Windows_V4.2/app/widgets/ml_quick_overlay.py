@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import typing
 from typing import Optional
+import copy
 
 import numpy as np
 from PyQt5.QtCore import Qt, QTimer, QPoint
@@ -100,6 +101,11 @@ class MLQuickRecordOverlay(QWidget):
         self._frameless = True
         self._opacity = 1.0
         self._size_preset = "medium"
+        self._config_data: dict = {}
+        self._dirty = False
+        self._save_debounce = QTimer(self)
+        self._save_debounce.setSingleShot(True)
+        self._save_debounce.timeout.connect(self._persist_state)
         self._timer = QTimer(self)
         self._timer.timeout.connect(self._update_timer_label)
         self._timer.start(200)
@@ -189,8 +195,8 @@ class MLQuickRecordOverlay(QWidget):
     def _load_state(self) -> None:
         if not self.config_manager:
             return
-        config = self.config_manager.load()
-        overlay_cfg = config.get("ml_overlay", {})
+        self._config_data = self.config_manager.load()
+        overlay_cfg = self._config_data.get("ml_overlay", {})
         self._frameless = overlay_cfg.get("frameless", True)
         self._opacity = overlay_cfg.get("opacity", 1.0)
         self._size_preset = overlay_cfg.get("size_preset", "medium")
@@ -200,7 +206,7 @@ class MLQuickRecordOverlay(QWidget):
         preset_index = {"small": 0, "medium": 1, "large": 2}.get(self._size_preset, 1)
         self.size_combo.setCurrentIndex(preset_index)
         self._apply_window_flags()
-        self._apply_size_preset()
+        self._apply_size_preset(save_immediately=False)
 
         x = overlay_cfg.get("x")
         y = overlay_cfg.get("y")
@@ -213,11 +219,12 @@ class MLQuickRecordOverlay(QWidget):
         if overlay_cfg.get("visible", False):
             self.show()
 
-    def _save_state(self) -> None:
+    def _update_config(self) -> None:
         if not self.config_manager:
             return
-        config = self.config_manager.load()
-        overlay_cfg = config.get("ml_overlay", {})
+        if not self._config_data:
+            self._config_data = copy.deepcopy(self.config_manager.default_config)
+        overlay_cfg = self._config_data.setdefault("ml_overlay", {})
         geo = self.geometry()
         overlay_cfg.update(
             {
@@ -231,8 +238,18 @@ class MLQuickRecordOverlay(QWidget):
                 "visible": self.isVisible(),
             }
         )
-        config["ml_overlay"] = overlay_cfg
-        self.config_manager.save(config)
+        self._dirty = True
+        # Debounce disk writes to avoid log spam and UI stalls
+        self._save_debounce.start(750)
+
+    def _persist_state(self) -> None:
+        if not self.config_manager or not self._dirty:
+            return
+        try:
+            self.config_manager.save(self._config_data)
+            self._dirty = False
+        except Exception as exc:  # pragma: no cover - disk IO
+            log(f"Overlay state persist failed: {exc}", "WARNING")
 
     # ------------------------------------------------------------------
     # Event handlers
@@ -278,20 +295,21 @@ class MLQuickRecordOverlay(QWidget):
     def _on_opacity_changed(self, value: int):
         self._opacity = max(0.3, min(1.0, value / 100))
         self.setWindowOpacity(self._opacity)
-        self._save_state()
+        self._update_config()
 
     def _toggle_frameless(self, state: int):
         self._frameless = state == Qt.Checked
         self._apply_window_flags()
-        self._save_state()
+        self._update_config()
 
-    def _apply_size_preset(self):
+    def _apply_size_preset(self, save_immediately: bool = True):
         index = self.size_combo.currentIndex()
         presets = {0: (220, 160), 1: (300, 200), 2: (380, 240)}
         w, h = presets.get(index, presets[1])
         self._size_preset = ["small", "medium", "large"][index]
         self.resize(w, h)
-        self._save_state()
+        if save_immediately:
+            self._update_config()
 
     def _update_timer_label(self):
         elapsed = int(self.controller.state.elapsed_sec)
@@ -315,7 +333,7 @@ class MLQuickRecordOverlay(QWidget):
     def mouseMoveEvent(self, event):  # pragma: no cover - GUI interaction
         if self._drag_position and event.buttons() == Qt.LeftButton:
             self.move(event.globalPos() - self._drag_position)
-            self._save_state()
+            self._update_config()
             event.accept()
 
     def mouseReleaseEvent(self, event):  # pragma: no cover - GUI interaction
@@ -323,8 +341,9 @@ class MLQuickRecordOverlay(QWidget):
 
     def resizeEvent(self, event):  # pragma: no cover
         super().resizeEvent(event)
-        self._save_state()
+        self._update_config()
 
     def closeEvent(self, event):  # pragma: no cover
-        self._save_state()
+        self._update_config()
+        self._persist_state()
         super().closeEvent(event)

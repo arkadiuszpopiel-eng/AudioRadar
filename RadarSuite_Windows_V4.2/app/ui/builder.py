@@ -517,6 +517,14 @@ class UIBuilder:
 
         toolbar.addSeparator()
 
+        # Self-test trigger
+        self.main.test_btn = QPushButton(tr('self_test'))
+        self.main.test_btn.setToolTip(tr('self_test_title'))
+        self.main.test_btn.clicked.connect(self.main.launch_self_test)
+        toolbar.addWidget(self.main.test_btn)
+
+        toolbar.addSeparator()
+
         # Quick stats
         self.main.toolbar_stats_label = QLabel("Targets: 0 | FPS: 20")
         self.main.toolbar_stats_label.setStyleSheet(

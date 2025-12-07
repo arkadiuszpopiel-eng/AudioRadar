@@ -117,6 +117,11 @@ TRANSLATIONS = {
         'size_small': 'Small',
         'size_medium': 'Medium',
         'size_large': 'Large',
+        'self_test': 'TEST',
+        'self_test_title': 'System self-test',
+        'self_test_success': 'Self-test finished with no errors.',
+        'self_test_failure': 'Self-test finished with issues.',
+        'self_test_report': 'Report saved to: {path}',
 
         # Status
         'status': 'Status',
@@ -254,6 +259,11 @@ TRANSLATIONS = {
         'size_small': 'Mały',
         'size_medium': 'Średni',
         'size_large': 'Duży',
+        'self_test': 'TEST',
+        'self_test_title': 'Self-test systemu',
+        'self_test_success': 'Self-test zakończony bez błędów.',
+        'self_test_failure': 'Self-test zakończony z problemami.',
+        'self_test_report': 'Raport zapisany w: {path}',
 
         # Status
         'status': 'Status',

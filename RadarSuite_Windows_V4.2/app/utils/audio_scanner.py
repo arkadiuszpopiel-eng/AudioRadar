@@ -1,5 +1,5 @@
 """
-RadarSuite v3.5.0 - Audio Source Scanner
+RadarSuite V4.2.1 - Audio Source Scanner
 Scans and monitors audio sources - shows selected device and available devices
 """
 

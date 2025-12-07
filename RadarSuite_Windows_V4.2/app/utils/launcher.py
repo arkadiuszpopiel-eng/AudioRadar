@@ -1,5 +1,5 @@
 """
-RadarSuite v3.5.0 - Platform Launcher Detector
+RadarSuite V4.2.1 - Platform Launcher Detector
 Detects Steam, Epic, GOG, Battle.net, EA App
 """
 

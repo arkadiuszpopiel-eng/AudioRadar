@@ -10,7 +10,7 @@ setlocal EnableDelayedExpansion
 
 echo.
 echo ========================================================================
-echo   RadarSuite Windows V4 - Build System
+echo   RadarSuite Windows V4.2.1 - Build System
 echo   Building Windows standalone EXE with PyInstaller
 echo   Platform: Windows x64 ONLY
 echo ========================================================================
@@ -21,7 +21,7 @@ set "SCRIPT_DIR=%~dp0"
 cd /d "%SCRIPT_DIR%"
 
 REM Set version
-set "VERSION=v4.0.0"
+set "VERSION=v4.2.1"
 set "PLATFORM=Win64"
 set "BUILD_DATE=%date:~-4%-%date:~3,2%-%date:~0,2%"
 set "BUILD_TIME=%time:~0,2%-%time:~3,2%-%time:~6,2%"
@@ -46,8 +46,8 @@ echo [INFO] All builds are separate and won't interfere
 echo [%date% %time%] [INFO] Platform: Windows x64 only - separate build directory >> "%LOG_FILE%"
 echo.
 
-echo [STEP 1/7] Checking Python 3.11 installation...
-echo [%date% %time%] [STEP 1/7] Checking Python 3.11... >> "%LOG_FILE%"
+echo [STEP 1/6] Checking Python 3.11 installation...
+echo [%date% %time%] [STEP 1/6] Checking Python 3.11... >> "%LOG_FILE%"
 
 py -3.11 --version >nul 2>&1
 if errorlevel 1 (
@@ -65,8 +65,8 @@ echo    - Found: %PYTHON_VERSION%
 echo [%date% %time%] Found: %PYTHON_VERSION% >> "%LOG_FILE%"
 echo.
 
-echo [STEP 2/7] Creating/Activating virtual environment...
-echo [%date% %time%] [STEP 2/7] Creating venv... >> "%LOG_FILE%"
+echo [STEP 2/6] Creating/Activating virtual environment...
+echo [%date% %time%] [STEP 2/6] Creating venv... >> "%LOG_FILE%"
 
 if not exist ".venv" (
     echo    - Creating new venv...
@@ -95,8 +95,8 @@ echo    - Virtual environment activated
 echo [%date% %time%] venv activated >> "%LOG_FILE%"
 echo.
 
-echo [STEP 3/7] Upgrading pip, setuptools, wheel...
-echo [%date% %time%] [STEP 3/7] Upgrading pip... >> "%LOG_FILE%"
+echo [STEP 3/6] Upgrading pip, setuptools, wheel...
+echo [%date% %time%] [STEP 3/6] Upgrading pip... >> "%LOG_FILE%"
 
 python -m pip install --upgrade pip setuptools wheel >> "%LOG_FILE%" 2>&1
 if errorlevel 1 (
@@ -106,8 +106,8 @@ if errorlevel 1 (
 echo    - pip upgraded
 echo.
 
-echo [STEP 4/7] Installing requirements...
-echo [%date% %time%] [STEP 4/7] Installing requirements... >> "%LOG_FILE%"
+echo [STEP 4/6] Installing requirements...
+echo [%date% %time%] [STEP 4/6] Installing requirements... >> "%LOG_FILE%"
 echo.
 
 REM Install from requirements-windows.txt (WINDOWS-SPECIFIC)
@@ -143,8 +143,8 @@ echo    All Python requirements installed
 echo [%date% %time%] All requirements installed >> "%LOG_FILE%"
 echo.
 
-echo [STEP 5/7] Verifying installation...
-echo [%date% %time%] [STEP 5/7] Verifying installation... >> "%LOG_FILE%"
+echo [STEP 5/6] Verifying installation...
+echo [%date% %time%] [STEP 5/6] Verifying installation... >> "%LOG_FILE%"
 
 REM Verify modules without initializing native libraries (sounddevice/soundcard)
 python -c "import sys; import importlib.util; modules=['PyQt5', 'pyqtgraph', 'OpenGL', 'numpy', 'scipy', 'sounddevice', 'soundcard', 'psutil', 'PyInstaller']; failed=[]; [failed.append(m) if importlib.util.find_spec(m) is None else print(f'OK: {m}') for m in modules]; sys.exit(1) if failed else print('All modules installed OK')" >> "%LOG_FILE%" 2>&1
@@ -183,8 +183,8 @@ if errorlevel 1 (
 python -c "import PyInstaller; print('   - PyInstaller version:', PyInstaller.__version__)"
 echo [%date% %time%] PyInstaller available >> "%LOG_FILE%"
 echo.
-echo [STEP 6/7] Building EXE with PyInstaller...
-echo [%date% %time%] [STEP 6/7] Building EXE... >> "%LOG_FILE%"
+echo [STEP 6/6] Building EXE with PyInstaller...
+echo [%date% %time%] [STEP 6/6] Building EXE... >> "%LOG_FILE%"
 echo.
 
 REM Clean previous build
@@ -237,48 +237,10 @@ echo    - EXE size: !EXE_SIZE! bytes
 echo [%date% %time%] EXE size: !EXE_SIZE! bytes >> "%LOG_FILE%"
 echo.
 
-echo [STEP 7/7] Packaging to ZIP (Windows x64 only)...
-echo [%date% %time%] [STEP 7/7] Creating Windows ZIP archive... >> "%LOG_FILE%"
-
-REM Create unique archive name with timestamp and platform
-for /f "tokens=2 delims==" %%A in ('wmic os get LocalDateTime /value ^| find "="') do set DTS=%%A
-set "ZIP_NAME=RadarSuite_Windows_V4_%VERSION%_Windows-x64_!DTS:~0,8!_!DTS:~8,6!.zip"
-
-echo    - Archive name: %ZIP_NAME%
-echo [%date% %time%] Creating archive: %ZIP_NAME% >> "%LOG_FILE%"
-
-REM Check PowerShell availability
-where powershell >nul 2>&1
-if errorlevel 1 (
-    echo [WARNING] PowerShell not found, ZIP creation skipped
-    echo [%date% %time%] [WARNING] PowerShell not available >> "%LOG_FILE%"
-    goto :SKIP_ZIP
-)
-
-REM Remove old archive if exists
-if exist "dist\%ZIP_NAME%" (
-    echo    - Removing old archive...
-    del /f "dist\%ZIP_NAME%"
-)
-
-REM Create ZIP with PowerShell
-echo    - Compressing...
-powershell -NoProfile -Command "Compress-Archive -Path '%APP_DIR%\*' -DestinationPath 'dist\%ZIP_NAME%' -Force" >> "%LOG_FILE%" 2>&1
-
-if errorlevel 1 (
-    echo [WARNING] ZIP creation failed
-    echo [%date% %time%] [WARNING] ZIP creation failed >> "%LOG_FILE%"
-) else (
-    echo    - ZIP created successfully!
-    echo [%date% %time%] ZIP created successfully >> "%LOG_FILE%"
-
-    REM Get ZIP size
-    for %%A in ("dist\%ZIP_NAME%") do set "ZIP_SIZE=%%~zA"
-    echo    - ZIP size: !ZIP_SIZE! bytes
-    echo [%date% %time%] ZIP size: !ZIP_SIZE! bytes >> "%LOG_FILE%"
-)
-
-:SKIP_ZIP
+REM ============================================================================
+REM NOTE: ZIP packaging step removed (v4.2.1)
+REM To create ZIP manually: powershell Compress-Archive -Path dist\RadarSuite_Windows\* -DestinationPath RadarSuite.zip
+REM ============================================================================
 
 echo.
 echo ========================================================================
@@ -295,10 +257,6 @@ echo Output:
 echo   - EXE Directory: %APP_DIR%
 echo   - EXE File: RadarSuite_Windows.exe
 echo   - EXE Size: !EXE_SIZE! bytes
-if exist "dist\%ZIP_NAME%" (
-    echo   - ZIP Archive: dist\%ZIP_NAME%
-    echo   - ZIP Size: !ZIP_SIZE! bytes
-)
 echo.
 echo Logs:
 echo   - Build Log: %LOG_FILE%
@@ -307,12 +265,6 @@ echo.
 echo To run the application:
 echo   1. Go to: %APP_DIR%
 echo   2. Double-click: RadarSuite_Windows.exe
-echo.
-echo Or from this ZIP:
-if exist "dist\%ZIP_NAME%" (
-    echo   1. Extract: dist\%ZIP_NAME%
-    echo   2. Run: RadarSuite_Windows.exe
-)
 echo.
 echo ========================================================================
 

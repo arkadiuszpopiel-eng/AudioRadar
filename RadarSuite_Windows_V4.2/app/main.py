@@ -56,7 +56,8 @@ from PyQt5.QtWidgets import (
     QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
     QDockWidget, QTabWidget, QPushButton, QLabel, QComboBox,
     QSlider, QCheckBox, QToolBar, QStatusBar, QSpinBox, QGroupBox,
-    QFormLayout, QMessageBox, QAction, QSizePolicy
+    QFormLayout, QMessageBox, QAction, QSizePolicy, QFileDialog,
+    QDialog, QDialogButtonBox, QRadioButton, QButtonGroup
 )
 from PyQt5.QtCore import Qt, QTimer, pyqtSignal, QPoint
 from PyQt5.QtGui import QPainter, QColor, QPen, QBrush, QPalette
@@ -117,6 +118,9 @@ try:
         set_language,
         get_language,
     )
+
+    # v4.2.1: Export/Import
+    from .core.export_import import ExportImportManager
 
     # ============================================================================
     # HARDWARE MODULE IMPORTS (Point 10 - v3.5.0: Modularization)
@@ -206,6 +210,7 @@ except ImportError:
         ConfigManager,
         TRANSLATIONS, current_language, tr, set_language, get_language,
     )
+    from core.export_import import ExportImportManager
     from hardware import GPUAccelerator, SoundBlasterOptimizer
     from utils import (
         PerformanceMonitor, GameProcessDetector,
@@ -528,6 +533,261 @@ class MainWindow(QMainWindow):
 
         if self.detached_led:
             self.detached_led.setWindowTitle(f"{tr('led_alert')} - RadarSuite {VERSION}")
+
+    # ========================================================================
+    # EXPORT/IMPORT METHODS (v4.2.1 - ZADANIE 5)
+    # ========================================================================
+
+    def show_export_dialog(self):
+        """Show export dialog for configuration/models/sessions."""
+        dialog = QDialog(self)
+        dialog.setWindowTitle(tr('export') if callable(tr) else "Export")
+        dialog.setMinimumWidth(350)
+
+        layout = QVBoxLayout()
+
+        # Export type selection
+        group = QGroupBox(tr('export') if callable(tr) else "Export Type")
+        group_layout = QVBoxLayout()
+
+        self._export_type_group = QButtonGroup()
+
+        radio_config = QRadioButton(tr('export_config_file') if callable(tr) else "Configuration")
+        radio_config.setChecked(True)
+        self._export_type_group.addButton(radio_config, 0)
+        group_layout.addWidget(radio_config)
+
+        radio_model = QRadioButton(tr('export_ml_model') if callable(tr) else "ML Model")
+        self._export_type_group.addButton(radio_model, 1)
+        group_layout.addWidget(radio_model)
+
+        radio_session = QRadioButton(tr('export_session') if callable(tr) else "Training Session")
+        self._export_type_group.addButton(radio_session, 2)
+        group_layout.addWidget(radio_session)
+
+        group.setLayout(group_layout)
+        layout.addWidget(group)
+
+        # Buttons
+        buttons = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
+        buttons.accepted.connect(dialog.accept)
+        buttons.rejected.connect(dialog.reject)
+        layout.addWidget(buttons)
+
+        dialog.setLayout(layout)
+
+        if dialog.exec_() == QDialog.Accepted:
+            export_type = self._export_type_group.checkedId()
+            self._perform_export(export_type)
+
+    def _perform_export(self, export_type: int):
+        """Perform the export operation."""
+        export_manager = ExportImportManager(
+            config_manager=self.config_manager
+        )
+
+        if export_type == 0:  # Configuration
+            file_path, _ = QFileDialog.getSaveFileName(
+                self,
+                tr('save_file_as') if callable(tr) else "Save Configuration",
+                "",
+                export_manager.get_file_filter("config")
+            )
+            if file_path:
+                config = self.config_manager.load()
+                result = export_manager.export_config(config, file_path)
+                if result.success:
+                    QMessageBox.information(
+                        self,
+                        tr('success'),
+                        f"{tr('export_success')}\n{result.file_path}"
+                    )
+                else:
+                    QMessageBox.warning(self, tr('error'), result.error_message)
+
+        elif export_type == 1:  # ML Model
+            # Find available models
+            models_dir = ROOT / "models"
+            if not models_dir.exists():
+                QMessageBox.warning(
+                    self,
+                    tr('warning'),
+                    "No models directory found."
+                )
+                return
+
+            model_files = list(models_dir.glob("*.pkl"))
+            if not model_files:
+                QMessageBox.warning(
+                    self,
+                    tr('warning'),
+                    "No trained models found in models directory."
+                )
+                return
+
+            # Simple selection - use first model for now
+            # TODO: Add model selection dialog
+            model_path = str(model_files[0])
+
+            file_path, _ = QFileDialog.getSaveFileName(
+                self,
+                tr('save_file_as') if callable(tr) else "Save Model",
+                "",
+                export_manager.get_file_filter("model")
+            )
+            if file_path:
+                result = export_manager.export_model(model_path, file_path)
+                if result.success:
+                    QMessageBox.information(
+                        self,
+                        tr('success'),
+                        f"{tr('export_success')}\n{result.file_path}"
+                    )
+                else:
+                    QMessageBox.warning(self, tr('error'), result.error_message)
+
+        elif export_type == 2:  # Session
+            QMessageBox.information(
+                self,
+                tr('warning'),
+                "Session export requires ML Training panel.\nUse ML Training tab to manage sessions."
+            )
+
+    def show_import_dialog(self):
+        """Show import dialog for configuration/models/sessions."""
+        dialog = QDialog(self)
+        dialog.setWindowTitle(tr('import') if callable(tr) else "Import")
+        dialog.setMinimumWidth(350)
+
+        layout = QVBoxLayout()
+
+        # Import type selection
+        group = QGroupBox(tr('import') if callable(tr) else "Import Type")
+        group_layout = QVBoxLayout()
+
+        self._import_type_group = QButtonGroup()
+
+        radio_config = QRadioButton(tr('import_config_file') if callable(tr) else "Configuration")
+        radio_config.setChecked(True)
+        self._import_type_group.addButton(radio_config, 0)
+        group_layout.addWidget(radio_config)
+
+        radio_model = QRadioButton(tr('import_ml_model') if callable(tr) else "ML Model")
+        self._import_type_group.addButton(radio_model, 1)
+        group_layout.addWidget(radio_model)
+
+        radio_session = QRadioButton(tr('import_session') if callable(tr) else "Training Session")
+        self._import_type_group.addButton(radio_session, 2)
+        group_layout.addWidget(radio_session)
+
+        group.setLayout(group_layout)
+        layout.addWidget(group)
+
+        # Buttons
+        buttons = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
+        buttons.accepted.connect(dialog.accept)
+        buttons.rejected.connect(dialog.reject)
+        layout.addWidget(buttons)
+
+        dialog.setLayout(layout)
+
+        if dialog.exec_() == QDialog.Accepted:
+            import_type = self._import_type_group.checkedId()
+            self._perform_import(import_type)
+
+    def _perform_import(self, import_type: int):
+        """Perform the import operation."""
+        export_manager = ExportImportManager(
+            config_manager=self.config_manager
+        )
+
+        if import_type == 0:  # Configuration
+            file_path, _ = QFileDialog.getOpenFileName(
+                self,
+                tr('select_file') if callable(tr) else "Select Configuration File",
+                "",
+                export_manager.get_file_filter("config")
+            )
+            if file_path:
+                result, config = export_manager.import_config(file_path)
+                if result.success and config:
+                    # Apply configuration
+                    self.config_manager.save(config)
+                    self._apply_imported_config(config)
+
+                    msg = tr('import_success')
+                    if result.warnings:
+                        msg += "\n\nWarnings:\n" + "\n".join(result.warnings)
+
+                    QMessageBox.information(self, tr('success'), msg)
+                else:
+                    QMessageBox.warning(self, tr('error'), result.error_message)
+
+        elif import_type == 1:  # ML Model
+            file_path, _ = QFileDialog.getOpenFileName(
+                self,
+                tr('select_file') if callable(tr) else "Select Model File",
+                "",
+                export_manager.get_file_filter("model")
+            )
+            if file_path:
+                models_dir = ROOT / "models"
+                models_dir.mkdir(parents=True, exist_ok=True)
+
+                result, model_path = export_manager.import_model(file_path, str(models_dir))
+                if result.success:
+                    msg = f"{tr('import_success')}\nModel: {model_path}"
+                    if result.warnings:
+                        msg += "\n\nWarnings:\n" + "\n".join(result.warnings)
+
+                    QMessageBox.information(self, tr('success'), msg)
+                else:
+                    QMessageBox.warning(self, tr('error'), result.error_message)
+
+        elif import_type == 2:  # Session
+            QMessageBox.information(
+                self,
+                tr('warning'),
+                "Session import requires ML Training panel.\nUse ML Training tab to manage sessions."
+            )
+
+    def _apply_imported_config(self, config: dict):
+        """Apply imported configuration to UI and settings."""
+        log("Applying imported configuration", "INFO")
+
+        # Audio settings
+        audio_cfg = config.get('audio', {})
+        if hasattr(self, 'dev_panel'):
+            if 'gain' in audio_cfg:
+                self.dev_panel.gain_slider.setValue(int(audio_cfg['gain'] * 10))
+            if 'noise_gate' in audio_cfg:
+                self.dev_panel.noise_gate_slider.setValue(int(audio_cfg['noise_gate']))
+            if 'auto_gain' in audio_cfg:
+                self.dev_panel.auto_gain_check.setChecked(audio_cfg['auto_gain'])
+
+        # Detection settings
+        detection_cfg = config.get('detection', {})
+        if hasattr(self, 'det_panel'):
+            if 'walk_threshold' in detection_cfg:
+                self.det_panel.walk_sens.setValue(int(detection_cfg['walk_threshold']))
+            if 'run_threshold' in detection_cfg:
+                self.det_panel.run_sens.setValue(int(detection_cfg['run_threshold']))
+            if 'shot_threshold' in detection_cfg:
+                self.det_panel.shot_sens.setValue(int(detection_cfg['shot_threshold']))
+            if 'walk_enabled' in detection_cfg:
+                self.det_panel.detect_walk_check.setChecked(detection_cfg['walk_enabled'])
+            if 'run_enabled' in detection_cfg:
+                self.det_panel.detect_run_check.setChecked(detection_cfg['run_enabled'])
+            if 'shot_enabled' in detection_cfg:
+                self.det_panel.detect_shot_check.setChecked(detection_cfg['shot_enabled'])
+
+        # UI settings
+        ui_cfg = config.get('ui', {})
+        if 'language' in ui_cfg:
+            set_language(ui_cfg['language'])
+            self.update_ui_translations()
+
+        log("Configuration applied successfully", "INFO")
 
     def setup_shortcuts(self):
         """

@@ -11,12 +11,12 @@ from typing import TYPE_CHECKING
 from PyQt5.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QTabWidget, QGroupBox,
     QLabel, QPushButton, QCheckBox, QSlider, QToolBar, QStatusBar,
-    QSizePolicy
+    QSizePolicy, QScrollArea
 )
 from PyQt5.QtCore import Qt
 
 from app.widgets.radar import MilitaryHUDRadar, Military3DRadar
-from app.widgets.spectrum import MilitarySpectrumWidget, MilitaryWaterfallWidget, MilitaryWaveformWidget
+from app.widgets.spectrum import SpectrumWidget, WaterfallWidget, WaveformWidget
 from app.widgets.led import LedOverlayWidget
 from app.widgets.detection_panel import DetectionPanel
 from app.widgets.device_panel import DevicePanel
@@ -214,6 +214,10 @@ class UIBuilder:
         self.main.radar_alpha.setRange(0, 100)
         self.main.radar_alpha.setValue(100)
         self.main.radar_alpha.setMaximumWidth(150)
+        # FIXED v4.2.1: Smooth scrolling for opacity slider
+        self.main.radar_alpha.setSingleStep(1)
+        self.main.radar_alpha.setPageStep(10)
+        self.main.radar_alpha.setTracking(True)
         self.main.radar_alpha.valueChanged.connect(self.main.update_radar_alpha)
         radar_controls.addWidget(self.main.radar_alpha)
         radar_controls.addStretch()
@@ -221,25 +225,75 @@ class UIBuilder:
         return radar_controls
 
     def _build_detection_tab(self) -> None:
-        """Build Tab 2: Detection & Audio."""
-        detection_tab = QWidget()
+        """Build Tab 2: Detection & Audio.
+
+        FIXED v4.2.1: Added QScrollArea for proper scaling at various DPI/resolutions.
+        Both horizontal and vertical scrollbars enabled.
+        """
+        # Create scroll area for the entire tab
+        scroll_area = QScrollArea()
+        scroll_area.setWidgetResizable(True)
+        scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+        scroll_area.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+        scroll_area.setStyleSheet("""
+            QScrollArea {
+                border: none;
+                background: transparent;
+            }
+            QScrollBar:horizontal {
+                height: 12px;
+                background: #1a1a1a;
+            }
+            QScrollBar:vertical {
+                width: 12px;
+                background: #1a1a1a;
+            }
+            QScrollBar::handle {
+                background: #444;
+                border-radius: 4px;
+            }
+            QScrollBar::handle:hover {
+                background: #555;
+            }
+        """)
+
+        # Content widget inside scroll area
+        detection_content = QWidget()
         detection_layout = QHBoxLayout()
         detection_layout.setContentsMargins(5, 5, 5, 5)
 
         # Left: Detection panel
         self.main.det_panel = DetectionPanel()
+        self.main.det_panel.setMinimumWidth(350)  # Ensure minimum width
         detection_layout.addWidget(self.main.det_panel, 3)
 
         # Right: Device/Audio panel
         self.main.dev_panel = DevicePanel(self.main.audio)
         self.main.dev_panel.set_audio_scanner(self.main.audio_scanner)
+        self.main.dev_panel.setMinimumWidth(300)  # Ensure minimum width
         detection_layout.addWidget(self.main.dev_panel, 2)
 
         detection_tab.setLayout(detection_layout)
         self.main.main_tabs.addTab(detection_tab, f"🔊 {tr('tab_detection_audio')}")
 
     def _build_game_detection_tab(self) -> None:
-        """Build Tab 3: Game Detection."""
+        """Build Tab 3: Game Detection.
+
+        FIXED v4.2.1: Added QScrollArea for proper scaling.
+        """
+        # Create scroll area
+        scroll_area = QScrollArea()
+        scroll_area.setWidgetResizable(True)
+        scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+        scroll_area.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+        scroll_area.setStyleSheet("""
+            QScrollArea { border: none; background: transparent; }
+            QScrollBar:horizontal { height: 12px; background: #1a1a1a; }
+            QScrollBar:vertical { width: 12px; background: #1a1a1a; }
+            QScrollBar::handle { background: #444; border-radius: 4px; }
+            QScrollBar::handle:hover { background: #555; }
+        """)
+
         game_tab = QWidget()
         game_layout = QVBoxLayout()
         game_layout.setContentsMargins(10, 10, 10, 10)
@@ -411,6 +465,10 @@ class UIBuilder:
         self.main.led_alpha.setRange(0, 100)
         self.main.led_alpha.setValue(80)
         self.main.led_alpha.setMaximumWidth(150)
+        # FIXED v4.2.1: Smooth scrolling for LED opacity slider
+        self.main.led_alpha.setSingleStep(1)
+        self.main.led_alpha.setPageStep(10)
+        self.main.led_alpha.setTracking(True)
         self.main.led_alpha.valueChanged.connect(self.main.update_led_alpha)
         led_controls.addWidget(self.main.led_alpha)
         led_controls.addStretch()
@@ -458,6 +516,39 @@ class UIBuilder:
 
         toolbar.addSeparator()
 
+        # v4.2.1: Export/Import controls
+        self.main.export_btn = QPushButton("📤 Export")
+        self.main.export_btn.setStyleSheet("""
+            QPushButton {
+                background: #2a3a4a;
+                color: #88AACC;
+                padding: 6px 12px;
+                border: 1px solid #446688;
+                border-radius: 4px;
+            }
+            QPushButton:hover { background: #3a4a5a; }
+        """)
+        self.main.export_btn.setToolTip("Export configuration/models/sessions")
+        self.main.export_btn.clicked.connect(self.main.show_export_dialog)
+        toolbar.addWidget(self.main.export_btn)
+
+        self.main.import_btn = QPushButton("📥 Import")
+        self.main.import_btn.setStyleSheet("""
+            QPushButton {
+                background: #3a4a2a;
+                color: #AACC88;
+                padding: 6px 12px;
+                border: 1px solid #668844;
+                border-radius: 4px;
+            }
+            QPushButton:hover { background: #4a5a3a; }
+        """)
+        self.main.import_btn.setToolTip("Import configuration/models/sessions")
+        self.main.import_btn.clicked.connect(self.main.show_import_dialog)
+        toolbar.addWidget(self.main.import_btn)
+
+        toolbar.addSeparator()
+
         # Quick stats
         self.main.toolbar_stats_label = QLabel("Targets: 0 | FPS: 20")
         self.main.toolbar_stats_label.setStyleSheet(
@@ -476,7 +567,23 @@ class UIBuilder:
         toolbar.addWidget(version_label)
 
     def _build_ml_training_tab(self) -> None:
-        """Build Tab 5: ML Training (v4.2.0 - Roadmap Item 1)."""
+        """Build Tab 5: ML Training (v4.2.0 - Roadmap Item 1).
+
+        FIXED v4.2.1: Added QScrollArea for proper scaling.
+        """
+        # Create scroll area
+        scroll_area = QScrollArea()
+        scroll_area.setWidgetResizable(True)
+        scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+        scroll_area.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+        scroll_area.setStyleSheet("""
+            QScrollArea { border: none; background: transparent; }
+            QScrollBar:horizontal { height: 12px; background: #1a1a1a; }
+            QScrollBar:vertical { width: 12px; background: #1a1a1a; }
+            QScrollBar::handle { background: #444; border-radius: 4px; }
+            QScrollBar::handle:hover { background: #555; }
+        """)
+
         if not ML_TRAINING_AVAILABLE:
             # Create placeholder tab if ML training not available
             placeholder = QWidget()

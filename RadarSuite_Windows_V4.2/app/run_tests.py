@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-RadarSuite v3.5.0 - Simple Test Runner
+RadarSuite V4.2.1 - Simple Test Runner
 Runs tests without requiring pytest installation
 Point 12: Unit Testing
 """
@@ -187,7 +187,7 @@ def run_syntax_validation():
 
 if __name__ == '__main__':
     print("\n" + "=" * 60)
-    print("RadarSuite v3.5.0 - Point 12: Unit Tests")
+    print("RadarSuite V4.2.1 - Point 12: Unit Tests")
     print("=" * 60)
 
     # Syntax validation

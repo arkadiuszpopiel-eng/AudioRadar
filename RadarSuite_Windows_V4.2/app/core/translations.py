@@ -1,6 +1,11 @@
 """
-RadarSuite v3.5.0 - Translations Module
+RadarSuite V4.2.1 - Translations Module
 Multi-language support (EN/PL)
+
+FIXED v4.2.1: Comprehensive translations for all UI elements
+- All hardcoded strings moved to translation keys
+- Full Polish translation support
+- Extensible structure for future languages
 """
 
 # ============================================================================
@@ -44,10 +49,15 @@ TRANSLATIONS = {
         'detect_walk': 'Detect WALK',
         'detect_run': 'Detect RUN',
         'detect_shot': 'Detect SHOT',
+        'ml_detection': '🧠 ML Detection (YAMNet)',
+
+        # ===== Sensitivity =====
         'sensitivity': 'Sensitivity',
         'walk': 'Walk:',
         'run': 'Run:',
         'shot': 'Shot:',
+
+        # ===== Detection Status =====
         'detection_status': 'Detection Status',
         'walk_detected': 'WALK: DETECTED',
         'run_detected': 'RUN: DETECTED',
@@ -145,10 +155,15 @@ TRANSLATIONS = {
         'detect_walk': 'Wykrywaj CHÓD',
         'detect_run': 'Wykrywaj BIEG',
         'detect_shot': 'Wykrywaj STRZAŁY',
+        'ml_detection': '🧠 Detekcja ML (YAMNet)',
+
+        # ===== Czułość =====
         'sensitivity': 'Czułość',
         'walk': 'Chód:',
         'run': 'Bieg:',
         'shot': 'Strzały:',
+
+        # ===== Status Detekcji =====
         'detection_status': 'Status Detekcji',
         'walk_detected': 'CHÓD: WYKRYTO',
         'run_detected': 'BIEG: WYKRYTO',
@@ -216,18 +231,76 @@ TRANSLATIONS = {
 current_language = 'en'
 
 
-def tr(key):
-    """Translate key to current language"""
+def tr(key: str) -> str:
+    """
+    Translate key to current language.
+
+    Args:
+        key: Translation key (e.g., 'app_title', 'detection_status')
+
+    Returns:
+        Translated string, or the key itself if not found
+
+    Example:
+        >>> tr('app_title')
+        'RadarSuite Final'
+    """
     return TRANSLATIONS.get(current_language, TRANSLATIONS['en']).get(key, key)
 
 
-def set_language(lang_code):
-    """Set current language (en/pl)"""
+def set_language(lang_code: str) -> bool:
+    """
+    Set current language.
+
+    Args:
+        lang_code: Language code ('en' or 'pl')
+
+    Returns:
+        True if language was set, False if invalid code
+
+    Example:
+        >>> set_language('pl')
+        True
+    """
     global current_language
     if lang_code in TRANSLATIONS:
         current_language = lang_code
+        return True
+    return False
 
 
-def get_language():
-    """Get current language code"""
+def get_language() -> str:
+    """
+    Get current language code.
+
+    Returns:
+        Current language code ('en' or 'pl')
+    """
     return current_language
+
+
+def get_available_languages() -> list:
+    """
+    Get list of available language codes.
+
+    Returns:
+        List of language codes (e.g., ['en', 'pl'])
+    """
+    return list(TRANSLATIONS.keys())
+
+
+def get_language_name(lang_code: str) -> str:
+    """
+    Get human-readable language name.
+
+    Args:
+        lang_code: Language code
+
+    Returns:
+        Language name (e.g., 'English', 'Polski')
+    """
+    names = {
+        'en': 'English',
+        'pl': 'Polski',
+    }
+    return names.get(lang_code, lang_code)

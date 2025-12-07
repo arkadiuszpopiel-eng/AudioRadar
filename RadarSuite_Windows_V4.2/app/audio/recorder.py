@@ -1,5 +1,5 @@
 """
-RadarSuite v3.5.0 - Audio Recorder
+RadarSuite V4.2.1 - Audio Recorder
 Session recording with metadata
 FIXED v3.5.0: Buffering for reduced I/O
 """

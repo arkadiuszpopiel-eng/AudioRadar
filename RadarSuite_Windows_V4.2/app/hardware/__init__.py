@@ -1,5 +1,5 @@
 """
-RadarSuite v3.5.0 - Hardware Optimization Module
+RadarSuite V4.2.1 - Hardware Optimization Module
 GPU acceleration and Sound Blaster optimization
 """
 

@@ -222,11 +222,15 @@ class DevicePanel(QWidget):
 
         # Manual gain slider
         gain_slider_layout = QHBoxLayout()
-        gain_slider_layout.addWidget(QLabel("Manual Gain:"))
+        gain_slider_layout.addWidget(QLabel(tr('manual_gain')))
         self.gain_slider = QSlider(Qt.Horizontal)
         self.gain_slider.setRange(1, 100)  # 1x to 100x gain
         self.gain_slider.setValue(1)  # Default 1x (no gain)
         self.gain_slider.setEnabled(True)  # Enabled by default (auto-gain is off)
+        # FIXED v4.2.1: Smooth scrolling for gain slider
+        self.gain_slider.setSingleStep(1)
+        self.gain_slider.setPageStep(10)
+        self.gain_slider.setTracking(True)
         gain_slider_layout.addWidget(self.gain_slider)
         self.gain_label = QLabel("1x")
         self.gain_slider.valueChanged.connect(lambda v: self.gain_label.setText(f"{v}x"))
@@ -238,11 +242,15 @@ class DevicePanel(QWidget):
 
         # Noise gate threshold
         noise_gate_layout = QHBoxLayout()
-        noise_gate_layout.addWidget(QLabel("Noise Gate:"))
+        noise_gate_layout.addWidget(QLabel(tr('noise_gate')))
         self.noise_gate_slider = QSlider(Qt.Horizontal)
         self.noise_gate_slider.setRange(0, 100)
         self.noise_gate_slider.setValue(5)  # Default -60 dB
-        self.noise_gate_slider.setToolTip("Block audio below this level (reduces noise)")
+        self.noise_gate_slider.setToolTip(tr('noise_gate_tooltip'))
+        # FIXED v4.2.1: Smooth scrolling for noise gate slider
+        self.noise_gate_slider.setSingleStep(1)
+        self.noise_gate_slider.setPageStep(10)
+        self.noise_gate_slider.setTracking(True)
         noise_gate_layout.addWidget(self.noise_gate_slider)
         self.noise_gate_label = QLabel("-60dB")
         self.noise_gate_slider.valueChanged.connect(

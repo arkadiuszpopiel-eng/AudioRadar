@@ -1,5 +1,5 @@
 """
-RadarSuite v3.5.0 - Dependency Injection Container
+RadarSuite V4.2.1 - Dependency Injection Container
 Point 11: Inversion of Control for better testability and modularity
 
 Simple but powerful DI container with:
@@ -10,7 +10,7 @@ Simple but powerful DI container with:
 """
 
 from typing import Any, Callable, Dict, Optional, Type
-from core.logger import log
+from .logger import log  # FIXED v4.2.1: Use relative import
 
 
 class ServiceContainer:

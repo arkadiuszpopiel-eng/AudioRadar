@@ -13,6 +13,7 @@ System architecture, design patterns, and component interaction.
 5. [Threading Model](#threading-model)
 6. [Design Patterns](#design-patterns)
 7. [Module Dependencies](#module-dependencies)
+8. [ML Training and Diagnostics Quick Map](#ml-training-and-diagnostics-quick-map)
 
 ---
 
@@ -672,3 +673,11 @@ All extracted modules now have comprehensive type hints:
 ---
 
 **RadarSuite V4.2.0** - Well-architected audio intelligence system.
+
+## ML Training and Diagnostics Quick Map
+
+- **UI widgets**: `app/widgets/ml_training_panel.py` (pełny panel) oraz `app/widgets/ml_quick_overlay.py` (mini overlay always-on-top) korzystają ze wspólnego kontrolera nagrywania.
+- **Kontroler nagrywania**: `app/ml/training/recording_controller.py` agreguje `LabeledRecorder` i `SessionManager`; w trybie testowym używa wariantu in-memory, aby nie blokować UI.
+- **Przepływ nagrywania**: metoda `feed_audio()` w panelu ML otrzymuje bloki z głównej pętli audio (`MainWindow.tick`), aktualizując zarówno bufor, jak i wskaźnik poziomu dla overlayu.
+- **Self-test**: `app/diagnostics/selftest.py` uruchamia kroki importów, FSM nagrywania i logiki overlayu z limitami czasowymi; raport zapisuje się w `logs/selftest_*.log`.
+- **Konfiguracja overlayu**: zarządzana przez `ConfigManager` (sekcja `ml_overlay`), zapisywana z debouncingiem przy zmianie rozmiaru/trybu frameless/opacity.

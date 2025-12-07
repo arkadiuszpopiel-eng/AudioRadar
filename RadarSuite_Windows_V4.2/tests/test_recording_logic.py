@@ -18,3 +18,12 @@ def test_recording_state_machine(tmp_path):
 
     controller.discard_recording()
     assert controller.last_session is None
+
+
+def test_simulate_quick_capture(tmp_path):
+    manager = SessionManager(base_path=tmp_path)
+    controller = RecordingController(session_manager=manager, test_mode=True)
+
+    session = controller.simulate_quick_capture(blocks=2, block_size=32)
+    assert session is not None
+    assert not controller.state.is_recording

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import threading
 import traceback
 from dataclasses import dataclass
 from datetime import datetime
@@ -72,12 +73,8 @@ class SelfTestRunner:
         from app.ml.training.session_manager import SessionManager
 
         manager = SessionManager(base_path=Path("./Data/TestSessions"))
-        controller = RecordingController(session_manager=manager)
-        assert controller.start_recording()
-        block = np.zeros((1024,))
-        controller.feed_audio(block)
-        controller.add_label("test")
-        session = controller.stop_recording()
+        controller = RecordingController(session_manager=manager, test_mode=True)
+        session = controller.simulate_quick_capture()
         assert session is not None
 
     def _step_overlay_logic(self) -> None:
@@ -91,7 +88,10 @@ class SelfTestRunner:
         app = QApplication.instance()
         if app is None:
             owned_app = QApplication([])
-        controller = RecordingController(session_manager=SessionManager(base_path=Path("./Data/TestSessions")))
+        controller = RecordingController(
+            session_manager=SessionManager(base_path=Path("./Data/TestSessions")),
+            test_mode=True,
+        )
         overlay = MLQuickRecordOverlay(controller=controller, config_manager=self.config_manager)
         overlay.hide()
         overlay._apply_size_preset()  # noqa: SLF001
@@ -106,18 +106,41 @@ class SelfTestRunner:
     def _execute_steps(self, steps: List[Tuple[str, Callable[[], None]]]) -> List[SelfTestResult]:
         results: List[SelfTestResult] = []
         for name, func in steps:
-            try:
-                func()
-                result = SelfTestResult(name=name, success=True, message="OK")
-                self._log_lines.append(f"✓ {name}")
-            except Exception as exc:  # pragma: no cover - defensive
-                tb = traceback.format_exc()
-                result = SelfTestResult(name=name, success=False, message=str(exc), error=tb)
-                self._log_lines.append(f"✗ {name}: {exc}")
+            result = self._run_step_with_timeout(name, func)
             results.append(result)
 
         self._report_path = self._write_report(results)
         return results
+
+    def _run_step_with_timeout(self, name: str, func: Callable[[], None], timeout: float = 5.0) -> SelfTestResult:
+        result_holder: dict = {}
+
+        def target():
+            try:
+                func()
+                result_holder["result"] = SelfTestResult(name=name, success=True, message="OK")
+            except Exception as exc:  # pragma: no cover - defensive
+                tb = traceback.format_exc()
+                result_holder["result"] = SelfTestResult(name=name, success=False, message=str(exc), error=tb)
+
+        thread = threading.Thread(target=target, daemon=True)
+        thread.start()
+        thread.join(timeout)
+
+        if thread.is_alive():
+            self._log_lines.append(f"✗ {name}: timeout after {timeout}s")
+            return SelfTestResult(name=name, success=False, message=f"timeout after {timeout}s")
+
+        result = result_holder.get("result")
+        if result and result.success:
+            self._log_lines.append(f"✓ {name}")
+        elif result:
+            self._log_lines.append(f"✗ {name}: {result.message}")
+        else:  # pragma: no cover - defensive
+            self._log_lines.append(f"✗ {name}: unknown error")
+            result = SelfTestResult(name=name, success=False, message="unknown error")
+
+        return result
 
     def _write_report(self, results: List[SelfTestResult]) -> Path:
         logs_dir = Path("logs")

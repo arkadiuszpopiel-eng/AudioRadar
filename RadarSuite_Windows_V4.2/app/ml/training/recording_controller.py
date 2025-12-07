@@ -7,6 +7,7 @@ label operations so multiple widgets stay in sync.
 from __future__ import annotations
 
 import threading
+from pathlib import Path
 from typing import Callable, List, Optional
 
 import numpy as np
@@ -17,11 +18,30 @@ from .recorder import LabeledRecorder, RecordingState
 from .session_manager import SessionManager, AudioLabel, LabeledSession
 
 
+class InMemorySessionManager(SessionManager):
+    """Lightweight session manager used for tests/self-test to avoid disk I/O."""
+
+    def __init__(self):  # pragma: no cover - trivial wrapper
+        super().__init__(base_path=Path("./Data/TestSessions"))
+        self.last_saved_session: Optional[LabeledSession] = None
+
+    def save_session(self, session: LabeledSession, audio_data: Optional[np.ndarray] = None) -> bool:
+        # Store session in memory to avoid blocking disk writes during diagnostics
+        self.last_saved_session = session
+        if audio_data is not None:
+            session.cached_audio = audio_data  # type: ignore[attr-defined]
+        log(f"In-memory session saved: {session.session_id}", "INFO")
+        return True
+
+
 class RecordingController:
     """Shared controller coordinating labeled recordings."""
 
-    def __init__(self, session_manager: Optional[SessionManager] = None):
-        self.session_manager = session_manager or SessionManager()
+    def __init__(self, session_manager: Optional[SessionManager] = None, test_mode: bool = False):
+        self._test_mode = test_mode
+        if session_manager is None:
+            session_manager = InMemorySessionManager() if test_mode else SessionManager()
+        self.session_manager = session_manager
         self.recorder = LabeledRecorder(self.session_manager)
 
         self._state_listeners: List[Callable[[RecordingState], None]] = []
@@ -107,6 +127,18 @@ class RecordingController:
             except Exception as exc:  # pragma: no cover - UI callbacks
                 log(f"RecordingController level listener error: {exc}", "WARNING")
 
+    def simulate_quick_capture(self, blocks: int = 3, block_size: int = 256) -> Optional[LabeledSession]:
+        """Utility for self-test to run a short, non-blocking capture cycle."""
+
+        if not self.start_recording():
+            return None
+
+        dummy = np.zeros((block_size,), dtype=np.float32)
+        for _ in range(blocks):
+            self.feed_audio(dummy)
+
+        return self.stop_recording()
+
     # ------------------------------------------------------------------
     # Accessors
     # ------------------------------------------------------------------
@@ -117,6 +149,10 @@ class RecordingController:
     @property
     def state(self) -> RecordingState:
         return self.recorder.state
+
+    @property
+    def test_mode(self) -> bool:
+        return self._test_mode
 
     # ------------------------------------------------------------------
     # Internal dispatch

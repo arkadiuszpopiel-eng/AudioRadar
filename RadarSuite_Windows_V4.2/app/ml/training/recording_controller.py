@@ -11,10 +11,7 @@ from typing import Callable, List, Optional
 
 import numpy as np
 
-try:
-    from ...core.logger import log
-except ImportError:  # pragma: no cover - fallback when running as script
-    from core.logger import log  # type: ignore
+from app.core.logger import log
 
 from .recorder import LabeledRecorder, RecordingState
 from .session_manager import SessionManager, AudioLabel, LabeledSession

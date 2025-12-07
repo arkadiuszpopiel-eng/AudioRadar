@@ -1,3 +1,7 @@
+import pytest
+
+pytest.importorskip("numpy", reason="numpy required for self-test runner checks")
+
 from diagnostics.selftest import SelfTestRunner
 
 

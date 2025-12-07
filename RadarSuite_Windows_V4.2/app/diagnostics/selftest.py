@@ -16,12 +16,8 @@ try:  # pragma: no cover - optional in headless tests
 except Exception:  # pragma: no cover - no Qt in environment
     QT_AVAILABLE = False
 
-try:
-    from ..core.logger import log
-    from ..core.config import ConfigManager
-except ImportError:  # pragma: no cover - fallback for script mode
-    from core.logger import log  # type: ignore
-    from core.config import ConfigManager  # type: ignore
+from app.core.logger import log
+from app.core.config import ConfigManager
 
 
 @dataclass
@@ -67,13 +63,13 @@ class SelfTestRunner:
             raise AssertionError("Audio section missing")
 
     def _step_ml_imports(self) -> None:
-        from ..widgets.ml_training_panel import MLTrainingPanel  # noqa: F401
-        from ..widgets.ml_quick_overlay import MLQuickRecordOverlay  # noqa: F401
-        from ..ml.training import RecordingController  # noqa: F401
+        from app.widgets.ml_training_panel import MLTrainingPanel  # noqa: F401
+        from app.widgets.ml_quick_overlay import MLQuickRecordOverlay  # noqa: F401
+        from app.ml.training import RecordingController  # noqa: F401
 
     def _step_recording_flow(self) -> None:
-        from ..ml.training import RecordingController
-        from ..ml.training.session_manager import SessionManager
+        from app.ml.training import RecordingController
+        from app.ml.training.session_manager import SessionManager
 
         manager = SessionManager(base_path=Path("./Data/TestSessions"))
         controller = RecordingController(session_manager=manager)
@@ -87,9 +83,9 @@ class SelfTestRunner:
     def _step_overlay_logic(self) -> None:
         if not QT_AVAILABLE:
             return
-        from ..ml.training import RecordingController
-        from ..widgets.ml_quick_overlay import MLQuickRecordOverlay
-        from ..ml.training.session_manager import SessionManager
+        from app.ml.training import RecordingController
+        from app.widgets.ml_quick_overlay import MLQuickRecordOverlay
+        from app.ml.training.session_manager import SessionManager
 
         owned_app = None
         app = QApplication.instance()

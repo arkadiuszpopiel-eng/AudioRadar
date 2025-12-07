@@ -1,4 +1,6 @@
-import numpy as np
+import pytest
+
+np = pytest.importorskip("numpy", reason="numpy required for recording logic tests")
 
 from ml.training import RecordingController
 from ml.training.session_manager import SessionManager

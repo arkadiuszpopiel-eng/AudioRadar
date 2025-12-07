@@ -2,6 +2,8 @@ import copy
 
 import pytest
 
+pytest.importorskip("numpy", reason="numpy required for overlay logic tests")
+
 from ml.training import RecordingController
 from ml.training.session_manager import SessionManager
 

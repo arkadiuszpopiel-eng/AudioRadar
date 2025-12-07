@@ -22,12 +22,8 @@ from dataclasses import dataclass, field, asdict
 from typing import List, Optional, Dict, Any
 import threading
 
-try:
-    from ...core.logger import log
-    from ...core.constants import VERSION
-except ImportError:
-    from core.logger import log
-    from core.constants import VERSION
+from app.core.logger import log
+from app.core.constants import VERSION
 
 
 @dataclass

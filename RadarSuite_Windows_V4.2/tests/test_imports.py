@@ -13,5 +13,6 @@ def test_ui_imports():
 
 
 def test_core_imports():
+    pytest.importorskip("numpy", reason="numpy required for ML import smoke test")
     assert importlib.import_module("core.config")
     assert importlib.import_module("ml.training.recording_controller")

@@ -24,20 +24,12 @@ from PyQt5.QtWidgets import (
     QSizePolicy,
 )
 
-try:
-    from ..core.logger import log
-    from ..core.translations import tr
-except ImportError:  # pragma: no cover - fallback when running as script
-    from core.logger import log  # type: ignore
-    from core.translations import tr  # type: ignore
-
-try:
-    from ..ml.training import RecordingController, RecordingState
-except ImportError:  # pragma: no cover - fallback
-    from ml.training import RecordingController, RecordingState  # type: ignore
+from app.core.logger import log
+from app.core.translations import tr
+from app.ml.training import RecordingController, RecordingState
 
 if typing.TYPE_CHECKING:  # pragma: no cover
-    from ..core.config import ConfigManager
+    from app.core.config import ConfigManager
 
 
 class MiniEqualizerWidget(QWidget):
@@ -103,6 +95,7 @@ class MLQuickRecordOverlay(QWidget):
         self._size_preset = "medium"
         self._config_data: dict = {}
         self._dirty = False
+        self._state_loaded = False
         self._save_debounce = QTimer(self)
         self._save_debounce.setSingleShot(True)
         self._save_debounce.timeout.connect(self._persist_state)
@@ -193,9 +186,10 @@ class MLQuickRecordOverlay(QWidget):
     # State persistence
     # ------------------------------------------------------------------
     def _load_state(self) -> None:
-        if not self.config_manager:
+        if not self.config_manager or self._state_loaded:
             return
-        self._config_data = self.config_manager.load()
+        loaded = self.config_manager.load()
+        self._config_data = loaded if isinstance(loaded, dict) else {}
         overlay_cfg = self._config_data.get("ml_overlay", {})
         self._frameless = overlay_cfg.get("frameless", True)
         self._opacity = overlay_cfg.get("opacity", 1.0)
@@ -218,6 +212,7 @@ class MLQuickRecordOverlay(QWidget):
 
         if overlay_cfg.get("visible", False):
             self.show()
+        self._state_loaded = True
 
     def _update_config(self) -> None:
         if not self.config_manager:

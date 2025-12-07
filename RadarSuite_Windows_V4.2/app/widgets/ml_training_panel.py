@@ -24,23 +24,14 @@ from PyQt5.QtWidgets import (
 from PyQt5.QtCore import Qt, QTimer, pyqtSignal
 from PyQt5.QtGui import QColor, QKeyEvent
 
-try:
-    from core import log, tr
-    from ml.training import (
-        SessionManager, LabeledSession, AudioLabel,
-        LabeledRecorder, ModelTrainer, TrainingConfig, TrainingStatus,
-        RecordingController,
-    )
-    from widgets.waveform_timeline import WaveformTimelineWidget
-except ImportError:
-    from ..core.logger import log
-    def tr(x): return x
-    from ..ml.training import (
-        SessionManager, LabeledSession, AudioLabel,
-        LabeledRecorder, ModelTrainer, TrainingConfig, TrainingStatus,
-        RecordingController,
-    )
-    from .waveform_timeline import WaveformTimelineWidget
+from app.core.logger import log
+from app.core.translations import tr
+from app.ml.training import (
+    SessionManager, LabeledSession, AudioLabel,
+    LabeledRecorder, ModelTrainer, TrainingConfig, TrainingStatus,
+    RecordingController,
+)
+from app.widgets.waveform_timeline import WaveformTimelineWidget
 
 
 class AddLabelDialog(QDialog):

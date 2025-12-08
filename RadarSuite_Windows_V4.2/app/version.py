@@ -10,8 +10,14 @@ FIXED v4.2.0: Single source of truth for version across all modules
 # Main version
 __version__ = "4.2.1"
 
+# Build number (k = kompilacja/compilation)
+BUILD_NUMBER = "k0002"
+
+# Full version string with build number
+__version_full__ = f"4.2.1-{BUILD_NUMBER}"
+
 # Full version string with game-specific suffix
-__version_full__ = "4.2.1-ARC-Raiders"
+__version_full_target__ = f"4.2.1-{BUILD_NUMBER}-ARC-Raiders"
 
 # Version components
 VERSION_MAJOR = 4
@@ -24,6 +30,8 @@ BUILD_PLATFORM = "Windows"  # or "Linux" depending on build
 
 # Version history (for reference)
 VERSION_HISTORY = {
+    "4.2.1-k0002": "Fixed k0001 disaster - restored original ML widgets, fixed only imports (not functionality)",
+    "4.2.1-k0001": "FAILED - accidentally removed ML widgets content",
     "4.2.1": "Deep static analysis fixes, import path corrections, exception handling improvements",
     "4.2.0": "ARC Raiders Edition - MFCC features, shot detection, surface classification, machine detection",
     "4.1.2": "Adaptive noise floor, type-aware tracking, detached window cleanup",
@@ -68,6 +76,8 @@ def get_build_info():
     return {
         'version': __version__,
         'version_full': __version_full__,
+        'version_full_target': __version_full_target__,
+        'build_number': BUILD_NUMBER,
         'major': VERSION_MAJOR,
         'minor': VERSION_MINOR,
         'patch': VERSION_PATCH,

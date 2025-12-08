@@ -483,7 +483,7 @@ class MilitaryHUDRadar(QWidget):
         # Title
         painter.setFont(self.FONT_TITLE)
         painter.setPen(self.COLOR_ACCENT)
-        painter.drawText(x + 10, y + 20, "TARGETS")
+        painter.drawText(x + 10, y + 20, tr('targets'))
 
         # Separator line
         painter.setPen(QPen(self.COLOR_GRID, 1))
@@ -514,7 +514,7 @@ class MilitaryHUDRadar(QWidget):
         # Count
         painter.setFont(self.FONT_LABEL)
         painter.setPen(self.COLOR_TEXT_DIM)
-        painter.drawText(x + 10, h - 20, f"COUNT: {len(self.targets)}")
+        painter.drawText(x + 10, h - 20, f"{tr('count')}: {len(self.targets)}")
 
     def _draw_right_panel(self, painter, w, panel_width):
         """Draw right panel - Tactical data"""
@@ -531,7 +531,7 @@ class MilitaryHUDRadar(QWidget):
         # Title
         painter.setFont(self.FONT_TITLE)
         painter.setPen(self.COLOR_ACCENT)
-        painter.drawText(x + 10, y + 20, "TACTICAL")
+        painter.drawText(x + 10, y + 20, tr('tactical'))
 
         # Separator
         painter.setPen(QPen(self.COLOR_GRID, 1))
@@ -543,21 +543,21 @@ class MilitaryHUDRadar(QWidget):
 
         # Mode
         painter.setPen(self.COLOR_TEXT_DIM)
-        painter.drawText(x + 10, ty, "MODE:")
+        painter.drawText(x + 10, ty, tr('mode_label'))
         painter.setPen(self.COLOR_ACCENT)
         painter.drawText(x + 55, ty, self.scan_mode)
         ty += 20
 
         # Range
         painter.setPen(self.COLOR_TEXT_DIM)
-        painter.drawText(x + 10, ty, "RANGE:")
+        painter.drawText(x + 10, ty, tr('range_label'))
         painter.setPen(self.COLOR_TEXT)
         painter.drawText(x + 55, ty, self.range_mode)
         ty += 20
 
         # Lock status
         painter.setPen(self.COLOR_TEXT_DIM)
-        painter.drawText(x + 10, ty, "LOCK:")
+        painter.drawText(x + 10, ty, tr('lock_label'))
         if "LOCK" in self.lock_status:
             painter.setPen(self.COLOR_DANGER)
         else:
@@ -572,7 +572,7 @@ class MilitaryHUDRadar(QWidget):
 
         # Statistics
         painter.setPen(self.COLOR_TEXT_DIM)
-        painter.drawText(x + 10, ty, "STATISTICS")
+        painter.drawText(x + 10, ty, tr('statistics'))
         ty += 18
 
         walk_count = sum(1 for t in self.targets if t['state'] == TargetState.WALK)
@@ -580,13 +580,13 @@ class MilitaryHUDRadar(QWidget):
         shot_count = sum(1 for t in self.targets if t['state'] == TargetState.SHOT)
 
         painter.setPen(TargetState.COLORS[TargetState.WALK])
-        painter.drawText(x + 10, ty, f"WALK: {walk_count}")
+        painter.drawText(x + 10, ty, f"{tr('walk')}: {walk_count}")
         ty += 16
         painter.setPen(TargetState.COLORS[TargetState.RUN])
-        painter.drawText(x + 10, ty, f"RUN:  {run_count}")
+        painter.drawText(x + 10, ty, f"{tr('run')}:  {run_count}")
         ty += 16
         painter.setPen(TargetState.COLORS[TargetState.SHOT])
-        painter.drawText(x + 10, ty, f"SHOT: {shot_count}")
+        painter.drawText(x + 10, ty, f"{tr('shot')}: {shot_count}")
 
         # FPS counter at bottom
         current_time = time.time()
@@ -609,11 +609,11 @@ class MilitaryHUDRadar(QWidget):
         # Status items
         painter.setFont(self.FONT_STATUS)
         items = [
-            ("SCAN", self.scan_mode == "ACTIVE", 50),
-            ("LOCK", "LOCK" in self.lock_status, 150),
-            ("RANGE", True, 250),
-            ("AUDIO", True, 350),
-            ("SYS", True, 450),
+            (tr('scan'), self.scan_mode == "ACTIVE", 50),
+            (tr('lock'), "LOCK" in self.lock_status, 150),
+            (tr('range'), True, 250),
+            (tr('audio'), True, 350),
+            (tr('system'), True, 450),
         ]
 
         for label, active, x_pos in items:

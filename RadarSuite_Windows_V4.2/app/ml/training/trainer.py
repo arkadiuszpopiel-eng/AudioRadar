@@ -19,14 +19,9 @@ from dataclasses import dataclass, field
 from typing import List, Dict, Optional, Callable, Tuple, Any
 from enum import Enum
 
-try:
-    from ...core.logger import log
-    from ...core.constants import VERSION
-    from ..feature_extractor import FeatureExtractor
-except ImportError:
-    from core.logger import log
-    VERSION = "4.2.0"
-    from ml.feature_extractor import FeatureExtractor
+from app.core.logger import log
+from app.core.constants import VERSION
+from app.ml.feature_extractor import FeatureExtractor
 
 from .session_manager import SessionManager, LabeledSession, AudioLabel
 

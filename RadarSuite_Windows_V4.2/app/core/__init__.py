@@ -6,7 +6,7 @@ FIXED v4.2.0: ARC Raiders-specific constants and features
 """
 
 # Constants
-from core.constants import (
+from .constants import (
     VERSION,
     SAMPLE_RATE,
     BLOCK_SIZE,
@@ -61,7 +61,7 @@ from core.constants import (
 )
 
 # Logger
-from core.logger import (
+from .logger import (
     ThreadSafeLogger,
     log,
     ROOT,
@@ -69,10 +69,10 @@ from core.logger import (
 )
 
 # Config
-from core.config import ConfigManager
+from .config import ConfigManager
 
 # Translations
-from core.translations import (
+from .translations import (
     TRANSLATIONS,
     current_language,
     tr,
@@ -81,14 +81,14 @@ from core.translations import (
 )
 
 # Dependency Injection (Point 11 - v3.5.0)
-from core.di import (
+from .di import (
     ServiceContainer,
     get_container,
     configure_services,
 )
 
 # Error Handler (v4.2.0 - Punkt 7)
-from core.error_handler import (
+from .error_handler import (
     RadarSuiteError,
     AudioError,
     DetectionError,
@@ -106,7 +106,7 @@ from core.error_handler import (
 )
 
 # Performance Profiler (v4.2.0 - Punkt 9)
-from core.profiler import (
+from .profiler import (
     PerformanceProfiler,
     get_profiler,
     profile,

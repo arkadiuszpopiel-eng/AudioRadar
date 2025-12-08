@@ -9,11 +9,11 @@ FIXED v4.2.0: ARC Raiders-specific detection modules:
 - ARCMachineDetector: Machine state detection (idle/patrol/search/combat)
 """
 
-from detection.worker import DetectionWorker
-from detection.footstep import HumanFootstepDetector
-from detection.spectral import SpectralFeatureExtractor
-from detection.shot import ShotDetector
-from detection.machine import ARCMachineDetector
+from .worker import DetectionWorker
+from .footstep import HumanFootstepDetector
+from .spectral import SpectralFeatureExtractor
+from .shot import ShotDetector
+from .machine import ARCMachineDetector
 
 __all__ = [
     'DetectionWorker',

@@ -65,6 +65,16 @@ class ConfigManager:
             "window_height": {"type": int, "range": (600, 3000)},
             "window_maximized": {"type": bool}
         },
+        "ml_overlay": {
+            "x": {"type": (type(None), int)},
+            "y": {"type": (type(None), int)},
+            "width": {"type": int, "range": (120, 800)},
+            "height": {"type": int, "range": (120, 800)},
+            "opacity": {"type": (int, float), "range": (0.3, 1.0)},
+            "frameless": {"type": bool},
+            "size_preset": {"type": str, "values": ["small", "medium", "large"]},
+            "visible": {"type": bool}
+        },
         "performance": {
             "use_gpu": {"type": bool},
             "max_workers": {"type": int, "range": (1, 16)}
@@ -117,6 +127,16 @@ class ConfigManager:
                 "window_width": 1400,
                 "window_height": 900,
                 "window_maximized": False
+            },
+            "ml_overlay": {
+                "x": 200,
+                "y": 200,
+                "width": 300,
+                "height": 200,
+                "opacity": 0.9,
+                "frameless": True,
+                "size_preset": "medium",
+                "visible": False
             },
             "performance": {
                 "use_gpu": True,  # AMD OpenCL for RX 7900 GRE

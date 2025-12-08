@@ -24,21 +24,14 @@ from PyQt5.QtWidgets import (
 from PyQt5.QtCore import Qt, QTimer, pyqtSignal
 from PyQt5.QtGui import QColor, QKeyEvent
 
-try:
-    from core import log, tr
-    from ml.training import (
-        SessionManager, LabeledSession, AudioLabel,
-        LabeledRecorder, ModelTrainer, TrainingConfig, TrainingStatus
-    )
-    from widgets.waveform_timeline import WaveformTimelineWidget
-except ImportError:
-    from ..core.logger import log
-    def tr(x): return x
-    from ..ml.training import (
-        SessionManager, LabeledSession, AudioLabel,
-        LabeledRecorder, ModelTrainer, TrainingConfig, TrainingStatus
-    )
-    from .waveform_timeline import WaveformTimelineWidget
+from app.core.logger import log
+from app.core.translations import tr
+from app.ml.training import (
+    SessionManager, LabeledSession, AudioLabel,
+    LabeledRecorder, ModelTrainer, TrainingConfig, TrainingStatus,
+    RecordingController,
+)
+from app.widgets.waveform_timeline import WaveformTimelineWidget
 
 
 class AddLabelDialog(QDialog):
@@ -102,25 +95,26 @@ class MLTrainingPanel(QWidget):
     # Signal emitted when panel needs audio data
     audio_data_requested = pyqtSignal()
 
-    def __init__(self, parent=None):
+    def __init__(self, parent=None, recording_controller: RecordingController = None, overlay_launcher=None):
         super().__init__(parent)
         log("MLTrainingPanel.__init__", "INFO")
 
-        # Initialize managers
-        self.session_manager = SessionManager()
-        self.recorder = LabeledRecorder(self.session_manager)
+        # Initialize managers shared with overlay
+        self.recording_controller = recording_controller or RecordingController()
+        self.session_manager = self.recording_controller.session_manager
+        self.recorder = self.recording_controller.recorder
         self.trainer = ModelTrainer(self.session_manager)
 
         # Set callbacks
-        self.recorder.set_callbacks(
-            on_state_change=self._on_recording_state_change,
-            on_label_added=self._on_label_added
-        )
+        self.recording_controller.add_state_listener(self._on_recording_state_change)
+        self.recording_controller.add_label_listener(self._on_label_added)
         self.trainer.set_callbacks(
             on_progress=self._on_training_progress,
             on_complete=self._on_training_complete,
             on_log=self._on_training_log
         )
+
+        self._overlay_launcher = overlay_launcher
 
         # Timer for updating elapsed time
         self._timer = QTimer()
@@ -206,7 +200,7 @@ class MLTrainingPanel(QWidget):
         # Control buttons row
         btn_row = QHBoxLayout()
 
-        self.start_btn = QPushButton("▶ Start Recording")
+        self.start_btn = QPushButton(f"▶ {tr('start')}" if callable(tr) else "▶ Start Recording")
         self.start_btn.setStyleSheet("""
             QPushButton {
                 background: #00AA00;
@@ -222,7 +216,7 @@ class MLTrainingPanel(QWidget):
         self.start_btn.clicked.connect(self._on_start_recording)
         btn_row.addWidget(self.start_btn)
 
-        self.stop_btn = QPushButton("⏹ Stop Recording")
+        self.stop_btn = QPushButton(f"⏹ {tr('stop')}" if callable(tr) else "⏹ Stop Recording")
         self.stop_btn.setStyleSheet("""
             QPushButton {
                 background: #AA0000;
@@ -240,6 +234,13 @@ class MLTrainingPanel(QWidget):
         btn_row.addWidget(self.stop_btn)
 
         layout.addLayout(btn_row)
+
+        overlay_row = QHBoxLayout()
+        self.overlay_btn = QPushButton(tr('ml_overlay_launch') if callable(tr) else "Open quick overlay")
+        self.overlay_btn.clicked.connect(self._launch_overlay)
+        overlay_row.addWidget(self.overlay_btn)
+        overlay_row.addStretch()
+        layout.addLayout(overlay_row)
 
         group.setLayout(layout)
         return group
@@ -516,7 +517,7 @@ class MLTrainingPanel(QWidget):
 
     def _on_start_recording(self):
         """Handle start recording button."""
-        if self.recorder.start_recording():
+        if self.recording_controller.start_recording():
             self.start_btn.setEnabled(False)
             self.stop_btn.setEnabled(True)
             self._timer.start(100)  # Update every 100ms
@@ -524,7 +525,7 @@ class MLTrainingPanel(QWidget):
 
     def _on_stop_recording(self):
         """Handle stop recording button."""
-        session = self.recorder.stop_recording()
+        session = self.recording_controller.stop_recording()
         if session:
             self._timer.stop()
             self.start_btn.setEnabled(True)
@@ -539,6 +540,13 @@ class MLTrainingPanel(QWidget):
                 f"Labels: {len(session.labels)}"
             )
 
+    def _launch_overlay(self):
+        """Open the quick recording overlay if available."""
+        if callable(self._overlay_launcher):
+            self._overlay_launcher()
+        else:
+            log("Overlay launcher not configured", "WARNING")
+
     def _on_recording_state_change(self, state):
         """Handle recording state changes."""
         if state.is_recording:
@@ -550,7 +558,7 @@ class MLTrainingPanel(QWidget):
 
     def _update_timer(self):
         """Update elapsed time display."""
-        elapsed = self.recorder.elapsed_seconds
+        elapsed = self.recording_controller.state.elapsed_sec
         mins = int(elapsed // 60)
         secs = int(elapsed % 60)
         self.elapsed_label.setText(f"{mins}:{secs:02d}")
@@ -566,24 +574,24 @@ class MLTrainingPanel(QWidget):
 
     def _add_label_by_index(self, index: int):
         """Add label by class index."""
-        if not self.recorder.is_recording:
+        if not self.recording_controller.state.is_recording:
             QMessageBox.warning(self, "Not Recording", "Start recording first to add labels.")
             return
 
-        label = self.recorder.add_label_with_hotkey(index + 1)
+        label = self.recording_controller.add_label_hotkey(index + 1)
         if label:
             self._add_label_to_table(label)
 
     def _add_custom_label(self):
         """Add custom label via dialog."""
-        if not self.recorder.is_recording:
+        if not self.recording_controller.state.is_recording:
             QMessageBox.warning(self, "Not Recording", "Start recording first to add labels.")
             return
 
-        dialog = AddLabelDialog(self, timestamp=self.recorder.elapsed_seconds)
+        dialog = AddLabelDialog(self, timestamp=self.recording_controller.state.elapsed_sec)
         if dialog.exec_() == QDialog.Accepted:
             values = dialog.get_values()
-            label = self.recorder.add_label(
+            label = self.recording_controller.add_label(
                 label_class=values["label_class"],
                 description=values["description"]
             )
@@ -840,8 +848,8 @@ class MLTrainingPanel(QWidget):
         Args:
             block: Audio data block
         """
-        if self.recorder.is_recording:
-            self.recorder.add_audio_block(block)
+        self.recording_controller.feed_audio(block)
+        if self.recording_controller.state.is_recording:
             # v4.2.1: Update waveform timeline periodically
             # (actual update happens via timer to avoid too frequent redraws)
             self._pending_waveform_update = True
@@ -852,7 +860,7 @@ class MLTrainingPanel(QWidget):
 
     def keyPressEvent(self, event: QKeyEvent):
         """Handle keyboard shortcuts for quick labeling."""
-        if not self.recorder.is_recording:
+        if not self.recording_controller.state.is_recording:
             super().keyPressEvent(event)
             return
 
@@ -866,7 +874,7 @@ class MLTrainingPanel(QWidget):
 
         # Backspace to remove last label
         if key == Qt.Key_Backspace:
-            if self.recorder.remove_last_label():
+            if self.recording_controller.remove_last_label():
                 if self.labels_table.rowCount() > 0:
                     self.labels_table.removeRow(self.labels_table.rowCount() - 1)
             return

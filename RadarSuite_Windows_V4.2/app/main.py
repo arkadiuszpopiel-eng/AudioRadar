@@ -22,6 +22,7 @@ import math
 import threading
 import re
 import json
+from typing import Optional
 from pathlib import Path
 from datetime import datetime
 from concurrent.futures import ThreadPoolExecutor
@@ -195,6 +196,7 @@ try:
     # UI MODULE IMPORTS (v4.2.0: UIBuilder extraction from MainWindow)
     # ============================================================================
     from .ui import UIBuilder
+    from .diagnostics import SelfTestRunner
 
 except ImportError:
     # Fallback to direct imports when running as standalone script
@@ -231,6 +233,7 @@ except ImportError:
         DevicePanel, DetectionPanel,
     )
     from ui import UIBuilder
+    from diagnostics import SelfTestRunner
 
 # ============================================================================
 # CONFIG MANAGER - Imported from core module
@@ -517,6 +520,44 @@ class MainWindow(QMainWindow):
             self.status_bar.showMessage("✓ Ready - All systems operational" if lang == 'en' else "✓ Gotowy - Wszystkie systemy sprawne")
         else:
             self.status_bar.showMessage("● RUNNING - Detection active" if lang == 'en' else "● DZIAŁA - Detekcja aktywna")
+
+        if hasattr(self, 'test_btn'):
+            self.test_btn.setText(tr('self_test'))
+            self.test_btn.setToolTip(tr('self_test_title'))
+
+    def launch_self_test(self):
+        """Run internal self-test and show summary dialog."""
+        lang = get_language()
+        if hasattr(self, 'test_btn'):
+            self.test_btn.setEnabled(False)
+
+        def worker():
+            error: Optional[Exception] = None
+            results = []
+            report_path = None
+            try:
+                runner = SelfTestRunner(config_manager=self.config_manager)
+                results, report_path = runner.run_quick()
+            except Exception as exc:  # pragma: no cover - defensive
+                error = exc
+
+            def finish():
+                if hasattr(self, 'test_btn'):
+                    self.test_btn.setEnabled(True)
+                if error:
+                    QMessageBox.critical(self, tr('self_test_title'), str(error))
+                    return
+                failed = [r for r in results if not r.success]
+                if failed:
+                    msg = f"{tr('self_test_failure')}\n{tr('self_test_report').format(path=report_path)}"
+                    QMessageBox.warning(self, tr('self_test_title'), msg)
+                else:
+                    msg = f"{tr('self_test_success')}\n{tr('self_test_report').format(path=report_path)}"
+                    QMessageBox.information(self, tr('self_test_title'), msg)
+
+            QTimer.singleShot(0, finish)
+
+        threading.Thread(target=worker, daemon=True).start()
 
         # Update language button to show current language
         if hasattr(self, 'lang_btn'):

@@ -15,14 +15,8 @@ import time
 from typing import Optional, Callable, List
 from dataclasses import dataclass
 
-try:
-    from ...core.logger import log
-    from ...core.constants import SAMPLE_RATE, CHANNELS, BLOCK_SIZE
-except ImportError:
-    from core.logger import log
-    SAMPLE_RATE = 48000
-    CHANNELS = 2
-    BLOCK_SIZE = 2048
+from app.core.logger import log
+from app.core.constants import SAMPLE_RATE, CHANNELS, BLOCK_SIZE
 
 from .session_manager import SessionManager, LabeledSession, AudioLabel
 

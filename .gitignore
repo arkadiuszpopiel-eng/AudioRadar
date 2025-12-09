@@ -39,6 +39,10 @@ Thumbs.db
 # Logs
 *.log
 
+# Legacy logs (moved to log/ directory in v4.2.1-k0008)
+/RadarSuite_Windows_V4.2/super_log.txt
+/RadarSuite_Linux_V4.2/super_log.txt
+
 # RadarSuite specific
 *.wav
 *.pcm

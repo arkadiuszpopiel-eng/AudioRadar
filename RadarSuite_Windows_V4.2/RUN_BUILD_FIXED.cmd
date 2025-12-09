@@ -13,7 +13,12 @@ echo   Wykrywanie i naprawa problemow z PyInstaller
 echo ========================================================================
 echo.
 
-set "LOG_FILE=super_log.txt"
+REM FIXED v4.2.1-k0008: Create centralized log directory
+set "SCRIPT_DIR=%~dp0"
+set "LOG_DIR=%SCRIPT_DIR%log"
+if not exist "%LOG_DIR%" mkdir "%LOG_DIR%"
+
+set "LOG_FILE=%LOG_DIR%\build_fixed.log"
 echo [%date% %time%] Build started >> "%LOG_FILE%"
 
 REM ============================================================================

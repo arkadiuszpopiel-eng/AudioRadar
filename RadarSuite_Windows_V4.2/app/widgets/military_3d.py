@@ -8,6 +8,7 @@ Split radar.py (1674 lines) into focused, single-responsibility modules
 import math
 import numpy as np
 import pyqtgraph.opengl as gl
+from PyQt5.QtCore import QTimer
 from PyQt5.QtGui import QColor
 
 from core import log, VERSION

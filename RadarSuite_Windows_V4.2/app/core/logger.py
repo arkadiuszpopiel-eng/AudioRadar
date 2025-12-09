@@ -2,6 +2,7 @@
 RadarSuite v4.2.0 - Thread-safe Logging Module
 FIXED v3.5.0: Race condition eliminated via RotatingFileHandler
 FIXED v4.2.0: Added TRACE/VERBOSE levels for better log filtering
+FIXED v4.2.1-k0008: Use centralized LOG_DIR from paths.py
 """
 
 import logging
@@ -13,8 +14,19 @@ from pathlib import Path
 # PATHS
 # ============================================================================
 
+# Legacy paths (deprecated - use paths.py instead)
 ROOT = Path(__file__).parent.parent.parent
-SUPER_LOG = ROOT / "super_log.txt"
+SUPER_LOG = ROOT / "super_log.txt"  # Deprecated: moved to log/super_log.txt
+
+# Import centralized paths (v4.2.1-k0008)
+# Note: Import after legacy definitions to avoid circular imports
+try:
+    from .paths import SUPER_LOG_FILE
+    _USE_NEW_PATHS = True
+except ImportError:
+    # Fallback to legacy path if paths.py not available yet
+    SUPER_LOG_FILE = SUPER_LOG
+    _USE_NEW_PATHS = False
 
 
 # ============================================================================
@@ -64,8 +76,9 @@ class ThreadSafeLogger:
         self.logger.handlers.clear()
 
         # Rotating file handler (max 10MB, 5 backups) - THREAD-SAFE
+        # FIXED v4.2.1-k0008: Use centralized log directory
         file_handler = logging.handlers.RotatingFileHandler(
-            str(SUPER_LOG),
+            str(SUPER_LOG_FILE),
             maxBytes=10*1024*1024,  # 10MB
             backupCount=5,
             encoding='utf-8'

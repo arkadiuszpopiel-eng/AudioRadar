@@ -60,6 +60,17 @@ from .constants import (
     NIGHT_MODE_COMPRESSION_RATIO,
 )
 
+# Paths (v4.2.1-k0008 - centralized directory management)
+from .paths import (
+    APP_ROOT,
+    LOG_DIR,
+    REPORT_DIR,
+    SUPER_LOG_FILE,
+    get_selftest_log_path,
+    get_selftest_report_path,
+    get_ml_training_report_path,
+)
+
 # Logger
 from .logger import (
     ThreadSafeLogger,
@@ -138,6 +149,15 @@ __all__ = [
     'RECORDING_FLUSH_INTERVAL',
     'TOAST_DURATION_MS',
     'TOAST_MAX_COUNT',
+
+    # Paths (v4.2.1-k0008)
+    'APP_ROOT',
+    'LOG_DIR',
+    'REPORT_DIR',
+    'SUPER_LOG_FILE',
+    'get_selftest_log_path',
+    'get_selftest_report_path',
+    'get_ml_training_report_path',
 
     # Logger
     'ThreadSafeLogger',

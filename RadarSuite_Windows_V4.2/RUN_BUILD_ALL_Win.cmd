@@ -20,6 +20,10 @@ REM Get script directory
 set "SCRIPT_DIR=%~dp0"
 cd /d "%SCRIPT_DIR%"
 
+REM FIXED v4.2.1-k0008: Create centralized log directory
+set "LOG_DIR=%SCRIPT_DIR%log"
+if not exist "%LOG_DIR%" mkdir "%LOG_DIR%"
+
 REM Set version
 set "VERSION=v4.2.1"
 set "PLATFORM=Win64"
@@ -27,8 +31,8 @@ set "BUILD_DATE=%date:~-4%-%date:~3,2%-%date:~0,2%"
 set "BUILD_TIME=%time:~0,2%-%time:~3,2%-%time:~6,2%"
 set "BUILD_TIME=!BUILD_TIME: =0!"
 
-REM Log file - SEPARATE FOR WINDOWS VERSION
-set "LOG_FILE=build_windows.log"
+REM Log file - FIXED v4.2.1-k0008: Moved to log directory
+set "LOG_FILE=%LOG_DIR%\build_windows.log"
 
 REM Start logging
 echo [%date% %time%] ============================================================ >> "%LOG_FILE%"

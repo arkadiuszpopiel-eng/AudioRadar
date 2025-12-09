@@ -19,6 +19,7 @@ except Exception:  # pragma: no cover - no Qt in environment
 
 from app.core.logger import log
 from app.core.config import ConfigManager
+from app.core import get_selftest_log_path, get_selftest_report_path
 
 
 @dataclass
@@ -143,15 +144,37 @@ class SelfTestRunner:
         return result
 
     def _write_report(self, results: List[SelfTestResult]) -> Path:
-        logs_dir = Path("logs")
-        logs_dir.mkdir(exist_ok=True)
+        # FIXED v4.2.1-k0008: Use centralized log directory
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        path = logs_dir / f"selftest_{timestamp}.log"
-        with path.open("w", encoding="utf-8") as fh:
-            fh.write("RadarSuite Self-Test Report\n")
+        log_path = get_selftest_log_path(timestamp)
+        report_path = get_selftest_report_path(timestamp)
+
+        # Write detailed log
+        with log_path.open("w", encoding="utf-8") as fh:
+            fh.write("RadarSuite Self-Test Log\n")
+            fh.write("=" * 60 + "\n")
             for line in self._log_lines:
                 fh.write(line + "\n")
             for result in results:
                 if not result.success and result.error:
-                    fh.write(result.error + "\n")
-        return path
+                    fh.write("\n" + result.error + "\n")
+
+        # Write summary report
+        with report_path.open("w", encoding="utf-8") as fh:
+            fh.write("RadarSuite Self-Test Summary Report\n")
+            fh.write("=" * 60 + "\n")
+            fh.write(f"Timestamp: {timestamp}\n")
+            fh.write(f"Total Tests: {len(results)}\n")
+
+            passed = sum(1 for r in results if r.success)
+            failed = len(results) - passed
+            fh.write(f"Passed: {passed}\n")
+            fh.write(f"Failed: {failed}\n")
+            fh.write("\n")
+
+            # List all results
+            for result in results:
+                status = "✓ PASS" if result.success else "✗ FAIL"
+                fh.write(f"{status} - {result.name}: {result.message}\n")
+
+        return log_path  # Return log path for backward compatibility

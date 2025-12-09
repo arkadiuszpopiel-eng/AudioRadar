@@ -20,10 +20,12 @@ from PyQt5.QtGui import (
     QPainterPath, QMouseEvent, QWheelEvent
 )
 
+# FIXED v4.2.1-k0003: Corrected imports to use absolute paths
+# These rely on main.py adding app/ to sys.path
+from app.core.logger import log
 try:
-    from core import log, tr
+    from app.core.translations import tr
 except ImportError:
-    from ..core.logger import log
     def tr(x): return x
 
 

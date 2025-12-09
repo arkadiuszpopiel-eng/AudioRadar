@@ -20,8 +20,10 @@ from PyQt5.QtWidgets import (
 from PyQt5.QtCore import Qt, pyqtSignal, QPointF
 from PyQt5.QtGui import QColor
 
+# FIXED v4.2.1-k0003: Corrected imports to use absolute paths
+# These rely on main.py adding app/ to sys.path
 try:
-    from core import log
+    from app.core.logger import log
 except ImportError:
     def log(msg, level="INFO"):
         print(f"[{level}] {msg}")

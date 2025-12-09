@@ -49,20 +49,20 @@ except ImportError:
     from core.translations import tr
 
 # ML Training Panel (v4.2.0 - Roadmap Item 1)
-# Prefer absolute imports first so running `python main.py` (no package context)
-# does not trigger "attempted relative import" errors.
+# FIXED v4.2.1-k0003: Corrected import order to match rest of file
+# Try relative imports first (package mode), then absolute (standalone mode)
 try:
-    from widgets.ml_training_panel import MLTrainingPanel
-    from widgets.ml_quick_overlay import MLQuickRecordOverlay
-    from ml.training import RecordingController
+    from ..widgets.ml_training_panel import MLTrainingPanel
+    from ..widgets.ml_quick_overlay import MLQuickRecordOverlay
+    from ..ml.training import RecordingController
     ML_TRAINING_AVAILABLE = True
     ML_TRAINING_ERROR = None
     ML_TRAINING_ERROR_TRACE = ""
 except Exception:
     try:
-        from app.widgets.ml_training_panel import MLTrainingPanel
-        from app.widgets.ml_quick_overlay import MLQuickRecordOverlay
-        from app.ml.training import RecordingController
+        from widgets.ml_training_panel import MLTrainingPanel
+        from widgets.ml_quick_overlay import MLQuickRecordOverlay
+        from ml.training import RecordingController
         ML_TRAINING_AVAILABLE = True
         ML_TRAINING_ERROR = None
         ML_TRAINING_ERROR_TRACE = ""

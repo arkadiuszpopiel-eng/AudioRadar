@@ -9,7 +9,7 @@ import sys
 import os
 import json
 from pathlib import Path
-from typing import Any, Dict, Optional, Tuple, Union
+from typing import Any, Dict, Optional, Tuple
 
 from .constants import VERSION
 from .logger import log

@@ -131,7 +131,7 @@ class TestHumanFootstepDetector:
                 # Should return safe default even on error
                 assert isinstance(result, dict)
                 assert result['is_human_step'] == False
-            except:
+            except Exception:
                 # Some errors might still propagate, but detector should handle most
                 pass
 

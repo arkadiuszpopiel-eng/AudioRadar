@@ -185,7 +185,7 @@ class TestGPUAccelerator:
         # (behavior depends on implementation)
         try:
             result = accelerator_disabled.fft_optimized(signal)
-        except:
+        except Exception:
             # May not support 2D directly
             pass
 

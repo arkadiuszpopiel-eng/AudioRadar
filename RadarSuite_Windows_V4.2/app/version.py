@@ -1,35 +1,37 @@
 """
-RadarSuite Centralized Version Management
+Radar Games ML - Centralized Version Management
 
 FIXED v4.2.0: Single source of truth for version across all modules
+MAJOR v4.3.0: Rebranded to Radar Games ML with ML inference, graceful shutdown, live feedback
 - Build scripts import from here
 - Runtime displays this version
 - Consistent versioning eliminates discrepancies
 """
 
 # Main version
-__version__ = "4.2.1"
+__version__ = "4.3.0"
 
 # Build number (k = kompilacja/compilation)
-BUILD_NUMBER = "k0009"
+BUILD_NUMBER = "k0001"
 
 # Full version string with build number
-__version_full__ = f"4.2.1-{BUILD_NUMBER}"
+__version_full__ = f"4.3.0-{BUILD_NUMBER}"
 
 # Full version string with game-specific suffix
-__version_full_target__ = f"4.2.1-{BUILD_NUMBER}-ARC-Raiders"
+__version_full_target__ = f"4.3.0-{BUILD_NUMBER}-ML"
 
 # Version components
 VERSION_MAJOR = 4
-VERSION_MINOR = 2
-VERSION_PATCH = 1
+VERSION_MINOR = 3
+VERSION_PATCH = 0
 
 # Build metadata
-BUILD_TARGET = "ARC Raiders"
+BUILD_TARGET = "Radar Games ML"
 BUILD_PLATFORM = "Windows"  # or "Linux" depending on build
 
 # Version history (for reference)
 VERSION_HISTORY = {
+    "4.3.0-k0001": "MAJOR RELEASE - Radar Games ML: (1) Graceful shutdown with AsyncSessionWorker cleanup, session integrity validator, auto-recovery for corrupted sessions. (2) ML Training live feedback: toast notifications, FSM state indicators, progress bars for all async operations. (3) ML Model auto-load & real-time inference: ModelRegistry, auto-load best model at startup, MLFootstepDetector integration, model management UI. Rebranded from RadarSuite to Radar Games ML.",
     "4.2.1-k0009": "CRITICAL ML Training fix - GUI freeze resolved: Implemented async session worker (background thread) for non-blocking I/O operations (directory creation, JSON/numpy saves). Added FSM (Finite State Machine) for recording states (IDLE→STARTING→RECORDING→STOPPING→IDLE). Fixed ML overlay frameless mode background rendering with custom paintEvent. Prevents Windows antivirus/disk I/O from blocking GUI thread during ML session saves.",
     "4.2.1-k0008": "Infrastructure improvements: Fixed QTimer import in military_3d.py, centralized log/report directories (log/ and raport/), migrated legacy super_log.txt, updated build scripts. All logs now in log/, all reports in raport/, both in dev and EXE modes.",
     "4.2.1-k0007": "GRADE A+ ACHIEVED: Split widgets/radar.py from 1674 lines into 7 focused modules (target_state, military_hud, minimal_radar, detachable_radar, radar_widget, military_3d, radar_3d). Maintained 100% backward compatibility via re-export layer. Improved maintainability and single responsibility principle.",

@@ -79,22 +79,55 @@ class AsyncSessionWorker:
             self._worker_thread.start()
             log("AsyncSessionWorker thread started", "INFO")
 
-    def stop(self) -> None:
-        """Stop the background worker thread."""
+    def stop(self, wait_for_pending: bool = True, timeout: float = 10.0) -> bool:
+        """
+        Stop the background worker thread.
+
+        FIXED v4.3.0-k0001: Graceful shutdown with pending operations flush
+
+        Args:
+            wait_for_pending: Wait for pending operations to complete
+            timeout: Maximum time to wait for pending operations (seconds)
+
+        Returns:
+            True if stopped gracefully, False if timed out
+        """
         with self._lock:
             if not self._running:
-                return
+                return True
+
+            pending_count = self._queue.qsize()
+            if pending_count > 0:
+                log(f"AsyncSessionWorker: {pending_count} pending operations", "INFO")
 
             self._running = False
-            # Signal worker to stop
-            self._queue.put(None)
+
+        # Wait for queue to empty if requested
+        if wait_for_pending and pending_count > 0:
+            log(f"Waiting for {pending_count} pending operations (max {timeout}s)...", "INFO")
+            import time
+            start_time = time.time()
+
+            while not self._queue.empty() and (time.time() - start_time) < timeout:
+                time.sleep(0.1)
+
+            remaining = self._queue.qsize()
+            if remaining > 0:
+                log(f"Warning: {remaining} operations not completed (timeout)", "WARNING")
+
+        # Signal worker to stop
+        self._queue.put(None)
 
         if self._worker_thread and self._worker_thread.is_alive():
             self._worker_thread.join(timeout=5.0)
             if self._worker_thread.is_alive():
                 log("AsyncSessionWorker thread did not stop gracefully", "WARNING")
+                return False
             else:
-                log("AsyncSessionWorker thread stopped", "INFO")
+                log("AsyncSessionWorker thread stopped gracefully", "INFO")
+                return True
+
+        return True
 
     def queue_create_dir(
         self,

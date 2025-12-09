@@ -1962,8 +1962,58 @@ class MainWindow(QMainWindow):
         Handle window close - Enhanced cleanup
 
         ENHANCED v3.5.0: Thread-safe shutdown with timeout
+        ENHANCED v4.3.0-k0001: ML recording check, async worker cleanup, session validation
         """
         log("Application closing - starting cleanup", "INFO")
+
+        # v4.3.0-k0001: Check if ML recording is active
+        if hasattr(self, 'ml_training_panel') and self.ml_training_panel is not None:
+            from app.ml.training import RecordingStateEnum
+
+            recording_state = self.ml_training_panel.recording_controller.state
+            if recording_state.fsm_state == RecordingStateEnum.RECORDING:
+                # Ask user what to do
+                reply = QMessageBox.question(
+                    self,
+                    "Recording in Progress",
+                    "ML recording is active. Save before exit?",
+                    QMessageBox.Yes | QMessageBox.No | QMessageBox.Cancel
+                )
+
+                if reply == QMessageBox.Cancel:
+                    log("Application close cancelled by user (recording active)", "INFO")
+                    event.ignore()
+                    return
+                elif reply == QMessageBox.Yes:
+                    log("Saving ML recording before exit...", "INFO")
+                    session = self.ml_training_panel.recording_controller.stop_recording()
+                    if session:
+                        # Wait for async save (max 10 seconds)
+                        log("Waiting for session save to complete...", "INFO")
+                        import time
+                        start_wait = time.time()
+                        while (time.time() - start_wait) < 10.0:
+                            if recording_state.fsm_state == RecordingStateEnum.IDLE:
+                                break
+                            time.sleep(0.1)
+                            QApplication.processEvents()  # Keep GUI responsive
+                        log("Session save complete", "INFO")
+                else:
+                    # Discard recording
+                    log("Discarding ML recording", "INFO")
+                    self.ml_training_panel.recording_controller.discard_recording()
+
+        # v4.3.0-k0001: Stop async session worker gracefully
+        from app.ml.training import stop_session_worker
+        try:
+            log("Stopping async session worker...", "INFO")
+            stopped = stop_session_worker()  # Wait for pending operations
+            if stopped:
+                log("Async session worker stopped gracefully", "INFO")
+            else:
+                log("Async session worker timed out (some operations may be incomplete)", "WARNING")
+        except Exception as e:
+            log(f"Error stopping async session worker: {e}", "ERROR")
 
         # Stop audio first
         self.stop()

@@ -23,6 +23,7 @@ from .recorder import LabeledRecorder, RecordingState, RecordingStateEnum
 from .trainer import ModelTrainer, TrainingConfig, TrainingStatus
 from .recording_controller import RecordingController, InMemorySessionManager
 from .async_session_worker import AsyncSessionWorker, get_session_worker, stop_session_worker
+from .session_validator import SessionValidator, ValidationResult
 
 __all__ = [
     'SessionManager',
@@ -39,4 +40,6 @@ __all__ = [
     'AsyncSessionWorker',
     'get_session_worker',
     'stop_session_worker',
+    'SessionValidator',
+    'ValidationResult',
 ]

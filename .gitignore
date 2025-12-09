@@ -43,6 +43,12 @@ Thumbs.db
 /RadarSuite_Windows_V4.2/super_log.txt
 /RadarSuite_Linux_V4.2/super_log.txt
 
+# Runtime log and report directories (v4.2.1-k0008)
+/RadarSuite_Windows_V4.2/log/
+/RadarSuite_Windows_V4.2/raport/
+/RadarSuite_Linux_V4.2/log/
+/RadarSuite_Linux_V4.2/raport/
+
 # RadarSuite specific
 *.wav
 *.pcm

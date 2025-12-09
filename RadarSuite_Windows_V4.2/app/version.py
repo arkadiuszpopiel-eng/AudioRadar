@@ -11,7 +11,7 @@ FIXED v4.2.0: Single source of truth for version across all modules
 __version__ = "4.2.1"
 
 # Build number (k = kompilacja/compilation)
-BUILD_NUMBER = "k0004"
+BUILD_NUMBER = "k0005"
 
 # Full version string with build number
 __version_full__ = f"4.2.1-{BUILD_NUMBER}"
@@ -30,6 +30,7 @@ BUILD_PLATFORM = "Windows"  # or "Linux" depending on build
 
 # Version history (for reference)
 VERSION_HISTORY = {
+    "4.2.1-k0005": "GRADE A PUSH: Fixed ALL 3 CRITICAL thread safety issues (AudioEngine, HumanFootstepDetector, SoundClassifier) - eliminated race conditions",
     "4.2.1-k0004": "Automated QA: Fixed CRITICAL AudioEngine thread safety, deep analysis (174 issues), comprehensive test plan, security scan passed",
     "4.2.1-k0003": "Critical ML Panel freeze fix - corrected import errors in ui/builder.py, waveform_timeline.py, ml_waveform.py",
     "4.2.1-k0002": "Fixed k0001 disaster - restored original ML widgets, fixed only imports (not functionality)",

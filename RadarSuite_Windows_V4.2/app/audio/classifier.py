@@ -1,8 +1,11 @@
 """
 RadarSuite V4.2.1 - Sound Classifier
 Weapon/vehicle identification via spectral fingerprinting
+
+FIXED v4.2.1-k0005: Thread safety - added locks for shared state
 """
 
+import threading
 import numpy as np
 from collections import deque
 from scipy import signal as sp_signal
@@ -22,12 +25,16 @@ class SoundClassifier:
     def __init__(self):
         log("SoundClassifier.__init__", "INFO")
 
+        # FIXED v4.2.1-k0005: Thread safety lock for shared state
+        self._state_lock = threading.Lock()
+
         # FIXED v4.1.2: Transient detection parameters
         self.crest_factor_threshold = 3.0  # Peak/RMS ratio for transient detection
         self.min_transient_duration = 0.01  # 10ms minimum
         self.max_transient_duration = 0.5   # 500ms maximum for weapon sounds
 
         # FIXED v4.1.2: History smoothing - maintain stable type across short gaps
+        # FIXED v4.2.1-k0005: Protected by _state_lock
         self.stable_type = 'unknown'
         self.stable_type_count = 0
         self.type_stability_threshold = 3  # Need 3 consecutive same classifications
@@ -87,7 +94,7 @@ class SoundClassifier:
             }
         }
 
-        # Classification history
+        # Classification history (FIXED v4.2.1-k0005: Protected by _state_lock)
         self.recent_classifications = []
         self.max_history = 20
 
@@ -145,8 +152,11 @@ class SoundClassifier:
             if not is_transient:
                 # No clear transient - return stable type with reduced confidence
                 # This prevents chaos from non-transient sounds triggering classification
+                # FIXED v4.2.1-k0005: Thread-safe read
+                with self._state_lock:
+                    stable_type_snapshot = self.stable_type
                 return {
-                    'type': self.stable_type if self.stable_type != 'unknown' else 'ambient',
+                    'type': stable_type_snapshot if stable_type_snapshot != 'unknown' else 'ambient',
                     'confidence': 20,  # Low confidence for non-transient
                     'details': {'crest_factor': crest_factor, 'is_transient': False}
                 }
@@ -207,39 +217,41 @@ class SoundClassifier:
                     best_match = sound_type
 
             # FIXED v4.1.2: History smoothing - require multiple consistent classifications
-            if best_match == self.stable_type:
-                self.stable_type_count += 1
-            else:
-                self.stable_type_count = 1
-                self.stable_type = best_match
+            # FIXED v4.2.1-k0005: Thread-safe update
+            with self._state_lock:
+                if best_match == self.stable_type:
+                    self.stable_type_count += 1
+                else:
+                    self.stable_type_count = 1
+                    self.stable_type = best_match
 
-            # Only report confident type if we've seen it consistently
-            if self.stable_type_count >= self.type_stability_threshold:
-                reported_type = best_match
-                reported_confidence = best_confidence
-            else:
-                # Not stable yet - report with reduced confidence
-                reported_type = best_match
-                reported_confidence = min(best_confidence, 40)  # Cap at 40% until stable
+                # Only report confident type if we've seen it consistently
+                if self.stable_type_count >= self.type_stability_threshold:
+                    reported_type = best_match
+                    reported_confidence = best_confidence
+                else:
+                    # Not stable yet - report with reduced confidence
+                    reported_type = best_match
+                    reported_confidence = min(best_confidence, 40)  # Cap at 40% until stable
 
-            # Add to history
-            classification = {
-                'type': reported_type,
-                'confidence': reported_confidence,
-                'details': {
-                    'dominant_freq': dominant_freq,
-                    'centroid': spectral_centroid,
-                    'spread': spectral_spread,
-                    'attack_time': attack_time,
-                    'crest_factor': crest_factor,
-                    'is_transient': True,
-                    'stability_count': self.stable_type_count
+                # Add to history
+                classification = {
+                    'type': reported_type,
+                    'confidence': reported_confidence,
+                    'details': {
+                        'dominant_freq': dominant_freq,
+                        'centroid': spectral_centroid,
+                        'spread': spectral_spread,
+                        'attack_time': attack_time,
+                        'crest_factor': crest_factor,
+                        'is_transient': True,
+                        'stability_count': self.stable_type_count
+                    }
                 }
-            }
 
-            self.recent_classifications.append(classification)
-            if len(self.recent_classifications) > self.max_history:
-                self.recent_classifications.pop(0)
+                self.recent_classifications.append(classification)
+                if len(self.recent_classifications) > self.max_history:
+                    self.recent_classifications.pop(0)
 
             return classification
 

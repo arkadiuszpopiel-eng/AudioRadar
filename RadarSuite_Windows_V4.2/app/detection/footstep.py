@@ -7,9 +7,12 @@ FIXED v4.2.0: ARC Raiders-specific enhancements:
 - Improved walk/run distinction with interval analysis
 - MFCC-based surface classification
 - Integration with SpectralFeatureExtractor
+
+FIXED v4.2.1-k0005: Thread safety - added locks for shared state
 """
 
 import time
+import threading
 import numpy as np
 from scipy import signal as sp_signal
 from collections import deque
@@ -37,6 +40,9 @@ class HumanFootstepDetector:
     def __init__(self, sample_rate=48000, debug_mode=False):
         log("HumanFootstepDetector.__init__", "INFO")
 
+        # FIXED v4.2.1-k0005: Thread safety lock for shared state
+        self._state_lock = threading.Lock()
+
         # FIXED v4.2.0: Spectral feature extractor for surface classification
         self.spectral_extractor = SpectralFeatureExtractor(sample_rate)
         self.sample_rate = sample_rate
@@ -51,19 +57,19 @@ class HumanFootstepDetector:
         self.error_log_interval = 5.0  # Max one error log per 5 seconds
         self.error_count_since_last_log = 0
 
-        # Temporal analysis buffers
+        # Temporal analysis buffers (FIXED v4.2.1-k0005: protected by _state_lock)
         self.step_history = []  # timestamps of detected steps
         self.max_history = 20   # keep last 20 steps
 
-        # L-R pattern tracking
+        # L-R pattern tracking (FIXED v4.2.1-k0005: protected by _state_lock)
         self.lr_pattern = []    # left/right classification history
         self.max_lr_history = 10
 
-        # Surface type detection
+        # Surface type detection (FIXED v4.2.1-k0005: protected by _state_lock)
         self.surface_type = "unknown"
         self.surface_confidence = 0.0
 
-        # Distance estimation
+        # Distance estimation (FIXED v4.2.1-k0005: protected by _state_lock)
         self.estimated_distance = 0.0
 
         # FIXED v4.2.0: ARC Raiders-tuned cadence parameters
@@ -253,9 +259,11 @@ class HumanFootstepDetector:
                 if len(self.step_intervals) > self.max_intervals:
                     self.step_intervals.pop(0)
 
-                self.step_history.append(current_time)
-                if len(self.step_history) > self.max_history:
-                    self.step_history.pop(0)
+                # FIXED v4.2.1-k0005: Thread-safe update
+                with self._state_lock:
+                    self.step_history.append(current_time)
+                    if len(self.step_history) > self.max_history:
+                        self.step_history.pop(0)
 
                 # Calculate cadence (steps per second)
                 if len(self.step_intervals) >= 3:
@@ -286,18 +294,20 @@ class HumanFootstepDetector:
                 left_rms = np.sqrt(np.mean(left ** 2))
                 right_rms = np.sqrt(np.mean(right ** 2))
 
-                if left_rms > right_rms * 1.2:
-                    result['foot'] = 'left'
-                    self.lr_pattern.append('L')
-                elif right_rms > left_rms * 1.2:
-                    result['foot'] = 'right'
-                    self.lr_pattern.append('R')
-                else:
-                    result['foot'] = 'center'
-                    self.lr_pattern.append('C')
+                # FIXED v4.2.1-k0005: Thread-safe update
+                with self._state_lock:
+                    if left_rms > right_rms * 1.2:
+                        result['foot'] = 'left'
+                        self.lr_pattern.append('L')
+                    elif right_rms > left_rms * 1.2:
+                        result['foot'] = 'right'
+                        self.lr_pattern.append('R')
+                    else:
+                        result['foot'] = 'center'
+                        self.lr_pattern.append('C')
 
-                if len(self.lr_pattern) > self.max_lr_history:
-                    self.lr_pattern.pop(0)
+                    if len(self.lr_pattern) > self.max_lr_history:
+                        self.lr_pattern.pop(0)
 
                 # Check for L-R-L-R pattern (increases confidence)
                 if len(self.lr_pattern) >= 4:
@@ -314,7 +324,9 @@ class HumanFootstepDetector:
                 else:
                     result['surface'] = 'soft'  # carpet, grass, dirt
 
-                self.surface_type = result['surface']
+                # FIXED v4.2.1-k0005: Thread-safe update
+                with self._state_lock:
+                    self.surface_type = result['surface']
 
             # Distance estimation (based on loudness)
             if result['is_human_step']:
@@ -327,14 +339,18 @@ class HumanFootstepDetector:
                     # -60 dB = far (50m), -20 dB = close (5m)
                     distance = np.clip(50.0 * ((-20 - db) / 40.0), 1.0, 100.0)
                     result['distance_m'] = distance
-                    self.estimated_distance = distance
+                    # FIXED v4.2.1-k0005: Thread-safe update
+                    with self._state_lock:
+                        self.estimated_distance = distance
 
                 # FIXED v4.2.0: Enhanced surface classification using spectral features
                 surface_result = self.classify_surface_type(mono)
                 if surface_result['confidence'] > 60:
                     result['surface'] = surface_result['surface_type']
-                    self.surface_type = surface_result['surface_type']
-                    self.surface_confidence = surface_result['confidence']
+                    # FIXED v4.2.1-k0005: Thread-safe update
+                    with self._state_lock:
+                        self.surface_type = surface_result['surface_type']
+                        self.surface_confidence = surface_result['confidence']
 
             # FIXED v4.2.0: Debug mode - periodic logging of detection state
             if self.debug_mode and (current_time - self.last_debug_log_time) >= self.debug_log_interval:
@@ -382,6 +398,8 @@ class HumanFootstepDetector:
         """
         Get overall pattern quality score (0-100)
         Based on regularity and L-R pattern consistency
+
+        FIXED v4.2.1-k0005: Thread-safe access to shared state
         """
         if len(self.step_intervals) < 3:
             return 0.0
@@ -391,13 +409,16 @@ class HumanFootstepDetector:
         std_interval = np.std(self.step_intervals)
         temporal_quality = (1.0 - min(std_interval / avg_interval, 1.0)) * 50.0
 
-        # L-R pattern quality
+        # L-R pattern quality (FIXED v4.2.1-k0005: Thread-safe access)
         lr_quality = 0.0
-        if len(self.lr_pattern) >= 4:
+        with self._state_lock:
+            lr_pattern_copy = list(self.lr_pattern)  # Create snapshot
+
+        if len(lr_pattern_copy) >= 4:
             # Count alternations
-            alternations = sum(1 for i in range(len(self.lr_pattern)-1)
-                             if self.lr_pattern[i] != self.lr_pattern[i+1])
-            expected_alternations = len(self.lr_pattern) - 1
+            alternations = sum(1 for i in range(len(lr_pattern_copy)-1)
+                             if lr_pattern_copy[i] != lr_pattern_copy[i+1])
+            expected_alternations = len(lr_pattern_copy) - 1
             if expected_alternations > 0:
                 lr_quality = (alternations / expected_alternations) * 50.0
 

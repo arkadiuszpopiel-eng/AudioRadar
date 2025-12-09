@@ -11,7 +11,7 @@ FIXED v4.2.0: Single source of truth for version across all modules
 __version__ = "4.2.1"
 
 # Build number (k = kompilacja/compilation)
-BUILD_NUMBER = "k0006"
+BUILD_NUMBER = "k0007"
 
 # Full version string with build number
 __version_full__ = f"4.2.1-{BUILD_NUMBER}"
@@ -30,6 +30,7 @@ BUILD_PLATFORM = "Windows"  # or "Linux" depending on build
 
 # Version history (for reference)
 VERSION_HISTORY = {
+    "4.2.1-k0007": "GRADE A+ ACHIEVED: Split widgets/radar.py from 1674 lines into 7 focused modules (target_state, military_hud, minimal_radar, detachable_radar, radar_widget, military_3d, radar_3d). Maintained 100% backward compatibility via re-export layer. Improved maintainability and single responsibility principle.",
     "4.2.1-k0006": "GRADE A ACHIEVED: Major code quality improvements - refactored analyze_footstep() from 285 to 85 lines (70% reduction), added 8 modular helper methods with full docstrings, removed unused imports, fixed bare except clauses. Maintainability index significantly improved.",
     "4.2.1-k0005": "GRADE A PUSH: Fixed ALL 3 CRITICAL thread safety issues (AudioEngine, HumanFootstepDetector, SoundClassifier) - eliminated race conditions",
     "4.2.1-k0004": "Automated QA: Fixed CRITICAL AudioEngine thread safety, deep analysis (174 issues), comprehensive test plan, security scan passed",

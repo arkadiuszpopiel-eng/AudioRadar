@@ -1143,7 +1143,8 @@ class MainWindow(QMainWindow):
             block = self.audio.read_block(0.0)
             if block is not None:
                 return block
-            return self.audio.last_block
+            # FIXED v4.2.1-k0004: Use thread-safe getter
+            return self.audio.get_last_block()
 
     def _update_recording(self, block):
         """

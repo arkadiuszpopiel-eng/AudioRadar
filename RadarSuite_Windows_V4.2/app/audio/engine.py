@@ -96,6 +96,7 @@ class AudioEngine:
         self.stream = None
         self.queue = queue.Queue(maxsize=8)
         self.last_block = None
+        self._last_block_lock = threading.Lock()  # FIXED v4.2.1-k0004: Thread safety for last_block
         self.running = False
         self.backend = "sounddevice"
         self.use_loopback = False
@@ -166,7 +167,8 @@ class AudioEngine:
                     log(f"sounddevice status: {status}", "WARN")
 
                 data = indata.copy()
-                self.last_block = data
+                with self._last_block_lock:  # FIXED v4.2.1-k0004: Thread-safe access
+                    self.last_block = data
 
                 try:
                     self.queue.put_nowait(data)
@@ -288,7 +290,8 @@ class AudioEngine:
                             else:
                                 data = data.reshape(-1, 1)
 
-                            self.last_block = data.copy()
+                            with self._last_block_lock:  # FIXED v4.2.1-k0004: Thread-safe access
+                                self.last_block = data.copy()
 
                             try:
                                 self.queue.put_nowait(data.copy())
@@ -366,7 +369,8 @@ class AudioEngine:
                 with loopback_mic.recorder(samplerate=self.sample_rate, channels=self.channels, blocksize=self.blocksize) as rec:
                     while self.running:
                         data = rec.record(numframes=self.blocksize)
-                        self.last_block = data.copy()
+                        with self._last_block_lock:  # FIXED v4.2.1-k0004: Thread-safe access
+                            self.last_block = data.copy()
 
                         try:
                             self.queue.put_nowait(data.copy())
@@ -427,4 +431,9 @@ class AudioEngine:
             return self.queue.get(timeout=timeout)
         except queue.Empty:
             return None
+
+    def get_last_block(self):
+        """Thread-safe access to last_block (FIXED v4.2.1-k0004)"""
+        with self._last_block_lock:
+            return self.last_block
 

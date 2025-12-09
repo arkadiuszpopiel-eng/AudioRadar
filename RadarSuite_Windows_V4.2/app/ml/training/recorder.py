@@ -14,6 +14,7 @@ import threading
 import time
 from typing import Optional, Callable, List
 from dataclasses import dataclass
+from enum import Enum, auto
 
 from app.core.logger import log
 from app.core.constants import SAMPLE_RATE, CHANNELS, BLOCK_SIZE
@@ -21,14 +22,31 @@ from app.core.constants import SAMPLE_RATE, CHANNELS, BLOCK_SIZE
 from .session_manager import SessionManager, LabeledSession, AudioLabel
 
 
+class RecordingStateEnum(Enum):
+    """
+    Finite State Machine states for recording lifecycle (v4.2.1-k0009).
+
+    State transitions:
+    - IDLE -> STARTING -> RECORDING
+    - RECORDING -> STOPPING -> IDLE
+    - Any -> ERROR (on exception)
+    """
+    IDLE = auto()        # Not recording, ready to start
+    STARTING = auto()    # Initializing session, creating directories
+    RECORDING = auto()   # Actively recording audio
+    STOPPING = auto()    # Saving session, finalizing
+    ERROR = auto()       # Error state, requires reset
+
+
 @dataclass
 class RecordingState:
-    """Current recording state."""
+    """Current recording state (v4.2.1-k0009: Added FSM)."""
     is_recording: bool = False
     start_time: float = 0.0
     elapsed_sec: float = 0.0
     samples_recorded: int = 0
     labels_added: int = 0
+    fsm_state: RecordingStateEnum = RecordingStateEnum.IDLE  # v4.2.1-k0009: FSM state
 
 
 class LabeledRecorder:
@@ -67,15 +85,16 @@ class LabeledRecorder:
         self._session: Optional[LabeledSession] = None
         self._audio_buffer: List[np.ndarray] = []
 
-        # Recording state
-        self._state = RecordingState()
+        # Recording state (v4.2.1-k0009: FSM initialized to IDLE)
+        self._state = RecordingState(fsm_state=RecordingStateEnum.IDLE)
         self._lock = threading.Lock()
+        self._error_message: Optional[str] = None  # v4.2.1-k0009: Error tracking
 
         # Callbacks
         self._on_state_change: Optional[Callable[[RecordingState], None]] = None
         self._on_label_added: Optional[Callable[[AudioLabel], None]] = None
 
-        log("LabeledRecorder initialized", "INFO")
+        log("LabeledRecorder initialized (FSM: IDLE)", "INFO")
 
     @property
     def is_recording(self) -> bool:
@@ -117,9 +136,33 @@ class LabeledRecorder:
         self._on_state_change = on_state_change
         self._on_label_added = on_label_added
 
+    def _transition_state(self, new_state: RecordingStateEnum, error_msg: Optional[str] = None) -> None:
+        """
+        Transition to a new FSM state (v4.2.1-k0009).
+
+        Args:
+            new_state: Target FSM state
+            error_msg: Optional error message for ERROR state
+        """
+        old_state = self._state.fsm_state
+        self._state.fsm_state = new_state
+
+        if new_state == RecordingStateEnum.ERROR:
+            self._error_message = error_msg
+        else:
+            self._error_message = None
+
+        log(f"FSM transition: {old_state.name} -> {new_state.name}" +
+            (f" (error: {error_msg})" if error_msg else ""), "INFO")
+
+        if self._on_state_change:
+            self._on_state_change(self.state)
+
     def start_recording(self, notes: str = "") -> bool:
         """
         Start a new recording session.
+
+        FIXED v4.2.1-k0009: FSM state management, async directory creation callback
 
         Args:
             notes: Optional session notes
@@ -128,52 +171,68 @@ class LabeledRecorder:
             True if recording started successfully
         """
         with self._lock:
-            if self._state.is_recording:
-                log("Already recording", "WARNING")
+            # FSM: Only allow start from IDLE state
+            if self._state.fsm_state != RecordingStateEnum.IDLE:
+                log(f"Cannot start recording from state {self._state.fsm_state.name}", "WARNING")
                 return False
 
             try:
-                # Create new session
+                # Transition to STARTING
+                self._transition_state(RecordingStateEnum.STARTING)
+
+                # Create new session (async directory creation)
+                def on_dir_created(success: bool, error: Optional[str]) -> None:
+                    if not success:
+                        log(f"Session directory creation failed: {error}", "ERROR")
+                        with self._lock:
+                            self._transition_state(RecordingStateEnum.ERROR, error)
+
                 self._session = self.session_manager.create_session(
                     sample_rate=self.sample_rate,
                     channels=self.channels,
                     notes=notes,
+                    callback=on_dir_created
                 )
 
                 # Reset buffers
                 self._audio_buffer = []
 
-                # Update state
+                # Update state and transition to RECORDING
                 self._state.is_recording = True
                 self._state.start_time = time.time()
                 self._state.elapsed_sec = 0.0
                 self._state.samples_recorded = 0
                 self._state.labels_added = 0
 
+                self._transition_state(RecordingStateEnum.RECORDING)
+
                 log(f"Recording started: {self._session.session_id}", "INFO")
-
-                if self._on_state_change:
-                    self._on_state_change(self.state)
-
                 return True
 
             except Exception as e:
                 log(f"Error starting recording: {e}", "ERROR")
+                self._transition_state(RecordingStateEnum.ERROR, str(e))
                 return False
 
     def stop_recording(self) -> Optional[LabeledSession]:
         """
         Stop recording and save the session.
 
+        FIXED v4.2.1-k0009: FSM state management, async save callback
+
         Returns:
             Completed LabeledSession or None on error
         """
         with self._lock:
-            if not self._state.is_recording:
-                log("Not recording", "WARNING")
+            # FSM: Only allow stop from RECORDING state
+            if self._state.fsm_state != RecordingStateEnum.RECORDING:
+                log(f"Cannot stop recording from state {self._state.fsm_state.name}", "WARNING")
                 return None
 
             try:
+                # Transition to STOPPING
+                self._transition_state(RecordingStateEnum.STOPPING)
+
                 # Calculate final duration
                 duration = time.time() - self._state.start_time
                 self._session.duration_sec = duration
@@ -184,23 +243,33 @@ class LabeledRecorder:
                 else:
                     audio_data = np.array([], dtype=np.float32)
 
-                # Save session
+                # Async save callback
+                def on_save_complete(success: bool, error: Optional[str]) -> None:
+                    with self._lock:
+                        if not success:
+                            log(f"Session save failed: {error}", "ERROR")
+                            self._transition_state(RecordingStateEnum.ERROR, error)
+                        else:
+                            # Transition back to IDLE
+                            self._transition_state(RecordingStateEnum.IDLE)
+
+                # Save session (async)
                 success = self.session_manager.save_session(
                     self._session,
-                    audio_data=audio_data if len(audio_data) > 0 else None
+                    audio_data=audio_data if len(audio_data) > 0 else None,
+                    callback=on_save_complete
                 )
 
                 if not success:
-                    log("Failed to save session", "ERROR")
+                    log("Failed to queue session save", "ERROR")
+                    self._transition_state(RecordingStateEnum.ERROR, "Failed to queue save")
+                    return None
 
                 # Update state
                 self._state.is_recording = False
                 self._state.elapsed_sec = duration
 
                 log(f"Recording stopped: {duration:.1f}s, {len(self._session.labels)} labels", "INFO")
-
-                if self._on_state_change:
-                    self._on_state_change(self.state)
 
                 completed_session = self._session
                 self._session = None
@@ -211,6 +280,7 @@ class LabeledRecorder:
             except Exception as e:
                 log(f"Error stopping recording: {e}", "ERROR")
                 self._state.is_recording = False
+                self._transition_state(RecordingStateEnum.ERROR, str(e))
                 return None
 
     def add_audio_block(self, block: np.ndarray) -> None:

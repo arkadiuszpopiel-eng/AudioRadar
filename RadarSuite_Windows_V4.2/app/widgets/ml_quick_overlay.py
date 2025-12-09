@@ -10,8 +10,8 @@ from typing import Optional
 import copy
 
 import numpy as np
-from PyQt5.QtCore import Qt, QTimer, QPoint
-from PyQt5.QtGui import QColor, QPainter
+from PyQt5.QtCore import Qt, QTimer, QPoint, QRectF
+from PyQt5.QtGui import QColor, QPainter, QPen, QBrush, QPainterPath
 from PyQt5.QtWidgets import (
     QWidget,
     QVBoxLayout,
@@ -342,3 +342,37 @@ class MLQuickRecordOverlay(QWidget):
         self._update_config()
         self._persist_state()
         super().closeEvent(event)
+
+    def paintEvent(self, event):  # pragma: no cover - Qt paint
+        """
+        Custom paint event for frameless mode background.
+
+        FIXED v4.2.1-k0009: Draw semi-transparent background panel with border
+        when in frameless mode to provide visual clarity.
+        """
+        if not self._frameless:
+            # Standard frame - let Qt handle painting
+            super().paintEvent(event)
+            return
+
+        # Frameless mode - draw custom background
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.Antialiasing)
+
+        # Background rect
+        rect = self.rect()
+
+        # Draw rounded rectangle background (military dark theme)
+        bg_color = QColor(20, 25, 30, 230)  # Semi-transparent dark background
+        border_color = QColor(0, 180, 255, 180)  # Cyan border (radar theme)
+
+        path = QPainterPath()
+        path.addRoundedRect(QRectF(rect), 10, 10)
+
+        # Fill background
+        painter.fillPath(path, QBrush(bg_color))
+
+        # Draw border
+        pen = QPen(border_color, 2)
+        painter.setPen(pen)
+        painter.drawPath(path)

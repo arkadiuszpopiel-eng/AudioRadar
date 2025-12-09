@@ -19,7 +19,7 @@ import numpy as np
 from pathlib import Path
 from datetime import datetime
 from dataclasses import dataclass, field, asdict
-from typing import List, Optional, Dict, Any
+from typing import List, Optional, Dict, Any, Callable
 import threading
 
 from app.core.logger import log
@@ -189,12 +189,13 @@ class SessionManager:
         "other",
     ]
 
-    def __init__(self, base_path: Optional[Path] = None):
+    def __init__(self, base_path: Optional[Path] = None, use_async: bool = True):
         """
         Initialize session manager.
 
         Args:
             base_path: Base directory for sessions (default: Data/LabeledSessions)
+            use_async: Use async worker for non-blocking I/O (v4.2.1-k0009)
         """
         if base_path is None:
             # Default path relative to app root
@@ -203,11 +204,22 @@ class SessionManager:
 
         self.base_path = Path(base_path)
         self._lock = threading.Lock()
+        self.use_async = use_async
 
-        # Ensure directory exists
+        # FIXED v4.2.1-k0009: Lazy-load async worker to avoid import cycles
+        self._async_worker = None
+
+        # Ensure directory exists (synchronously during init - fast operation)
         self.base_path.mkdir(parents=True, exist_ok=True)
 
-        log(f"SessionManager initialized: {self.base_path}", "INFO")
+        log(f"SessionManager initialized: {self.base_path} (async={use_async})", "INFO")
+
+    def _get_async_worker(self):
+        """Lazy-load async worker to avoid import cycles (v4.2.1-k0009)."""
+        if self._async_worker is None and self.use_async:
+            from .async_session_worker import get_session_worker
+            self._async_worker = get_session_worker()
+        return self._async_worker
 
     def _validate_session_id(self, session_id: str) -> bool:
         """
@@ -250,7 +262,8 @@ class SessionManager:
         self,
         sample_rate: int = 48000,
         channels: int = 2,
-        notes: str = ""
+        notes: str = "",
+        callback: Optional[Callable[[bool, Optional[str]], None]] = None
     ) -> LabeledSession:
         """
         Create a new recording session.
@@ -259,6 +272,7 @@ class SessionManager:
             sample_rate: Audio sample rate
             channels: Number of audio channels
             notes: Optional session notes
+            callback: Optional callback for async dir creation (v4.2.1-k0009)
 
         Returns:
             New LabeledSession instance
@@ -275,11 +289,21 @@ class SessionManager:
             notes=notes,
         )
 
-        # Create session directory
+        # FIXED v4.2.1-k0009: Non-blocking directory creation
         session_dir = self.base_path / session_id
-        session_dir.mkdir(parents=True, exist_ok=True)
 
-        log(f"Created new session: {session_id}", "INFO")
+        worker = self._get_async_worker()
+        if worker:
+            # Async mode: queue directory creation
+            worker.queue_create_dir(session_dir, callback=callback)
+            log(f"Created new session (async dir creation): {session_id}", "INFO")
+        else:
+            # Sync mode (fallback for tests or disabled async)
+            session_dir.mkdir(parents=True, exist_ok=True)
+            log(f"Created new session: {session_id}", "INFO")
+            if callback:
+                callback(True, None)
+
         return session
 
     def get_session_path(self, session_id: str) -> Path:
@@ -294,45 +318,63 @@ class SessionManager:
     def save_session(
         self,
         session: LabeledSession,
-        audio_data: Optional[np.ndarray] = None
+        audio_data: Optional[np.ndarray] = None,
+        callback: Optional[Callable[[bool, Optional[str]], None]] = None
     ) -> bool:
         """
         Save session metadata, labels, and optionally audio data.
 
+        FIXED v4.2.1-k0009: Non-blocking I/O via async worker
+
         Args:
             session: Session to save
             audio_data: Optional audio numpy array
+            callback: Optional callback for async save (v4.2.1-k0009)
 
         Returns:
-            True if successful
+            True if successful (in sync mode) or queued (in async mode)
         """
-        try:
-            with self._lock:
-                session_dir = self.get_session_path(session.session_id)
-                session_dir.mkdir(parents=True, exist_ok=True)
+        session_dir = self.get_session_path(session.session_id)
 
-                # Save metadata
-                metadata_path = session_dir / "metadata.json"
-                with open(metadata_path, 'w', encoding='utf-8') as f:
-                    json.dump(session.to_metadata_dict(), f, indent=2)
+        worker = self._get_async_worker()
+        if worker:
+            # FIXED v4.2.1-k0009: Async mode - queue save operation
+            worker.queue_save_session(session, session_dir, audio_data, callback=callback)
+            log(f"Session save queued (async): {session.session_id}", "INFO")
+            return True  # Queued successfully
+        else:
+            # Sync mode (fallback for tests or disabled async)
+            try:
+                with self._lock:
+                    session_dir.mkdir(parents=True, exist_ok=True)
 
-                # Save labels
-                labels_path = session_dir / "labels.json"
-                with open(labels_path, 'w', encoding='utf-8') as f:
-                    json.dump(session.to_labels_dict(), f, indent=2)
+                    # Save metadata
+                    metadata_path = session_dir / "metadata.json"
+                    with open(metadata_path, 'w', encoding='utf-8') as f:
+                        json.dump(session.to_metadata_dict(), f, indent=2)
 
-                # Save audio data if provided
-                if audio_data is not None:
-                    audio_path = session_dir / "audio.npy"
-                    np.save(audio_path, audio_data)
-                    log(f"Saved audio: {audio_data.shape} samples", "INFO")
+                    # Save labels
+                    labels_path = session_dir / "labels.json"
+                    with open(labels_path, 'w', encoding='utf-8') as f:
+                        json.dump(session.to_labels_dict(), f, indent=2)
 
-                log(f"Session saved: {session.session_id} ({len(session.labels)} labels)", "INFO")
-                return True
+                    # Save audio data if provided
+                    if audio_data is not None:
+                        audio_path = session_dir / "audio.npy"
+                        np.save(audio_path, audio_data)
+                        log(f"Saved audio: {audio_data.shape} samples", "INFO")
 
-        except Exception as e:
-            log(f"Error saving session {session.session_id}: {e}", "ERROR")
-            return False
+                    log(f"Session saved: {session.session_id} ({len(session.labels)} labels)", "INFO")
+
+                    if callback:
+                        callback(True, None)
+                    return True
+
+            except Exception as e:
+                log(f"Error saving session {session.session_id}: {e}", "ERROR")
+                if callback:
+                    callback(False, str(e))
+                return False
 
     def load_session(self, session_id: str) -> Optional[LabeledSession]:
         """

@@ -19,9 +19,10 @@ This module exposes the high-level building blocks used by the UI:
 """
 
 from .session_manager import SessionManager, LabeledSession, AudioLabel
-from .recorder import LabeledRecorder, RecordingState
+from .recorder import LabeledRecorder, RecordingState, RecordingStateEnum
 from .trainer import ModelTrainer, TrainingConfig, TrainingStatus
 from .recording_controller import RecordingController, InMemorySessionManager
+from .async_session_worker import AsyncSessionWorker, get_session_worker, stop_session_worker
 
 __all__ = [
     'SessionManager',
@@ -29,9 +30,13 @@ __all__ = [
     'AudioLabel',
     'LabeledRecorder',
     'RecordingState',
+    'RecordingStateEnum',
     'RecordingController',
     'InMemorySessionManager',
     'ModelTrainer',
     'TrainingConfig',
     'TrainingStatus',
+    'AsyncSessionWorker',
+    'get_session_worker',
+    'stop_session_worker',
 ]

@@ -29,9 +29,10 @@ from app.core.translations import tr
 from app.ml.training import (
     SessionManager, LabeledSession, AudioLabel,
     LabeledRecorder, ModelTrainer, TrainingConfig, TrainingStatus,
-    RecordingController,
+    RecordingController, RecordingStateEnum,
 )
 from app.widgets.waveform_timeline import WaveformTimelineWidget
+from app.widgets.toast import ToastNotification
 
 
 class AddLabelDialog(QDialog):
@@ -95,7 +96,7 @@ class MLTrainingPanel(QWidget):
     # Signal emitted when panel needs audio data
     audio_data_requested = pyqtSignal()
 
-    def __init__(self, parent=None, recording_controller: RecordingController = None, overlay_launcher=None):
+    def __init__(self, parent=None, recording_controller: RecordingController = None, overlay_launcher=None, toast_notifier: ToastNotification = None):
         super().__init__(parent)
         log("MLTrainingPanel.__init__", "INFO")
 
@@ -104,6 +105,9 @@ class MLTrainingPanel(QWidget):
         self.session_manager = self.recording_controller.session_manager
         self.recorder = self.recording_controller.recorder
         self.trainer = ModelTrainer(self.session_manager)
+
+        # v4.3.0-k0001: Toast notifications for live feedback
+        self.toast = toast_notifier  # Optional: for showing status toasts
 
         # Set callbacks
         self.recording_controller.add_state_listener(self._on_recording_state_change)
@@ -196,6 +200,26 @@ class MLTrainingPanel(QWidget):
 
         status_row.addStretch()
         layout.addLayout(status_row)
+
+        # v4.3.0-k0001: FSM State Indicator
+        fsm_row = QHBoxLayout()
+        fsm_label = QLabel("State:")
+        fsm_label.setStyleSheet("font-size: 9pt; color: #888888;")
+        fsm_row.addWidget(fsm_label)
+
+        self.fsm_indicator = QLabel("IDLE")
+        self.fsm_indicator.setStyleSheet("""
+            font-size: 10pt;
+            font-weight: bold;
+            font-family: monospace;
+            padding: 3px 8px;
+            border-radius: 3px;
+            background: #555555;
+            color: #AAAAAA;
+        """)
+        fsm_row.addWidget(self.fsm_indicator)
+        fsm_row.addStretch()
+        layout.addLayout(fsm_row)
 
         # Control buttons row
         btn_row = QHBoxLayout()
@@ -548,13 +572,51 @@ class MLTrainingPanel(QWidget):
             log("Overlay launcher not configured", "WARNING")
 
     def _on_recording_state_change(self, state):
-        """Handle recording state changes."""
+        """Handle recording state changes (v4.3.0-k0001: FSM + Toast)."""
+        # Update legacy status label
         if state.is_recording:
             self.status_label.setText("🔴 Recording")
             self.status_label.setStyleSheet("font-size: 12pt; font-weight: bold; color: #FF4444;")
         else:
             self.status_label.setText("⚪ Ready")
             self.status_label.setStyleSheet("font-size: 12pt; font-weight: bold; color: #888888;")
+
+        # v4.3.0-k0001: Update FSM indicator with color-coded states
+        fsm_state = state.fsm_state
+        fsm_styles = {
+            RecordingStateEnum.IDLE: ("IDLE", "#555555", "#AAAAAA"),
+            RecordingStateEnum.STARTING: ("STARTING", "#F39C12", "#2C2C2C"),  # Orange
+            RecordingStateEnum.RECORDING: ("RECORDING", "#E74C3C", "#FFFFFF"),  # Red
+            RecordingStateEnum.STOPPING: ("STOPPING", "#E67E22", "#FFFFFF"),  # Dark orange
+            RecordingStateEnum.ERROR: ("ERROR", "#C0392B", "#FFFFFF"),  # Dark red
+        }
+
+        if fsm_state in fsm_styles:
+            text, bg_color, fg_color = fsm_styles[fsm_state]
+            self.fsm_indicator.setText(text)
+            self.fsm_indicator.setStyleSheet(f"""
+                font-size: 10pt;
+                font-weight: bold;
+                font-family: monospace;
+                padding: 3px 8px;
+                border-radius: 3px;
+                background: {bg_color};
+                color: {fg_color};
+            """)
+
+        # v4.3.0-k0001: Toast notifications for state changes
+        if self.toast:
+            if fsm_state == RecordingStateEnum.RECORDING:
+                self.toast.show_toast("Recording started", "success", duration=2000)
+            elif fsm_state == RecordingStateEnum.IDLE and not state.is_recording:
+                # Only show on actual stop (not initial IDLE)
+                if hasattr(self, '_was_recording'):
+                    self.toast.show_toast("Recording stopped", "info", duration=2000)
+            elif fsm_state == RecordingStateEnum.ERROR:
+                self.toast.show_toast("Recording error occurred", "error", duration=4000)
+
+        # Track previous state
+        self._was_recording = state.is_recording
 
     def _update_timer(self):
         """Update elapsed time display."""
@@ -742,6 +804,10 @@ class MLTrainingPanel(QWidget):
         self.train_btn.setEnabled(False)
         self.cancel_train_btn.show()
 
+        # v4.3.0-k0001: Toast notification
+        if self.toast:
+            self.toast.show_toast(f"Training started with {total_labels} labels", "info", duration=3000)
+
         self.trainer.start_training()
 
     def _on_cancel_training(self):
@@ -759,7 +825,7 @@ class MLTrainingPanel(QWidget):
             self._log_message(f"Accuracy: {progress.accuracy:.1%}")
 
     def _on_training_complete(self, result):
-        """Handle training completion."""
+        """Handle training completion (v4.3.0-k0001: Toast)."""
         self.train_btn.setEnabled(True)
         self.cancel_train_btn.hide()
 
@@ -769,6 +835,14 @@ class MLTrainingPanel(QWidget):
             self._log_message(f"   Accuracy: {result.accuracy:.1%}")
             self._log_message(f"   Model: {result.model_path}")
             self._log_message(f"   Time: {result.training_time_sec:.1f}s")
+
+            # v4.3.0-k0001: Success toast
+            if self.toast:
+                self.toast.show_toast(
+                    f"Model trained! Accuracy: {result.accuracy:.1%}",
+                    "success",
+                    duration=5000
+                )
 
             QMessageBox.information(
                 self,
@@ -781,6 +855,10 @@ class MLTrainingPanel(QWidget):
         else:
             self.progress_bar.setFormat("0% - Failed")
             self._log_message(f"❌ Training failed: {result.error_message}")
+
+            # v4.3.0-k0001: Error toast
+            if self.toast:
+                self.toast.show_toast("Training failed", "error", duration=4000)
 
             QMessageBox.warning(
                 self,

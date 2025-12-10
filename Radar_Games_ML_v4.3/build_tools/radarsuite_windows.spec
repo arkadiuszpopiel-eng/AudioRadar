@@ -12,6 +12,7 @@ ADAPTED FOR v4.3 structure with root main.py entrypoint and app.* imports
 
 import os
 import sys
+from pathlib import Path
 from PyInstaller.utils.hooks import collect_submodules, collect_data_files
 
 # Get base path - use __file__ for more reliable path resolution
@@ -138,6 +139,20 @@ try:
 except Exception:
     pass
 
+# Include PortAudio DLLs as binaries to avoid load failures on Windows
+binaries = []
+try:
+    import importlib.util
+
+    sd_spec = importlib.util.find_spec('_sounddevice_data')
+    if sd_spec and sd_spec.submodule_search_locations:
+        pa_dir = Path(list(sd_spec.submodule_search_locations)[0]) / 'portaudio-binaries'
+        if pa_dir.is_dir():
+            for dll_path in pa_dir.glob('*.dll'):
+                binaries.append((str(dll_path), str(Path('_sounddevice_data/portaudio-binaries'))))
+except Exception as e:
+    print(f"[WARNING] Could not collect PortAudio binaries: {e}")
+
 # WINDOWS OPTIMIZATIONS: Exclude modules that cause warnings
 excludes = [
     # GUI frameworks we don't use
@@ -161,7 +176,7 @@ excludes = [
 a = Analysis(
     [entry_script],
     pathex=[BASE, APP_DIR],  # Include app directory for module imports
-    binaries=[],
+    binaries=binaries,
     datas=datas,
     hiddenimports=hiddenimports,
     hookspath=[],
@@ -197,7 +212,10 @@ exe = EXE(
     icon=None,
 )
 
-# COLLECT (v4.3: Updated name to Radar_Games_ML)
+# Używamy krótkiej nazwy katalogu dist, aby uniknąć błędów Windows (206: filename too long)
+dist_dir_name = 'RGML'
+
+# COLLECT (v4.3: skrócona nazwa katalogu dist)
 coll = COLLECT(
     exe,
     a.binaries,
@@ -206,7 +224,7 @@ coll = COLLECT(
     strip=False,
     upx=True,
     upx_exclude=[],
-    name='Radar_Games_ML',
+    name=dist_dir_name,
 )
 
 # Post-build: Copy EXE to project root for easy access (v4.3.0)
@@ -216,7 +234,7 @@ import time
 
 def post_build_copy():
     """Copy EXE to project root with error handling"""
-    exe_source = os.path.join(BASE, 'dist', 'Radar_Games_ML', 'Radar_Games_ML.exe')
+    exe_source = os.path.join(BASE, 'dist', dist_dir_name, 'Radar_Games_ML.exe')
     exe_dest = os.path.join(BASE, 'Radar_Games_ML.exe')
 
     print("\n" + "="*60)
@@ -231,21 +249,21 @@ def post_build_copy():
             # Remove old EXE if exists
             if os.path.exists(exe_dest):
                 os.remove(exe_dest)
-                print(f"✓ Removed old: {os.path.basename(exe_dest)}")
+                print(f"[OK] Removed old: {os.path.basename(exe_dest)}")
 
             # Copy new EXE
             shutil.copy2(exe_source, exe_dest)
             size_mb = os.path.getsize(exe_dest) / (1024 * 1024)
-            print(f"✓ Copied: {os.path.basename(exe_source)} -> project root")
+            print(f"[OK] Copied: {os.path.basename(exe_source)} -> project root")
             print(f"  Size: {size_mb:.2f} MB")
             print(f"  Location: {exe_dest}")
-            print("\n✓ POST-BUILD COMPLETE!")
+            print("\n[OK] POST-BUILD COMPLETE!")
             print("="*60)
         except Exception as e:
-            print(f"✗ ERROR during copy: {e}")
+            print(f"[ERROR] Copy failed: {e}")
             print("  EXE is still available in: dist/Radar_Games_ML/")
     else:
-        print(f"✗ WARNING: EXE not found at: {exe_source}")
+        print(f"[WARNING] EXE not found at: {exe_source}")
         print("  Check dist/ folder for build output")
 
 # Execute post-build

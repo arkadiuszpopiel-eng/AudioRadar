@@ -186,10 +186,43 @@ coll = COLLECT(
 )
 
 # Post-build: Copy EXE to project root for easy access (v4.3.0)
+# Note: This runs after COLLECT completes
 import shutil
-exe_source = os.path.join(BASE, 'dist', 'Radar_Games_ML', 'Radar_Games_ML.exe')
-exe_dest = os.path.join(BASE, 'Radar_Games_ML.exe')
-if os.path.exists(exe_source):
-    print(f"Copying EXE to project root: {exe_dest}")
-    shutil.copy2(exe_source, exe_dest)
-    print("Build complete! EXE available at project root.")
+import time
+
+def post_build_copy():
+    """Copy EXE to project root with error handling"""
+    exe_source = os.path.join(BASE, 'dist', 'Radar_Games_ML', 'Radar_Games_ML.exe')
+    exe_dest = os.path.join(BASE, 'Radar_Games_ML.exe')
+
+    print("\n" + "="*60)
+    print("POST-BUILD: Copying EXE to project root")
+    print("="*60)
+
+    # Wait a moment for file system to settle
+    time.sleep(0.5)
+
+    if os.path.exists(exe_source):
+        try:
+            # Remove old EXE if exists
+            if os.path.exists(exe_dest):
+                os.remove(exe_dest)
+                print(f"✓ Removed old: {os.path.basename(exe_dest)}")
+
+            # Copy new EXE
+            shutil.copy2(exe_source, exe_dest)
+            size_mb = os.path.getsize(exe_dest) / (1024 * 1024)
+            print(f"✓ Copied: {os.path.basename(exe_source)} -> project root")
+            print(f"  Size: {size_mb:.2f} MB")
+            print(f"  Location: {exe_dest}")
+            print("\n✓ POST-BUILD COMPLETE!")
+            print("="*60)
+        except Exception as e:
+            print(f"✗ ERROR during copy: {e}")
+            print("  EXE is still available in: dist/Radar_Games_ML/")
+    else:
+        print(f"✗ WARNING: EXE not found at: {exe_source}")
+        print("  Check dist/ folder for build output")
+
+# Execute post-build
+post_build_copy()

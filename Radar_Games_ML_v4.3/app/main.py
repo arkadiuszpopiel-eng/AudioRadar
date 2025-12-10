@@ -63,176 +63,134 @@ from PyQt5.QtCore import Qt, QTimer, pyqtSignal, QPoint
 from PyQt5.QtGui import QPainter, QColor, QPen, QBrush, QPalette
 
 # ============================================================================
-# MODULE IMPORTS - Support both package and standalone execution
+# MODULE IMPORTS - Clean absolute imports (v4.3.0)
 # ============================================================================
-# Add current directory to path for standalone script execution
-# This allows 'from core import ...' to work when running 'python main.py'
-_current_dir = os.path.dirname(os.path.abspath(__file__))
-if _current_dir not in sys.path:
-    sys.path.insert(0, _current_dir)
+# v4.3.0: Replaced try/except import blocks with clean absolute imports
+# Entry point is now root/main.py which properly sets up Python path
+# All imports use app.* prefix for clarity and consistency
 
-# Try relative imports first (when running as package module)
-# Fall back to direct imports (when running as standalone script)
-try:
-    # ============================================================================
-    # CORE MODULE IMPORTS (Point 10 - v3.5.0: Modularization)
-    # ============================================================================
-    from .core import (
-        # Constants
-        VERSION,
-        SAMPLE_RATE,
-        BLOCK_SIZE,
-        CHANNELS,
-        TICK_INTERVAL_MS,
-        GAME_SCAN_INTERVAL_MS,
-        AUDIO_SCAN_INTERVAL_MS,
-        STARTUP_DELAY_MS,
-        STARTUP_AUDIO_DELAY_MS,
-        ENERGY_THRESHOLD,
-        LOCALIZATION_MIN_CONFIDENCE,
-        RADAR_ROTATION_DEG,
-        MAX_WORKERS,
-        DETECTION_TIMEOUT_SEC,
-        CLEANUP_INTERVAL_SEC,
-        AUDIO_LEVEL_LOUD,
-        AUDIO_LEVEL_MEDIUM,
-        AUDIO_LEVEL_LOW,
-        RECORDING_BUFFER_SIZE,
-        RECORDING_FLUSH_INTERVAL,
-        TOAST_DURATION_MS,
-        TOAST_MAX_COUNT,
+# ============================================================================
+# CORE MODULE IMPORTS (Point 10 - v3.5.0: Modularization)
+# ============================================================================
+from app.core import (
+    # Constants
+    VERSION,
+    SAMPLE_RATE,
+    BLOCK_SIZE,
+    CHANNELS,
+    TICK_INTERVAL_MS,
+    GAME_SCAN_INTERVAL_MS,
+    AUDIO_SCAN_INTERVAL_MS,
+    STARTUP_DELAY_MS,
+    STARTUP_AUDIO_DELAY_MS,
+    ENERGY_THRESHOLD,
+    LOCALIZATION_MIN_CONFIDENCE,
+    RADAR_ROTATION_DEG,
+    MAX_WORKERS,
+    DETECTION_TIMEOUT_SEC,
+    CLEANUP_INTERVAL_SEC,
+    AUDIO_LEVEL_LOUD,
+    AUDIO_LEVEL_MEDIUM,
+    AUDIO_LEVEL_LOW,
+    RECORDING_BUFFER_SIZE,
+    RECORDING_FLUSH_INTERVAL,
+    TOAST_DURATION_MS,
+    TOAST_MAX_COUNT,
 
-        # Logger
-        ThreadSafeLogger,
-        log,
-        ROOT,
-        SUPER_LOG,
+    # Logger
+    ThreadSafeLogger,
+    log,
+    ROOT,
+    SUPER_LOG,
 
-        # Config
-        ConfigManager,
+    # Config
+    ConfigManager,
 
-        # Translations
-        TRANSLATIONS,
-        current_language,
-        tr,
-        set_language,
-        get_language,
-    )
+    # Translations
+    TRANSLATIONS,
+    current_language,
+    tr,
+    set_language,
+    get_language,
+)
 
-    # v4.2.1: Export/Import
-    from .core.export_import import ExportImportManager
+# v4.2.1: Export/Import
+from app.core.export_import import ExportImportManager
 
-    # ============================================================================
-    # HARDWARE MODULE IMPORTS (Point 10 - v3.5.0: Modularization)
-    # ============================================================================
-    from .hardware import (
-        GPUAccelerator,
-        SoundBlasterOptimizer,
-    )
+# ============================================================================
+# HARDWARE MODULE IMPORTS (Point 10 - v3.5.0: Modularization)
+# ============================================================================
+from app.hardware import (
+    GPUAccelerator,
+    SoundBlasterOptimizer,
+)
 
-    # ============================================================================
-    # UTILS MODULE IMPORTS (Point 10 - v3.5.0: Modularization)
-    # ============================================================================
-    from .utils import (
-        PerformanceMonitor,
-        GameProcessDetector,
-        PlatformLauncherDetector,
-        AudioSourceScanner,
-    )
+# ============================================================================
+# UTILS MODULE IMPORTS (Point 10 - v3.5.0: Modularization)
+# ============================================================================
+from app.utils import (
+    PerformanceMonitor,
+    GameProcessDetector,
+    PlatformLauncherDetector,
+    AudioSourceScanner,
+)
 
-    # ============================================================================
-    # TRACKING MODULE IMPORTS (Point 10 - v3.5.0: Modularization)
-    # ============================================================================
-    from .tracking import (
-        Target,
-        TargetTracker,
-        ThreatPrioritySystem,
-    )
+# ============================================================================
+# TRACKING MODULE IMPORTS (Point 10 - v3.5.0: Modularization)
+# ============================================================================
+from app.tracking import (
+    Target,
+    TargetTracker,
+    ThreatPrioritySystem,
+)
 
-    # ============================================================================
-    # DETECTION MODULE IMPORTS (Point 10 - v3.5.0: Modularization)
-    # ============================================================================
-    from .detection import (
-        DetectionWorker,
-        HumanFootstepDetector,
-    )
+# ============================================================================
+# DETECTION MODULE IMPORTS (Point 10 - v3.5.0: Modularization)
+# ============================================================================
+from app.detection import (
+    DetectionWorker,
+    HumanFootstepDetector,
+)
 
-    # ============================================================================
-    # AUDIO MODULE IMPORTS (Point 10 - v3.5.0: Modularization)
-    # ============================================================================
-    from .audio import (
-        AudioProcessingCache,
-        AudioEngine,
-        SoundClassifier,
-        AudioRecorder,
-        HumanVoiceDetector,
-        AudioProcessor,  # v4.2.0: Extracted audio algorithms
-    )
+# ============================================================================
+# AUDIO MODULE IMPORTS (Point 10 - v3.5.0: Modularization)
+# ============================================================================
+from app.audio import (
+    AudioProcessingCache,
+    AudioEngine,
+    SoundClassifier,
+    AudioRecorder,
+    HumanVoiceDetector,
+    AudioProcessor,  # v4.2.0: Extracted audio algorithms
+)
 
-    # ============================================================================
-    # WIDGETS MODULE IMPORTS (Point 10 - v3.5.0: Modularization)
-    # ============================================================================
-    from .widgets import (
-        ToastNotification,
-        DetachableRadarWidget,
-        RadarWidget,
-        MilitaryHUDRadar,
-        Military3DRadar,
-        Radar3DWidget,
-        DetachableLedWidget,
-        LedOverlayWidget,
-        SpectrumWidget,
-        WaterfallWidget,
-        WaveformWidget,
-        MilitarySpectrumWidget,
-        MilitaryWaterfallWidget,
-        MilitaryWaveformWidget,
-        DevicePanel,
-        DetectionPanel,
-    )
+# ============================================================================
+# WIDGETS MODULE IMPORTS (Point 10 - v3.5.0: Modularization)
+# ============================================================================
+from app.widgets import (
+    ToastNotification,
+    DetachableRadarWidget,
+    RadarWidget,
+    MilitaryHUDRadar,
+    Military3DRadar,
+    Radar3DWidget,
+    DetachableLedWidget,
+    LedOverlayWidget,
+    SpectrumWidget,
+    WaterfallWidget,
+    WaveformWidget,
+    MilitarySpectrumWidget,
+    MilitaryWaterfallWidget,
+    MilitaryWaveformWidget,
+    DevicePanel,
+    DetectionPanel,
+)
 
-    # ============================================================================
-    # UI MODULE IMPORTS (v4.2.0: UIBuilder extraction from MainWindow)
-    # ============================================================================
-    from .ui import UIBuilder
-    from .diagnostics import SelfTestRunner
-
-except ImportError:
-    # Fallback to direct imports when running as standalone script
-    from core import (
-        VERSION, SAMPLE_RATE, BLOCK_SIZE, CHANNELS,
-        TICK_INTERVAL_MS, GAME_SCAN_INTERVAL_MS, AUDIO_SCAN_INTERVAL_MS,
-        STARTUP_DELAY_MS, STARTUP_AUDIO_DELAY_MS, ENERGY_THRESHOLD,
-        LOCALIZATION_MIN_CONFIDENCE, RADAR_ROTATION_DEG, MAX_WORKERS, DETECTION_TIMEOUT_SEC,
-        CLEANUP_INTERVAL_SEC, AUDIO_LEVEL_LOUD, AUDIO_LEVEL_MEDIUM,
-        AUDIO_LEVEL_LOW, RECORDING_BUFFER_SIZE, RECORDING_FLUSH_INTERVAL,
-        TOAST_DURATION_MS, TOAST_MAX_COUNT,
-        ThreadSafeLogger, log, ROOT, SUPER_LOG,
-        ConfigManager,
-        TRANSLATIONS, current_language, tr, set_language, get_language,
-    )
-    from core.export_import import ExportImportManager
-    from hardware import GPUAccelerator, SoundBlasterOptimizer
-    from utils import (
-        PerformanceMonitor, GameProcessDetector,
-        PlatformLauncherDetector, AudioSourceScanner,
-    )
-    from tracking import Target, TargetTracker, ThreatPrioritySystem
-    from detection import DetectionWorker, HumanFootstepDetector
-    from audio import (
-        AudioProcessingCache, AudioEngine, SoundClassifier,
-        AudioRecorder, HumanVoiceDetector, AudioProcessor,
-    )
-    from widgets import (
-        ToastNotification, DetachableRadarWidget, RadarWidget,
-        MilitaryHUDRadar, Military3DRadar, Radar3DWidget,
-        DetachableLedWidget, LedOverlayWidget,
-        SpectrumWidget, WaterfallWidget, WaveformWidget,
-        MilitarySpectrumWidget, MilitaryWaterfallWidget, MilitaryWaveformWidget,
-        DevicePanel, DetectionPanel,
-    )
-    from ui import UIBuilder
-    from diagnostics import SelfTestRunner
+# ============================================================================
+# UI MODULE IMPORTS (v4.2.0: UIBuilder extraction from MainWindow)
+# ============================================================================
+from app.ui import UIBuilder
+from app.diagnostics import SelfTestRunner
 
 # ============================================================================
 # CONFIG MANAGER - Imported from core module
@@ -2095,7 +2053,7 @@ def main():
     apply_dark_theme(app)
 
     # Point 11 - v3.5.0: Configure Dependency Injection
-    from core import configure_services, ConfigManager
+    from app.core import configure_services, ConfigManager
 
     log("Configuring Dependency Injection container...", "INFO")
     config_mgr = ConfigManager()

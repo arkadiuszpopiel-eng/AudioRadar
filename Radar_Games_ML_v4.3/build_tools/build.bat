@@ -1,10 +1,15 @@
 @echo off
-REM Radar Games ML v4.3.0 Build Script
+REM Radar Games ML - Build Script (reads version dynamically)
 REM Builds Windows executable using PyInstaller
 
+REM Read version from app/version.py (single source of truth)
+for /f "delims=" %%i in ('python -c "import sys; sys.path.insert(0, 'app'); from version import __version_full__, BUILD_TARGET; print(f'{BUILD_TARGET} {__version_full__}')"') do set VERSION_INFO=%%i
+
 echo ========================================
-echo Radar Games ML v4.3.0 - Build Script
+echo %VERSION_INFO% - Build Script
 echo ========================================
+for /f "delims=" %%i in ('python -c "import sys; sys.path.insert(0, 'app'); from version import __version_full__; print(__version_full__)"') do set VERSION=%%i
+echo Version: %VERSION%
 echo.
 
 REM Check if PyInstaller is installed

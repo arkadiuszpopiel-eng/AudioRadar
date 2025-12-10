@@ -191,8 +191,8 @@ exe = EXE(
     icon=None,
 )
 
-# Używamy krótszej nazwy katalogu dist, aby zmniejszyć ryzyko błędu 206 (filename too long)
-dist_dir_name = 'RGML'
+# Domyślna nazwa katalogu dist (zgodna ze skryptem build_windows)
+dist_dir_name = 'Radar_Games_ML'
 
 # COLLECT
 coll = COLLECT(
@@ -215,6 +215,8 @@ def post_build_copy():
     """Copy EXE to project root with error handling"""
     exe_source = os.path.join(BASE, 'dist', dist_dir_name, 'Radar_Games_ML.exe')
     exe_dest = os.path.join(BASE, 'Radar_Games_ML.exe')
+    internal_source = os.path.join(BASE, 'dist', dist_dir_name, '_internal')
+    internal_dest = os.path.join(BASE, '_internal')
 
     print("\n" + "="*60)
     print("POST-BUILD: Copying EXE to project root")
@@ -236,6 +238,18 @@ def post_build_copy():
             print(f"[OK] Copied: {os.path.basename(exe_source)} -> project root")
             print(f"  Size: {size_mb:.2f} MB")
             print(f"  Location: {exe_dest}")
+
+            # Ensure bundled Python runtime is copied alongside the EXE
+            if os.path.isdir(internal_source):
+                if os.path.isdir(internal_dest):
+                    shutil.rmtree(internal_dest)
+                shutil.copytree(internal_source, internal_dest)
+                python_dll = os.path.join(internal_dest, 'python311.dll')
+                status = "present" if os.path.exists(python_dll) else "missing"
+                print(f"  Copied _internal -> {internal_dest} (python311.dll {status})")
+            else:
+                print(f"[WARNING] _internal directory missing at {internal_source}")
+
             print("\n[OK] POST-BUILD COMPLETE!")
             print("="*60)
         except Exception as e:

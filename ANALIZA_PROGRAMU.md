@@ -5,7 +5,7 @@
 **Główne wersje:** Radar Games ML V4.3.0-k0001, RadarSuite Linux V4.2, RadarSuite Core  
 **Język:** Python 3.11+  
 **Łączna liczba plików:** 215 plików Python, 45 dokumentów Markdown  
-**Łączna liczba linii kodu:** ~56,000 linii
+**Łączna liczba linii kodu:** ~56,700 linii (dokładnie: 56,677)
 
 ---
 
@@ -392,15 +392,15 @@ AudioRadar/
 
 ```
 Audio Flow:
-1. Loopback Capture (WASAPI) → 48kHz stereo, 2048 samples
-2. Buffer Queue (FIFO) → 10-block buffer (~427ms)
-3. DSP Pipeline → Band-pass filters, normalization
-4. Detection Pipeline → Parallel workers (4 threads)
-5. Classification → Heuristics + ML inference
-6. Tracking → Multi-target Kalman filter
-7. Visualization → Radar update (30 FPS)
+1. Loopback Capture (WASAPI) → 48kHz stereo, 2048 samples (~43ms per block)
+2. Buffer Queue (FIFO) → 3-5 block buffer (~150ms max buffer)
+3. DSP Pipeline → Band-pass filters, normalization (~10ms)
+4. Detection Pipeline → Parallel workers (4 threads, ~25ms)
+5. Classification → Heuristics + ML inference (~15ms)
+6. Tracking → Multi-target Kalman filter (~5ms)
+7. Visualization → Radar update (30 FPS, ~2ms)
 
-Total Latency: < 100ms (capture to display)
+Total Latency: ~85-95ms (capture to display)
 ```
 
 ### 5.2 Spatial Localization
@@ -481,12 +481,12 @@ Total Latency: < 100ms (capture to display)
 2024-Q1: v4.0.0 - Architecture refactor
 2024-Q2: v4.1.0 - Multi-target tracking
 2024-Q3: v4.2.0 - ARC Raiders Edition
-2024-Q4: v4.2.1 - Quality improvements
-2025-Q1: v4.3.0 - Radar Games ML (CURRENT)
+2024-Q4: v4.2.1 - Quality improvements (k0004-k0009)
+2024-Q4: v4.3.0 - Radar Games ML (k0001) - CURRENT VERSION
           ├─ Machine learning inference
-          ├─ Graceful shutdown
-          ├─ ML training live feedback
-          └─ Model auto-load & management
+          ├─ Graceful shutdown (AsyncSessionWorker)
+          ├─ ML training live feedback (toast notifications)
+          └─ Model auto-load & management (ModelRegistry)
 ```
 
 ---

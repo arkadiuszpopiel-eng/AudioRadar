@@ -49,6 +49,11 @@ Thumbs.db
 /RadarSuite_Linux_V4.2/log/
 /RadarSuite_Linux_V4.2/raport/
 
+# Radar Games ML v4.3 runtime directories
+/Radar_Games_ML_v4.3/log/
+/Radar_Games_ML_v4.3/__pycache__/
+/Radar_Games_ML_v4.3/app/__pycache__/
+
 # RadarSuite specific
 *.wav
 *.pcm

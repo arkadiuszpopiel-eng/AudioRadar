@@ -100,7 +100,7 @@ from .di import (
 
 # Error Handler (v4.2.0 - Punkt 7)
 from .error_handler import (
-    Radar Games MLError,
+    RadarGamesMLError,
     AudioError,
     DetectionError,
     ConfigurationError,
@@ -181,7 +181,7 @@ __all__ = [
     'configure_services',
 
     # Error Handler (v4.2.0)
-    'Radar Games MLError',
+    'RadarGamesMLError',
     'AudioError',
     'DetectionError',
     'ConfigurationError',

@@ -17,7 +17,7 @@ try:
     from version import __version_full__ as VERSION
 except ImportError:
     # Fallback if version.py not found (shouldn't happen)
-    VERSION = "v4.2.0-ARC-Raiders"
+    VERSION = "v4.3.0-k0001"
 
 # ============================================================================
 # CONSTANTS (FIXED v3.5.0: Extracted magic numbers)

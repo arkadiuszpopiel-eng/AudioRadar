@@ -1,10 +1,10 @@
 # -*- mode: python ; coding: utf-8 -*-
 """
-PyInstaller spec file for RadarSuite Windows V4
+PyInstaller spec file for Radar Games ML V4.3
 Builds standalone Windows executable with all dependencies
 Platform: Windows x64 ONLY
 Optimized: Excludes Linux-only modules and reduces warnings
-Includes: PyQt5, pyqtgraph, PyOpenGL (3D radar), psutil (game detection)
+Includes: PyQt5, pyqtgraph, PyOpenGL (3D radar), psutil (game detection), ML training
 """
 
 import os
@@ -22,8 +22,8 @@ except NameError:
 BASE = os.path.dirname(spec_dir)
 APP_DIR = os.path.join(BASE, 'app')
 
-# Entry point
-entry_script = os.path.join(BASE, 'app', 'main.py')
+# Entry point - use root main.py (v4.3.0)
+entry_script = os.path.join(BASE, 'main.py')
 
 # Verify entry script exists
 if not os.path.exists(entry_script):
@@ -159,7 +159,7 @@ exe = EXE(
     a.scripts,
     [],
     exclude_binaries=True,
-    name='RadarSuite_Windows',
+    name='Radar_Games_ML',
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
@@ -182,5 +182,14 @@ coll = COLLECT(
     strip=False,
     upx=True,
     upx_exclude=[],
-    name='RadarSuite_Windows',
+    name='Radar_Games_ML',
 )
+
+# Post-build: Copy EXE to project root for easy access (v4.3.0)
+import shutil
+exe_source = os.path.join(BASE, 'dist', 'Radar_Games_ML', 'Radar_Games_ML.exe')
+exe_dest = os.path.join(BASE, 'Radar_Games_ML.exe')
+if os.path.exists(exe_source):
+    print(f"Copying EXE to project root: {exe_dest}")
+    shutil.copy2(exe_source, exe_dest)
+    print("Build complete! EXE available at project root.")

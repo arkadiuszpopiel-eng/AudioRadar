@@ -26,7 +26,7 @@ class ErrorSeverity(Enum):
     CRITICAL = "CRITICAL" # Log + notify + may terminate
 
 
-class Radar Games MLError(Exception):
+class RadarGamesMLError(Exception):
     """Base exception for Radar Games ML application errors"""
 
     def __init__(
@@ -46,22 +46,22 @@ class Radar Games MLError(Exception):
         return self.message
 
 
-class AudioError(Radar Games MLError):
+class AudioError(RadarGamesMLError):
     """Audio capture/processing errors"""
     pass
 
 
-class DetectionError(Radar Games MLError):
+class DetectionError(RadarGamesMLError):
     """Detection algorithm errors"""
     pass
 
 
-class ConfigurationError(Radar Games MLError):
+class ConfigurationError(RadarGamesMLError):
     """Configuration/settings errors"""
     pass
 
 
-class UIError(Radar Games MLError):
+class UIError(RadarGamesMLError):
     """User interface errors"""
     pass
 
@@ -128,7 +128,7 @@ def handle_errors(
         def wrapper(*args, **kwargs):
             try:
                 return func(*args, **kwargs)
-            except Radar Games MLError as e:
+            except RadarGamesMLError as e:
                 # Our custom errors - handle based on severity
                 if log_errors:
                     log(f"[{e.severity.value}] {func.__name__}: {e}", "ERROR")
@@ -141,7 +141,7 @@ def handle_errors(
                     log(f"[{severity.value}] Unexpected error in {func.__name__}: {e}", "ERROR")
                     log(traceback.format_exc(), "DEBUG")
                 if reraise:
-                    raise Radar Games MLError(str(e), severity, e)
+                    raise RadarGamesMLError(str(e), severity, e)
                 return default_return
         return wrapper
     return decorator

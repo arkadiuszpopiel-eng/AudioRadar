@@ -38,16 +38,46 @@ def get_app_root() -> Path:
 # Application root directory
 APP_ROOT = get_app_root()
 
-# Log directory - all runtime logs, self-test logs, build logs
-LOG_DIR = APP_ROOT / "log"
+# Primary log/report directories (v4.3 fix: standardize to logs/reports)
+LOG_DIR = APP_ROOT / "logs"
+REPORT_DIR = APP_ROOT / "reports"
 LOG_DIR.mkdir(parents=True, exist_ok=True)
-
-# Report directory - all reports, summaries, diagnostic reports
-REPORT_DIR = APP_ROOT / "raport"
 REPORT_DIR.mkdir(parents=True, exist_ok=True)
 
 # Legacy paths (for reference/migration)
 LEGACY_SUPER_LOG = APP_ROOT / "super_log.txt"
+LEGACY_LOG_DIR = APP_ROOT / "log"
+LEGACY_REPORT_DIR = APP_ROOT / "raport"
+
+# If legacy directories exist, mirror them into the new structure to avoid data loss
+if LEGACY_LOG_DIR.exists() and not any(LOG_DIR.iterdir()):
+    for item in LEGACY_LOG_DIR.iterdir():
+        target = LOG_DIR / item.name
+        if not target.exists():
+            try:
+                if item.is_dir():
+                    import shutil
+
+                    shutil.copytree(item, target)
+                else:
+                    target.write_bytes(item.read_bytes())
+            except Exception:
+                # Non-fatal: diagnostics will continue using the new path
+                pass
+
+if LEGACY_REPORT_DIR.exists() and not any(REPORT_DIR.iterdir()):
+    for item in LEGACY_REPORT_DIR.iterdir():
+        target = REPORT_DIR / item.name
+        if not target.exists():
+            try:
+                if item.is_dir():
+                    import shutil
+
+                    shutil.copytree(item, target)
+                else:
+                    target.write_bytes(item.read_bytes())
+            except Exception:
+                pass
 
 
 # ============================================================================
@@ -55,7 +85,9 @@ LEGACY_SUPER_LOG = APP_ROOT / "super_log.txt"
 # ============================================================================
 
 SUPER_LOG_FILE = LOG_DIR / "super_log.txt"
+RUNTIME_LOG_FILE = LOG_DIR / "runtime.log"
 BUILD_LOG_FILE = LOG_DIR / "build_windows.log"
+DIAGNOSTICS_LOG_FILE = LOG_DIR / "diagnostics.log"
 
 
 # ============================================================================
@@ -150,7 +182,9 @@ __all__ = [
     'LOG_DIR',
     'REPORT_DIR',
     'SUPER_LOG_FILE',
+    'RUNTIME_LOG_FILE',
     'BUILD_LOG_FILE',
+    'DIAGNOSTICS_LOG_FILE',
     'get_selftest_log_path',
     'get_selftest_report_path',
     'get_ml_training_report_path',

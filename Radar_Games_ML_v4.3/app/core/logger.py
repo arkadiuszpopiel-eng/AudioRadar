@@ -21,11 +21,12 @@ SUPER_LOG = ROOT / "super_log.txt"  # Deprecated: moved to log/super_log.txt
 # Import centralized paths (v4.2.1-k0008)
 # Note: Import after legacy definitions to avoid circular imports
 try:
-    from .paths import SUPER_LOG_FILE
+    from .paths import SUPER_LOG_FILE, RUNTIME_LOG_FILE
     _USE_NEW_PATHS = True
 except ImportError:
     # Fallback to legacy path if paths.py not available yet
     SUPER_LOG_FILE = SUPER_LOG
+    RUNTIME_LOG_FILE = SUPER_LOG
     _USE_NEW_PATHS = False
 
 
@@ -77,6 +78,11 @@ class ThreadSafeLogger:
 
         # Rotating file handler (max 10MB, 5 backups) - THREAD-SAFE
         # FIXED v4.2.1-k0008: Use centralized log directory
+        formatter = logging.Formatter(
+            '[%(asctime)s.%(msecs)03d] [%(levelname)s] %(message)s',
+            datefmt='%Y-%m-%d %H:%M:%S'
+        )
+
         file_handler = logging.handlers.RotatingFileHandler(
             str(SUPER_LOG_FILE),
             maxBytes=10*1024*1024,  # 10MB
@@ -84,14 +90,19 @@ class ThreadSafeLogger:
             encoding='utf-8'
         )
         file_handler.setLevel(TRACE)  # FIXED v4.2.0: Accept all levels including TRACE
-
-        # Formatter with timestamp
-        formatter = logging.Formatter(
-            '[%(asctime)s.%(msecs)03d] [%(levelname)s] %(message)s',
-            datefmt='%Y-%m-%d %H:%M:%S'
-        )
         file_handler.setFormatter(formatter)
         self.logger.addHandler(file_handler)
+
+        # Dedicated runtime log for quick diagnostics (v4.3)
+        runtime_handler = logging.handlers.RotatingFileHandler(
+            str(RUNTIME_LOG_FILE),
+            maxBytes=10*1024*1024,
+            backupCount=3,
+            encoding='utf-8'
+        )
+        runtime_handler.setLevel(logging.INFO)
+        runtime_handler.setFormatter(formatter)
+        self.logger.addHandler(runtime_handler)
 
         # Console handler for errors only
         console_handler = logging.StreamHandler()

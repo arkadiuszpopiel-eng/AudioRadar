@@ -7,6 +7,7 @@ All widgets are assigned to self.main.widget_name for backward compatibility.
 """
 
 from typing import TYPE_CHECKING
+import traceback
 
 from PyQt5.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QTabWidget, QGroupBox,
@@ -28,6 +29,7 @@ try:
     from ..widgets.device_panel import DevicePanel
     from ..core.constants import VERSION
     from ..core.translations import tr
+    from ..core.logger import log
 except ImportError:
     # Standalone script execution (e.g., python main.py)
     from widgets.radar import MilitaryHUDRadar, Military3DRadar
@@ -47,6 +49,7 @@ except ImportError:
         from version import __version__ as VERSION
 
     from core.translations import tr
+    from core.logger import log
 
 # ML Training Panel (v4.2.0 - Roadmap Item 1)
 # FIXED v4.2.1-k0003: Corrected import order to match rest of file
@@ -543,19 +546,27 @@ class UIBuilder:
         toolbar.addWidget(version_label)
 
     def _build_ml_training_tab(self) -> None:
-        """Build Tab 5: ML Training (v4.2.0 - Roadmap Item 1)."""
-        if not ML_TRAINING_AVAILABLE:
-            # Create placeholder tab if ML training is not available and surface the reason.
+        """
+        Build Tab 5: ML Training (v4.2.0 - Roadmap Item 1).
+
+        The tab now guards every execution path with robust error handling so that
+        missing optional dependencies or controller failures never crash the UI.
+        """
+
+        training_available = ML_TRAINING_AVAILABLE
+        training_error = ML_TRAINING_ERROR
+        training_error_trace = ML_TRAINING_ERROR_TRACE or ""
+
+        def _build_error_placeholder(title: str, description: str, trace: str = "") -> QWidget:
+            """Create a graceful error placeholder for the ML tab."""
             placeholder = QWidget()
             layout = QVBoxLayout()
-            label = QLabel(f"🧠 {tr('ml_training_unavailable_title')}")
+            label = QLabel(title)
             label.setStyleSheet("font-size: 12pt; color: #888888; padding: 10px;")
             label.setAlignment(Qt.AlignCenter)
             layout.addWidget(label)
 
-            error_hint = QLabel(
-                tr('ml_training_dependency_hint').format(error=str(ML_TRAINING_ERROR))
-            )
+            error_hint = QLabel(description)
             error_hint.setWordWrap(True)
             error_hint.setStyleSheet("color: #AAAAAA; padding: 0 15px 5px 15px;")
             layout.addWidget(error_hint)
@@ -565,29 +576,47 @@ class UIBuilder:
             install_hint.setStyleSheet("color: #AAAAAA; padding: 0 15px 10px 15px;")
             layout.addWidget(install_hint)
 
-            if ML_TRAINING_ERROR_TRACE:
+            if trace:
                 trace_box = QTextEdit()
                 trace_box.setReadOnly(True)
-                trace_box.setText(ML_TRAINING_ERROR_TRACE)
-                trace_box.setStyleSheet("font-family: monospace; font-size: 8pt; color: #CCCCCC;")
+                trace_box.setText(trace)
+                trace_box.setStyleSheet(
+                    "font-family: monospace; font-size: 8pt; color: #CCCCCC;"
+                )
                 layout.addWidget(trace_box)
 
             placeholder.setLayout(layout)
+            return placeholder
+
+        controller = getattr(self.main, 'recording_controller', None)
+        if training_available and controller is None:
+            try:
+                controller = RecordingController()
+            except Exception as exc:
+                training_available = False
+                training_error = exc
+                training_error_trace = traceback.format_exc()
+                log(f"ML training controller init failed: {exc}", "ERROR")
+
+        self.main.ml_training_error_trace = training_error_trace
+
+        if not training_available:
+            unavailable_title = f"🧠 {tr('ml_training_unavailable_title')}"
+            reason = tr('ml_training_dependency_hint').format(error=str(training_error))
+            placeholder = _build_error_placeholder(
+                unavailable_title,
+                reason,
+                training_error_trace,
+            )
             self.main.main_tabs.addTab(placeholder, f"🧠 {tr('tab_ml_training')}")
             self.main.ml_training_panel = None
             return
 
-        controller = getattr(self.main, 'recording_controller', None)
-        if controller is None:
-            try:
-                controller = RecordingController()
-            except Exception as exc:
-                controller = None
-                ML_TRAINING_ERROR_TRACE = str(exc)
         self.main.recording_controller = controller
 
         def launch_overlay():
             if controller is None:
+                log("ML quick overlay skipped: controller unavailable", "WARNING")
                 return
             overlay = getattr(self.main, 'ml_quick_overlay', None)
             if overlay is None:
@@ -600,11 +629,25 @@ class UIBuilder:
             overlay.raise_()
             overlay.activateWindow()
 
-        self.main.ml_training_panel = MLTrainingPanel(
-            recording_controller=controller,
-            overlay_launcher=launch_overlay,
-        )
-        self.main.main_tabs.addTab(self.main.ml_training_panel, f"🧠 {tr('tab_ml_training')}")
+        try:
+            self.main.ml_training_panel = MLTrainingPanel(
+                recording_controller=controller,
+                overlay_launcher=launch_overlay,
+            )
+            self.main.main_tabs.addTab(
+                self.main.ml_training_panel, f"🧠 {tr('tab_ml_training')}"
+            )
+        except Exception as exc:  # Guard UI creation path
+            training_error_trace = traceback.format_exc()
+            log(f"ML training panel failed to build: {exc}", "ERROR")
+            placeholder = _build_error_placeholder(
+                f"🧠 {tr('ml_training_unavailable_title')}",
+                tr('ml_training_dependency_hint').format(error=str(exc)),
+                training_error_trace,
+            )
+            self.main.ml_training_panel = None
+            self.main.ml_training_error_trace = training_error_trace
+            self.main.main_tabs.addTab(placeholder, f"🧠 {tr('tab_ml_training')}")
 
     def _build_statusbar(self) -> None:
         """Build status bar."""

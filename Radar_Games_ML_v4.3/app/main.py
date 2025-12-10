@@ -21,6 +21,7 @@ import time
 import math
 import threading
 import re
+import platform
 from typing import Optional
 from pathlib import Path
 from datetime import datetime
@@ -113,6 +114,7 @@ from app.core import (
     set_language,
     get_language,
 )
+from app.core.paths import LOG_DIR, REPORT_DIR
 
 # v4.2.1: Export/Import
 from app.core.export_import import ExportImportManager
@@ -2041,6 +2043,9 @@ def main():
     log("=" * 80, "INFO")
 
     log(f"Python: {sys.version}", "INFO")
+    log(f"Platform: {platform.platform()} ({platform.machine()})", "INFO")
+    log(f"Log directory: {LOG_DIR}", "INFO")
+    log(f"Report directory: {REPORT_DIR}", "INFO")
     log(f"NumPy: {np.__version__}", "INFO")
     log(f"pyqtgraph: {pg.__version__}", "INFO")
     log(f"sounddevice available: {sd is not None}", "INFO")

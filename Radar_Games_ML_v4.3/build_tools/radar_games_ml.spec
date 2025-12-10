@@ -207,21 +207,21 @@ def post_build_copy():
             # Remove old EXE if exists
             if os.path.exists(exe_dest):
                 os.remove(exe_dest)
-                print(f"✓ Removed old: {os.path.basename(exe_dest)}")
+                print(f"[OK] Removed old: {os.path.basename(exe_dest)}")
 
             # Copy new EXE
             shutil.copy2(exe_source, exe_dest)
             size_mb = os.path.getsize(exe_dest) / (1024 * 1024)
-            print(f"✓ Copied: {os.path.basename(exe_source)} -> project root")
+            print(f"[OK] Copied: {os.path.basename(exe_source)} -> project root")
             print(f"  Size: {size_mb:.2f} MB")
             print(f"  Location: {exe_dest}")
-            print("\n✓ POST-BUILD COMPLETE!")
+            print("\n[OK] POST-BUILD COMPLETE!")
             print("="*60)
         except Exception as e:
-            print(f"✗ ERROR during copy: {e}")
+            print(f"[ERROR] Copy failed: {e}")
             print("  EXE is still available in: dist/Radar_Games_ML/")
     else:
-        print(f"✗ WARNING: EXE not found at: {exe_source}")
+        print(f"[WARNING] EXE not found at: {exe_source}")
         print("  Check dist/ folder for build output")
 
 # Execute post-build

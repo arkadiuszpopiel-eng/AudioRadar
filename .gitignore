@@ -54,6 +54,9 @@ Thumbs.db
 /Radar_Games_ML_v4.3/__pycache__/
 /Radar_Games_ML_v4.3/app/__pycache__/
 
+# Extracted v4.2.1 reference (used for porting build system)
+/RadarSuite_Windows_V4.2.1/
+
 # RadarSuite specific
 *.wav
 *.pcm

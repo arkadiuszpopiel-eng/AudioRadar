@@ -87,14 +87,31 @@ Radar_Games_ML_v4.3/
 ### Prerequisites
 
 ```bash
-# Install Python 3.8+ with pip
-python --version
+# Install Python 3.11 (REQUIRED for v4.3)
+python --version  # Should be Python 3.11.x
 
-# Install required packages
-pip install PyQt5 numpy scipy sounddevice soundcard pyqtgraph PyOpenGL psutil pyinstaller
+# Verify Python 3.11 installation
+py -3.11 --version
 ```
 
-### Method 1: Python Build Script (Recommended)
+### Method 1: Official Build Script (Recommended - From v4.2.1)
+
+```cmd
+REM From project root
+RUN_BUILD_Win.cmd
+```
+
+**Features:**
+- ✅ Ported from working v4.2.1 build script
+- ✅ Creates and activates Python 3.11 venv automatically
+- ✅ Installs all requirements from requirements-windows.txt
+- ✅ Verifies all modules before building
+- ✅ Uses the proven `radarsuite_windows.spec` configuration
+- ✅ Copies EXE to project root automatically
+- ✅ Comprehensive logging to build_windows.log
+- ✅ Step-by-step progress display
+
+### Method 2: Python Build Script
 
 ```bash
 # From project root
@@ -105,10 +122,9 @@ python build_windows.py
 - ✅ Reads version from `app/version.py` automatically
 - ✅ Validates dependencies before building
 - ✅ Shows detailed progress and errors
-- ✅ Copies EXE to project root
-- ✅ Prints build summary with file sizes
+- ✅ Uses radar_games_ml.spec (modern spec file)
 
-### Method 2: Batch Script
+### Method 3: Batch Script (Quick)
 
 ```bash
 # From project root
@@ -116,18 +132,17 @@ cd build_tools
 build.bat
 ```
 
-**Features:**
-- ✅ Reads version dynamically from `app/version.py`
-- ✅ Checks for PyInstaller
-- ✅ Cleans previous builds
-- ✅ Uses PyInstaller spec file
-
-### Method 3: Manual PyInstaller
+### Method 4: Manual PyInstaller
 
 ```bash
-# From project root
+# From project root - Using v4.2.1 proven spec file
+pyinstaller build_tools/radarsuite_windows.spec
+
+# OR - Using modern v4.3 spec file
 pyinstaller build_tools/radar_games_ml.spec
 ```
+
+**Note:** `radarsuite_windows.spec` is recommended as it's proven to work from v4.2.1 and has been adapted for v4.3's structure.
 
 ---
 

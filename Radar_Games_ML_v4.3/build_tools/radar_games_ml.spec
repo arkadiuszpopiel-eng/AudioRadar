@@ -125,7 +125,10 @@ try:
         pa_dir = Path(list(sd_spec.submodule_search_locations)[0]) / 'portaudio-binaries'
         if pa_dir.is_dir():
             for dll_path in pa_dir.glob('*.dll'):
+                # Zachowujemy oryginalną lokalizację w _sounddevice_data
                 binaries.append((str(dll_path), str(Path('_sounddevice_data/portaudio-binaries'))))
+                # Dodatkowo kopiujemy DLL do katalogu głównego dist, aby skrócić ścieżkę
+                binaries.append((str(dll_path), '.'))
 except Exception as e:
     print(f"[WARNING] Could not collect PortAudio binaries: {e}")
 
@@ -157,7 +160,7 @@ a = Analysis(
     hiddenimports=hiddenimports,
     hookspath=[],
     hooksconfig={},
-    runtime_hooks=[],
+    runtime_hooks=[os.path.join(spec_dir, 'portaudio_path_hook.py')],
     excludes=excludes,
     win_no_prefer_redirects=False,
     win_private_assemblies=False,

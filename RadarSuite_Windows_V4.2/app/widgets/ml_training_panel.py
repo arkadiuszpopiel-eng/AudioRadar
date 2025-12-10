@@ -31,6 +31,7 @@ from app.ml.training import (
     LabeledRecorder, ModelTrainer, TrainingConfig, TrainingStatus,
     RecordingController, RecordingStateEnum,
 )
+from app.ml import ModelRegistry, MLFootstepDetector, get_model_registry
 from app.widgets.waveform_timeline import WaveformTimelineWidget
 from app.widgets.toast import ToastNotification
 
@@ -109,6 +110,10 @@ class MLTrainingPanel(QWidget):
         # v4.3.0-k0001: Toast notifications for live feedback
         self.toast = toast_notifier  # Optional: for showing status toasts
 
+        # v4.3.0-k0001: Model management
+        self.model_registry = get_model_registry()
+        self.ml_detector = MLFootstepDetector(sample_rate=48000, auto_load_best=False)
+
         # Set callbacks
         self.recording_controller.add_state_listener(self._on_recording_state_change)
         self.recording_controller.add_label_listener(self._on_label_added)
@@ -166,6 +171,7 @@ class MLTrainingPanel(QWidget):
 
         right_layout.addWidget(self._build_sessions_group())
         right_layout.addWidget(self._build_training_group())
+        right_layout.addWidget(self._build_model_management_group())  # v4.3.0-k0001: Model management UI
         right_layout.addWidget(self._build_log_group())
 
         splitter.addWidget(right_widget)
@@ -513,6 +519,49 @@ class MLTrainingPanel(QWidget):
         group.setLayout(layout)
         return group
 
+    def _build_model_management_group(self) -> QGroupBox:
+        """Build model management UI group (v4.3.0-k0001)."""
+        group = QGroupBox("🤖 Trained Models")
+        layout = QVBoxLayout()
+
+        # Current model status
+        status_layout = QHBoxLayout()
+        status_layout.addWidget(QLabel("Loaded:"))
+        self.model_status_label = QLabel("No model loaded")
+        self.model_status_label.setStyleSheet("font-weight: bold; color: #888888;")
+        status_layout.addWidget(self.model_status_label)
+        status_layout.addStretch()
+        layout.addLayout(status_layout)
+
+        # Model list
+        self.models_table = QTableWidget()
+        self.models_table.setColumnCount(3)
+        self.models_table.setHorizontalHeaderLabels(["Model", "Accuracy", "Samples"])
+        self.models_table.setSelectionBehavior(QTableWidget.SelectRows)
+        self.models_table.setMaximumHeight(120)
+        self.models_table.horizontalHeader().setStretchLastSection(True)
+        layout.addWidget(self.models_table)
+
+        # Action buttons
+        btn_row = QHBoxLayout()
+
+        self.load_model_btn = QPushButton("📥 Load Selected")
+        self.load_model_btn.clicked.connect(self._on_load_model)
+        btn_row.addWidget(self.load_model_btn)
+
+        self.refresh_models_btn = QPushButton("🔄 Refresh")
+        self.refresh_models_btn.clicked.connect(self._on_refresh_models)
+        btn_row.addWidget(self.refresh_models_btn)
+
+        layout.addLayout(btn_row)
+
+        group.setLayout(layout)
+
+        # Initial populate
+        self._update_models_table()
+
+        return group
+
     def _build_log_group(self) -> QGroupBox:
         """Build training log group."""
         group = QGroupBox("📜 Training Log")
@@ -844,6 +893,9 @@ class MLTrainingPanel(QWidget):
                     duration=5000
                 )
 
+            # v4.3.0-k0001: Refresh models table
+            self._update_models_table()
+
             QMessageBox.information(
                 self,
                 "Training Complete",
@@ -931,6 +983,63 @@ class MLTrainingPanel(QWidget):
             # v4.2.1: Update waveform timeline periodically
             # (actual update happens via timer to avoid too frequent redraws)
             self._pending_waveform_update = True
+
+    # ========================================================================
+    # MODEL MANAGEMENT (v4.3.0-k0001)
+    # ========================================================================
+
+    def _update_models_table(self):
+        """Update the trained models table."""
+        models = self.model_registry.list_models()
+
+        self.models_table.setRowCount(len(models))
+
+        for row, model_info in enumerate(models):
+            # Model name
+            self.models_table.setItem(row, 0, QTableWidgetItem(model_info.name))
+
+            # Accuracy
+            acc_item = QTableWidgetItem(f"{model_info.accuracy:.1%}")
+            self.models_table.setItem(row, 1, acc_item)
+
+            # Samples
+            self.models_table.setItem(row, 2, QTableWidgetItem(str(model_info.samples_used)))
+
+        # Update loaded model status
+        if self.ml_detector.is_model_loaded:
+            model_info = self.ml_detector.model_info
+            self.model_status_label.setText(
+                f"{model_info.name} ({model_info.accuracy:.1%})"
+            )
+            self.model_status_label.setStyleSheet("font-weight: bold; color: #00DD00;")
+        else:
+            self.model_status_label.setText("No model loaded")
+            self.model_status_label.setStyleSheet("font-weight: bold; color: #888888;")
+
+    def _on_load_model(self):
+        """Handle load model button click."""
+        selected_rows = self.models_table.selectedIndexes()
+        if not selected_rows:
+            QMessageBox.warning(self, "No Selection", "Please select a model to load.")
+            return
+
+        row = selected_rows[0].row()
+        model_name = self.models_table.item(row, 0).text()
+
+        if self.ml_detector.load_model(model_name):
+            self._update_models_table()
+            if self.toast:
+                self.toast.show_toast(f"Model loaded: {model_name}", "success", duration=3000)
+        else:
+            if self.toast:
+                self.toast.show_toast("Failed to load model", "error", duration=3000)
+
+    def _on_refresh_models(self):
+        """Handle refresh models button click."""
+        self._update_models_table()
+        if self.toast:
+            models_count = self.models_table.rowCount()
+            self.toast.show_toast(f"Refreshed: {models_count} models found", "info", duration=2000)
 
     # ========================================================================
     # KEYBOARD SHORTCUTS

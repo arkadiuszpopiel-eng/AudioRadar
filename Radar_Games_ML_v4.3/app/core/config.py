@@ -1,13 +1,16 @@
 """
-Radar Games ML v4.2.0 - Configuration Manager
+Radar Games ML v4.3.1 - Configuration Manager
 ADDED v3.5.0: Auto-save/restore user settings
 FIXED v3.5.0: Schema validation to prevent corrupt config
 ENHANCED v4.2.0: Type hints, window state persistence
+FIXED v4.3.1: Atomic config writes (prevent corruption on crash)
 """
 
 import sys
 import os
 import json
+import tempfile
+import shutil
 from pathlib import Path
 from typing import Any, Dict, Optional, Tuple
 
@@ -235,17 +238,52 @@ class ConfigManager:
             log(f"Error loading settings: {e}", "ERROR")
             return self.default_config.copy()
 
-    def save(self, config: ConfigDict) -> None:
-        """Save settings to disk"""
+    def save(self, config: ConfigDict) -> bool:
+        """
+        Save settings to disk with atomic write (FIXED v4.3.1: Prevent corruption on crash).
+
+        Uses temporary file + atomic rename to ensure config is never partially written.
+
+        Returns:
+            True if save successful, False otherwise
+        """
         try:
             self.config_dir.mkdir(parents=True, exist_ok=True)
             config['version'] = VERSION
 
-            with open(self.config_file, 'w', encoding='utf-8') as f:
-                json.dump(config, f, indent=2, ensure_ascii=False)
+            # Write to temporary file first (in same directory for atomic rename)
+            fd, temp_path = tempfile.mkstemp(
+                dir=self.config_dir,
+                prefix='.config_',
+                suffix='.tmp',
+                text=True
+            )
+
+            try:
+                # Write config to temp file
+                with os.fdopen(fd, 'w', encoding='utf-8') as f:
+                    json.dump(config, f, indent=2, ensure_ascii=False)
+
+                # Atomic rename (POSIX) or move (Windows)
+                # On Windows, shutil.move handles overwrite
+                shutil.move(temp_path, self.config_file)
+
+                log(f"Config saved successfully (atomic write): {self.config_file}", "DEBUG")
+                return True
+
+            except Exception as e:
+                # Cleanup temp file on error
+                if os.path.exists(temp_path):
+                    try:
+                        os.remove(temp_path)
+                    except:
+                        pass
+                raise
 
         except Exception as e:
+            log(f"Error saving config: {e}", "ERROR")
             print(f"Error saving settings: {e}")
+            return False
 
     def _merge_configs(self, default: ConfigDict, user: ConfigDict) -> ConfigDict:
         """Recursively merge user config with defaults"""

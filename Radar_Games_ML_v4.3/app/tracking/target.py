@@ -1,13 +1,15 @@
 """
-Radar Games ML v4.2.0 - Target Tracking
+Radar Games ML v4.3.1 - Target Tracking
 Target and TargetTracker for multi-target tracking
 FIXED v4.1.0: Thread-safe operations with locks
 FIXED v4.2.0: Normalized confidence logging (0-100%)
+FIXED v4.3.1: Memory leak fix - periodic cleanup and GC control
 """
 
 import time
 import math
 import threading
+import gc
 from collections import deque
 
 from core.logger import log
@@ -121,6 +123,7 @@ class TargetTracker:
     Assigns IDs, manages persistence, and handles target updates
 
     FIXED v4.1.0: Thread-safe with lock protection
+    FIXED v4.3.1: Memory leak prevention with periodic cleanup
     """
 
     def __init__(self, max_targets=3):
@@ -139,6 +142,12 @@ class TargetTracker:
 
         # FIXED v4.1.0: Thread safety
         self._lock = threading.Lock()
+
+        # FIXED v4.3.1: Memory leak prevention
+        self.last_cleanup_time = time.time()
+        self.cleanup_interval = 300  # 5 minutes
+        self.max_target_lifetime = 60  # Remove targets older than 60s (even if active)
+        self.total_targets_created = 0  # Track total for diagnostics
 
     def update(self, detections):
         """
@@ -185,10 +194,14 @@ class TargetTracker:
                     new_target = Target(self.next_id, angle, distance, elevation, target_type)
                     self.targets[self.next_id] = new_target
                     self.next_id += 1
+                    self.total_targets_created += 1
                     log(f"New target #{new_target.id} created: {target_type} at {distance:.1f}m", "INFO")
                 else:
                     # FIXED v4.1.2: Max targets reached - replace lowest confidence target if this is more important
                     self._try_replace_target_unlocked(angle, distance, elevation, target_type)
+
+            # FIXED v4.3.1: Periodic memory cleanup
+            self._periodic_cleanup_unlocked()
 
             return self._get_active_targets_unlocked()
 
@@ -309,4 +322,55 @@ class TargetTracker:
         with self._lock:
             self.targets = {}
             self.next_id = 1
+
+    def _periodic_cleanup_unlocked(self):
+        """
+        FIXED v4.3.1: Periodic memory cleanup to prevent leak (must hold lock)
+
+        Performs:
+        1. Remove targets older than max_lifetime (even if still active)
+        2. Reset next_id if no active targets (prevent unbounded growth)
+        3. Force garbage collection if cleanup_interval elapsed
+
+        Called from update() every frame, but only executes every 5 minutes.
+        """
+        current_time = time.time()
+
+        # Check if cleanup interval elapsed
+        if current_time - self.last_cleanup_time < self.cleanup_interval:
+            return
+
+        # Perform cleanup
+        initial_count = len(self.targets)
+
+        # Remove very old targets (>60s lifetime, even if active)
+        old_targets = []
+        for tid, target in self.targets.items():
+            if target.lifetime > self.max_target_lifetime:
+                old_targets.append((tid, target))
+
+        for tid, target in old_targets:
+            log(f"Cleanup: Removing old target #{tid} ({target.type}) - "
+                f"lifetime={target.lifetime:.1f}s", "VERBOSE")
+            del self.targets[tid]
+
+        # Reset next_id if no active targets (prevent unbounded growth)
+        if len(self.targets) == 0 and self.next_id > 1000:
+            log(f"Cleanup: Resetting target ID counter (was {self.next_id}, "
+                f"total created: {self.total_targets_created})", "VERBOSE")
+            self.next_id = 1
+
+        # Force garbage collection
+        gc.collect()
+
+        # Log cleanup summary
+        removed_count = initial_count - len(self.targets)
+        if removed_count > 0 or self.total_targets_created > 100:
+            log(f"Periodic cleanup: Removed {removed_count} old targets, "
+                f"{len(self.targets)} active, "
+                f"{self.total_targets_created} total created, "
+                f"next_id={self.next_id}, "
+                f"GC collected {gc.collect()} objects", "INFO")
+
+        self.last_cleanup_time = current_time
 

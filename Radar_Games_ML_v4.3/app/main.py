@@ -133,6 +133,7 @@ from app.utils import (
     GameProcessDetector,
     PlatformLauncherDetector,
     AudioSourceScanner,
+    GameMemoryReader,  # v4.3.1: Player yaw detection
 )
 
 # ============================================================================
@@ -401,6 +402,9 @@ class MainWindow(QMainWindow):
         self.platform_detector = container.get('launcher_detector')
         self.audio_scanner = container.get('audio_scanner')
 
+        # v4.3.1: Memory reader (create if not in container)
+        self.memory_reader = container.get('memory_reader') if container.has('memory_reader') else GameMemoryReader("ArcRaiders.exe")
+
     def _create_dependencies(self):
         """
         Create dependencies directly (legacy mode)
@@ -436,6 +440,11 @@ class MainWindow(QMainWindow):
         self.game_detector = GameProcessDetector()
         self.platform_detector = PlatformLauncherDetector()
         self.audio_scanner = AudioSourceScanner(platform_detector=self.platform_detector)
+
+        # v4.3.1: Player yaw detection from game memory
+        self.memory_reader = GameMemoryReader("ArcRaiders.exe")
+        # Note: Yaw offset must be configured manually via config or Cheat Engine
+        # Example: self.memory_reader.set_manual_offset(0x5C2A8F0)
 
     def create_ui(self):
         """
@@ -1574,11 +1583,13 @@ class MainWindow(QMainWindow):
             # Weight: 70% ITD, 30% ILD (ITD is generally more accurate)
             angle_combined = 0.7 * angle_from_itd + 0.3 * angle_from_ild
 
-            # FIXED v4.2.0: Player-centric radar transformation
-            # TODO: Get player yaw from game (requires hooks/memory reading)
-            # For now, assume player facing North (yaw = 0)
-            # When player yaw is available, subtract it from angle_radar
-            player_yaw = 0.0  # Placeholder - will be replaced with actual game data
+            # FIXED v4.3.1: Player-centric radar transformation with memory reading
+            # Read player yaw from game memory (requires manual offset configuration)
+            try:
+                player_yaw = self.memory_reader.read_player_yaw()
+            except Exception as e:
+                # Fallback to 0 if reading fails (game not running, no offset set, etc.)
+                player_yaw = 0.0
 
             # Convert to radar coordinates (0° = forward, 90° = right, 180° = back, 270° = left)
             # Relative to sound source
@@ -1998,6 +2009,14 @@ class MainWindow(QMainWindow):
         if hasattr(self, 'toast') and hasattr(self.toast, 'animation_timer'):
             self.toast.animation_timer.stop()
             self.toast.close()
+
+        # v4.3.1: Disconnect memory reader
+        if hasattr(self, 'memory_reader'):
+            try:
+                self.memory_reader.disconnect()
+                log("Memory reader disconnected", "INFO")
+            except Exception as e:
+                log(f"Error disconnecting memory reader: {e}", "WARNING")
 
         # Close detached windows
         if self.detached_radar:

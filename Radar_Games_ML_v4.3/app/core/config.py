@@ -4,6 +4,7 @@ ADDED v3.5.0: Auto-save/restore user settings
 FIXED v3.5.0: Schema validation to prevent corrupt config
 ENHANCED v4.2.0: Type hints, window state persistence
 FIXED v4.3.1: Atomic config writes (prevent corruption on crash)
+ADDED v4.3.1: Detached window position persistence (SPRINT 2.3)
 """
 
 import sys
@@ -77,6 +78,20 @@ class ConfigManager:
             "frameless": {"type": bool},
             "size_preset": {"type": str, "values": ["small", "medium", "large"]},
             "visible": {"type": bool}
+        },
+        "detached_radar": {
+            "x": {"type": (type(None), int)},
+            "y": {"type": (type(None), int)},
+            "width": {"type": int, "range": (200, 2000)},
+            "height": {"type": int, "range": (200, 2000)},
+            "frameless": {"type": bool}
+        },
+        "detached_led": {
+            "x": {"type": (type(None), int)},
+            "y": {"type": (type(None), int)},
+            "width": {"type": int, "range": (200, 2000)},
+            "height": {"type": int, "range": (100, 1000)},
+            "frameless": {"type": bool}
         },
         "performance": {
             "use_gpu": {"type": bool},
@@ -418,3 +433,157 @@ class ConfigManager:
             window.showMaximized()
 
         log(f"Window state restored: {width}x{height} at ({x}, {y}), maximized={maximized}", "DEBUG")
+
+    # ========================================================================
+    # DETACHED WINDOW PERSISTENCE (v4.3.1 - SPRINT 2.3)
+    # ========================================================================
+
+    def save_detached_radar_state(self, window, config: dict = None):
+        """
+        Save detached radar window geometry and state to config (v4.3.1).
+
+        Args:
+            window: DetachableRadarWidget instance
+            config: Config dict to modify (if None, loads current)
+
+        Returns:
+            Modified config dict
+        """
+        if config is None:
+            config = self.load()
+
+        if 'detached_radar' not in config:
+            config['detached_radar'] = {}
+
+        # Get geometry
+        geo = window.geometry()
+        config['detached_radar']['x'] = geo.x()
+        config['detached_radar']['y'] = geo.y()
+        config['detached_radar']['width'] = geo.width()
+        config['detached_radar']['height'] = geo.height()
+        config['detached_radar']['frameless'] = window.is_frameless
+
+        log(f"Detached radar state saved: {geo.width()}x{geo.height()} at ({geo.x()}, {geo.y()})", "DEBUG")
+        return config
+
+    def restore_detached_radar_state(self, window, config: dict = None):
+        """
+        Restore detached radar window geometry and state from config (v4.3.1).
+
+        Args:
+            window: DetachableRadarWidget instance
+            config: Config dict to read from (if None, loads current)
+
+        Note:
+            - Validates geometry is within screen bounds
+            - Falls back to defaults if invalid
+        """
+        if config is None:
+            config = self.load()
+
+        radar_config = config.get('detached_radar', {})
+
+        # Get saved values with defaults
+        x = radar_config.get('x', 100)
+        y = radar_config.get('y', 100)
+        width = radar_config.get('width', 600)
+        height = radar_config.get('height', 600)
+        frameless = radar_config.get('frameless', False)
+
+        # Validate bounds (ensure window is visible)
+        try:
+            from PyQt5.QtWidgets import QApplication
+            screen = QApplication.primaryScreen()
+            if screen:
+                screen_geo = screen.availableGeometry()
+                # Ensure window is at least partially visible
+                x = max(0, min(x, screen_geo.width() - 100))
+                y = max(0, min(y, screen_geo.height() - 100))
+                width = min(width, screen_geo.width())
+                height = min(height, screen_geo.height())
+        except Exception as e:
+            log(f"Could not validate screen bounds for detached radar: {e}", "WARNING")
+
+        # Apply geometry
+        window.setGeometry(x, y, width, height)
+
+        # Apply frameless mode
+        if frameless:
+            window.set_frameless(True)
+
+        log(f"Detached radar state restored: {width}x{height} at ({x}, {y}), frameless={frameless}", "DEBUG")
+
+    def save_detached_led_state(self, window, config: dict = None):
+        """
+        Save detached LED window geometry and state to config (v4.3.1).
+
+        Args:
+            window: DetachableLedWidget instance
+            config: Config dict to modify (if None, loads current)
+
+        Returns:
+            Modified config dict
+        """
+        if config is None:
+            config = self.load()
+
+        if 'detached_led' not in config:
+            config['detached_led'] = {}
+
+        # Get geometry
+        geo = window.geometry()
+        config['detached_led']['x'] = geo.x()
+        config['detached_led']['y'] = geo.y()
+        config['detached_led']['width'] = geo.width()
+        config['detached_led']['height'] = geo.height()
+        config['detached_led']['frameless'] = window.is_frameless
+
+        log(f"Detached LED state saved: {geo.width()}x{geo.height()} at ({geo.x()}, {geo.y()})", "DEBUG")
+        return config
+
+    def restore_detached_led_state(self, window, config: dict = None):
+        """
+        Restore detached LED window geometry and state from config (v4.3.1).
+
+        Args:
+            window: DetachableLedWidget instance
+            config: Config dict to read from (if None, loads current)
+
+        Note:
+            - Validates geometry is within screen bounds
+            - Falls back to defaults if invalid
+        """
+        if config is None:
+            config = self.load()
+
+        led_config = config.get('detached_led', {})
+
+        # Get saved values with defaults
+        x = led_config.get('x', 100)
+        y = led_config.get('y', 600)
+        width = led_config.get('width', 800)
+        height = led_config.get('height', 150)
+        frameless = led_config.get('frameless', False)
+
+        # Validate bounds (ensure window is visible)
+        try:
+            from PyQt5.QtWidgets import QApplication
+            screen = QApplication.primaryScreen()
+            if screen:
+                screen_geo = screen.availableGeometry()
+                # Ensure window is at least partially visible
+                x = max(0, min(x, screen_geo.width() - 100))
+                y = max(0, min(y, screen_geo.height() - 100))
+                width = min(width, screen_geo.width())
+                height = min(height, screen_geo.height())
+        except Exception as e:
+            log(f"Could not validate screen bounds for detached LED: {e}", "WARNING")
+
+        # Apply geometry
+        window.setGeometry(x, y, width, height)
+
+        # Apply frameless mode
+        if frameless:
+            window.set_frameless(True)
+
+        log(f"Detached LED state restored: {width}x{height} at ({x}, {y}), frameless={frameless}", "DEBUG")

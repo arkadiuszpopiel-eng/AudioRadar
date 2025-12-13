@@ -149,38 +149,64 @@ class EventHandlers:
             self.window.led_widget.global_alpha = opacity
 
     def toggle_detach_radar(self, checked):
-        """Toggle radar detachment"""
+        """Toggle radar detachment (v4.3.1: Added position persistence)"""
         from widgets.radar import DetachableRadarWidget
 
         if checked:
             # Create detached radar
             self.window.detached_radar = DetachableRadarWidget()
             self.window.detached_radar.set_opacity(self.window.radar_alpha.value() / 100.0)
+
+            # ADDED v4.3.1: Restore position from config
+            self.window.config_manager.restore_detached_radar_state(
+                self.window.detached_radar,
+                self.window.config
+            )
+
             self.window.detached_radar.show()
-            log("Radar detached", "INFO")
+            log("Radar detached (position restored from config)", "INFO")
         else:
-            # Close detached radar
+            # ADDED v4.3.1: Save position before closing
             if self.window.detached_radar:
+                self.window.config = self.window.config_manager.save_detached_radar_state(
+                    self.window.detached_radar,
+                    self.window.config
+                )
+                self.window.config_manager.save(self.window.config)
+
                 self.window.detached_radar.close()
                 self.window.detached_radar = None
-            log("Radar attached", "INFO")
+                log("Radar attached (position saved to config)", "INFO")
 
     def toggle_detach_led(self, checked):
-        """Toggle LED detachment"""
+        """Toggle LED detachment (v4.3.1: Added position persistence)"""
         from widgets.led import DetachableLedWidget
 
         if checked:
             # Create detached LED
             self.window.detached_led = DetachableLedWidget()
             self.window.detached_led.set_opacity(self.window.led_alpha.value() / 100.0)
+
+            # ADDED v4.3.1: Restore position from config
+            self.window.config_manager.restore_detached_led_state(
+                self.window.detached_led,
+                self.window.config
+            )
+
             self.window.detached_led.show()
-            log("LED detached", "INFO")
+            log("LED detached (position restored from config)", "INFO")
         else:
-            # Close detached LED
+            # ADDED v4.3.1: Save position before closing
             if self.window.detached_led:
+                self.window.config = self.window.config_manager.save_detached_led_state(
+                    self.window.detached_led,
+                    self.window.config
+                )
+                self.window.config_manager.save(self.window.config)
+
                 self.window.detached_led.close()
                 self.window.detached_led = None
-            log("LED attached", "INFO")
+                log("LED attached (position saved to config)", "INFO")
 
     def toggle_radar_frameless(self, checked):
         """Toggle radar frameless mode"""

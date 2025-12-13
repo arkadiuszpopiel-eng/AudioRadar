@@ -1838,20 +1838,32 @@ class MainWindow(QMainWindow):
             except Exception as e:
                 log(f"Error disconnecting memory reader: {e}", "WARNING")
 
-        # Close detached windows
+        # Close detached windows (ENHANCED v4.3.1: Save positions before closing)
         if self.detached_radar:
             try:
+                # ADDED v4.3.1: Save detached radar position before closing
+                if hasattr(self, 'config_manager'):
+                    self.config = self.config_manager.save_detached_radar_state(
+                        self.detached_radar,
+                        self.config
+                    )
                 self.detached_radar.close()
             except Exception as e:
                 log(f"Error closing detached radar: {e}", "WARNING")
 
         if self.detached_led:
             try:
+                # ADDED v4.3.1: Save detached LED position before closing
+                if hasattr(self, 'config_manager'):
+                    self.config = self.config_manager.save_detached_led_state(
+                        self.detached_led,
+                        self.config
+                    )
                 self.detached_led.close()
             except Exception as e:
                 log(f"Error closing detached LED: {e}", "WARNING")
 
-        # Save configuration (v3.5.0, enhanced v4.2.0 with window state)
+        # Save configuration (v3.5.0, enhanced v4.2.0 with window state, v4.3.1 with detached windows)
         if hasattr(self, 'config_manager'):
             try:
                 # Save window geometry before saving config (v4.2.0)

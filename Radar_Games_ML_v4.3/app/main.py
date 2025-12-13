@@ -483,6 +483,9 @@ class MainWindow(QMainWindow):
                 results, report_path = runner.run_quick()
             except Exception as exc:  # pragma: no cover - defensive
                 error = exc
+                import traceback
+                log(f"Self-test error: {exc}", "ERROR")
+                log(traceback.format_exc(), "DEBUG")
 
             def finish():
                 if hasattr(self, 'test_btn'):
@@ -871,8 +874,11 @@ class MainWindow(QMainWindow):
             method(*args)
         except AttributeError as e:
             log(f"Method '{method_name}' not found on detached radar: {e}", "WARNING")
-        except Exception as e:
+        except (TypeError, RuntimeError) as e:
+            # TypeError: wrong arguments, RuntimeError: widget in invalid state
             log(f"Error updating detached radar.{method_name}: {e}", "ERROR")
+            import traceback
+            log(traceback.format_exc(), "DEBUG")
 
     def toggle_detach_radar(self, checked):
         """Toggle radar detachment - Delegated to EventHandlers (v4.3.1)"""
@@ -1082,8 +1088,11 @@ class MainWindow(QMainWindow):
                 log("Detection worker timed out (>1s) - skipping frame", "WARNING")
                 events = {'walk': False, 'run': False, 'shot': False}
                 bands = {}
-            except Exception as e:
+            except (RuntimeError, ValueError) as e:
+                # RuntimeError: worker error, ValueError: invalid result
                 log(f"Unexpected error getting detection result: {e}", "ERROR")
+                import traceback
+                log(traceback.format_exc(), "DEBUG")
                 events = {'walk': False, 'run': False, 'shot': False}
                 bands = {}
         else:
@@ -1129,8 +1138,11 @@ class MainWindow(QMainWindow):
                 except TimeoutError:
                     log("Classification worker timed out (>1s) - using unknown", "WARNING")
                     sound_class = {'type': 'unknown', 'confidence': 0, 'details': {}}
-                except Exception as e:
+                except (RuntimeError, ValueError) as e:
+                    # RuntimeError: worker error, ValueError: invalid result
                     log(f"Unexpected error getting classification result: {e}", "ERROR")
+                    import traceback
+                    log(traceback.format_exc(), "DEBUG")
                     sound_class = {'type': 'unknown', 'confidence': 0, 'details': {}}
             else:
                 # Worker rejected task
@@ -1337,9 +1349,10 @@ class MainWindow(QMainWindow):
 
         except Exception as e:
             # CRITICAL ERROR HANDLING: Prevent application freeze if tick() crashes
+            # Must catch ALL exceptions here - this is the main loop
             log(f"CRITICAL ERROR in tick(): {e}", "ERROR")
             import traceback
-            log(traceback.format_exc(), "ERROR")
+            log(f"Traceback:\n{traceback.format_exc()}", "ERROR")
             # Don't crash - just skip this frame and continue running
 
     def apply_audio_processing(self, block):
@@ -1379,8 +1392,11 @@ class MainWindow(QMainWindow):
 
             return processed
 
-        except Exception as e:
+        except (ValueError, TypeError, AttributeError) as e:
+            # ValueError: invalid audio data, TypeError: wrong type, AttributeError: missing method
             log(f"Error in apply_audio_processing: {e}", "ERROR")
+            import traceback
+            log(traceback.format_exc(), "DEBUG")
             return block
 
     def compute_orientation(self, block):
@@ -1461,7 +1477,8 @@ class MainWindow(QMainWindow):
             # Read player yaw from game memory (requires manual offset configuration)
             try:
                 player_yaw = self.memory_reader.read_player_yaw()
-            except Exception as e:
+            except (OSError, RuntimeError, AttributeError) as e:
+                # OSError: memory read fail, RuntimeError: game not running, AttributeError: reader not initialized
                 # Fallback to 0 if reading fails (game not running, no offset set, etc.)
                 player_yaw = 0.0
 
@@ -1503,8 +1520,11 @@ class MainWindow(QMainWindow):
                 'ild_db': ild_db
             }
 
-        except Exception as e:
+        except (ValueError, ZeroDivisionError, AttributeError) as e:
+            # ValueError: invalid input, ZeroDivisionError: division by zero, AttributeError: missing attribute
             log(f"Error in compute_precise_location_3d: {e}", "ERROR")
+            import traceback
+            log(traceback.format_exc(), "DEBUG")
             return {'angle': 0, 'distance': 50, 'elevation': 0, 'confidence': 0}
 
     def compute_elevation(self, block, sample_rate):
@@ -1555,8 +1575,11 @@ class MainWindow(QMainWindow):
 
             return elevation_deg
 
-        except Exception as e:
+        except (ValueError, ZeroDivisionError) as e:
+            # ValueError: invalid input, ZeroDivisionError: division by zero
             log(f"Error in compute_elevation: {e}", "ERROR")
+            import traceback
+            log(traceback.format_exc(), "DEBUG")
             return 0.0
 
     def generate_test_block(self):
@@ -1687,8 +1710,11 @@ class MainWindow(QMainWindow):
             detailed_info = self.game_detector.get_detailed_game_info()
             self.dev_panel.update_game_detection_info(detailed_info, game_data)
 
-        except Exception as e:
+        except (AttributeError, KeyError, RuntimeError) as e:
+            # AttributeError: UI widget missing, KeyError: dict access, RuntimeError: detector error
             log(f"Error in scan_games: {e}", "ERROR")
+            import traceback
+            log(traceback.format_exc(), "DEBUG")
 
     def scan_audio_sources(self):
         """Scan audio sources and update UI (v3.5.1 - Fixed proper status display)"""
@@ -1743,8 +1769,11 @@ class MainWindow(QMainWindow):
                 self.inactive_sources_list.setText("—")
                 self.inactive_sources_list.setStyleSheet("font-size: 9pt; color: #666;")
 
-        except Exception as e:
+        except (AttributeError, KeyError, RuntimeError) as e:
+            # AttributeError: UI widget missing, KeyError: dict access, RuntimeError: scanner error
             log(f"Error in scan_audio_sources: {e}", "ERROR")
+            import traceback
+            log(traceback.format_exc(), "DEBUG")
 
     def closeEvent(self, event):
         """
@@ -1801,8 +1830,11 @@ class MainWindow(QMainWindow):
                 log("Async session worker stopped gracefully", "INFO")
             else:
                 log("Async session worker timed out (some operations may be incomplete)", "WARNING")
-        except Exception as e:
+        except (RuntimeError, ImportError) as e:
+            # RuntimeError: worker error, ImportError: ML module not available
             log(f"Error stopping async session worker: {e}", "ERROR")
+            import traceback
+            log(traceback.format_exc(), "DEBUG")
 
         # Stop audio first
         self.stop()
@@ -1812,8 +1844,11 @@ class MainWindow(QMainWindow):
             try:
                 self.detection_worker.shutdown(timeout=DETECTION_TIMEOUT_SEC)  # FIXED v3.5.0: Use constant
                 log("Detection worker shutdown complete", "INFO")
-            except Exception as e:
+            except (RuntimeError, TimeoutError) as e:
+                # RuntimeError: worker shutdown error, TimeoutError: timeout exceeded
                 log(f"Error shutting down detection worker: {e}", "ERROR")
+                import traceback
+                log(traceback.format_exc(), "DEBUG")
 
         # Stop all timers
         if hasattr(self, 'timer'):
@@ -1835,8 +1870,11 @@ class MainWindow(QMainWindow):
             try:
                 self.memory_reader.disconnect()
                 log("Memory reader disconnected", "INFO")
-            except Exception as e:
+            except (OSError, RuntimeError) as e:
+                # OSError: memory access error, RuntimeError: cleanup error
                 log(f"Error disconnecting memory reader: {e}", "WARNING")
+                import traceback
+                log(traceback.format_exc(), "DEBUG")
 
         # Close detached windows (ENHANCED v4.3.1: Save positions before closing)
         if self.detached_radar:
@@ -1848,8 +1886,11 @@ class MainWindow(QMainWindow):
                         self.config
                     )
                 self.detached_radar.close()
-            except Exception as e:
+            except (RuntimeError, AttributeError) as e:
+                # RuntimeError: window close error, AttributeError: widget issue
                 log(f"Error closing detached radar: {e}", "WARNING")
+                import traceback
+                log(traceback.format_exc(), "DEBUG")
 
         if self.detached_led:
             try:
@@ -1860,8 +1901,11 @@ class MainWindow(QMainWindow):
                         self.config
                     )
                 self.detached_led.close()
-            except Exception as e:
+            except (RuntimeError, AttributeError) as e:
+                # RuntimeError: window close error, AttributeError: widget issue
                 log(f"Error closing detached LED: {e}", "WARNING")
+                import traceback
+                log(traceback.format_exc(), "DEBUG")
 
         # Save configuration (v3.5.0, enhanced v4.2.0 with window state, v4.3.1 with detached windows)
         if hasattr(self, 'config_manager'):
@@ -1870,8 +1914,11 @@ class MainWindow(QMainWindow):
                 self.config = self.config_manager.save_window_state(self, self.config)
                 self.config_manager.save(self.config)
                 log("Configuration saved successfully", "INFO")
-            except Exception as e:
+            except (OSError, IOError, ValueError) as e:
+                # OSError/IOError: file write error, ValueError: invalid config data
                 log(f"Error saving configuration: {e}", "WARNING")
+                import traceback
+                log(traceback.format_exc(), "DEBUG")
 
         log("Application cleanup complete", "INFO")
         event.accept()

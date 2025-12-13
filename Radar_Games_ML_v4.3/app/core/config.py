@@ -114,8 +114,11 @@ class ConfigManager:
         # Create directory if not exists
         try:
             self.config_dir.mkdir(parents=True, exist_ok=True)
-        except Exception as e:
+        except (OSError, PermissionError) as e:
+            # OSError: disk full/read-only, PermissionError: no write access
             print(f"Error creating config directory: {e}")
+            import traceback
+            traceback.print_exc()
 
         self.default_config = {
             "audio": {
@@ -249,8 +252,11 @@ class ConfigManager:
         except json.JSONDecodeError as e:
             log(f"Invalid JSON in config file: {e}", "ERROR")
             return self.default_config.copy()
-        except Exception as e:
+        except (OSError, IOError, PermissionError) as e:
+            # OSError/IOError: file read error, PermissionError: no read access
             log(f"Error loading settings: {e}", "ERROR")
+            import traceback
+            log(traceback.format_exc(), "DEBUG")
             return self.default_config.copy()
 
     def save(self, config: ConfigDict) -> bool:
@@ -286,17 +292,21 @@ class ConfigManager:
                 log(f"Config saved successfully (atomic write): {self.config_file}", "DEBUG")
                 return True
 
-            except Exception as e:
+            except (OSError, IOError, ValueError) as e:
+                # OSError/IOError: write/rename failed, ValueError: JSON serialization error
                 # Cleanup temp file on error
                 if os.path.exists(temp_path):
                     try:
                         os.remove(temp_path)
                     except:
-                        pass
+                        pass  # Cleanup failure is non-critical
                 raise
 
-        except Exception as e:
+        except (OSError, IOError, ValueError, PermissionError) as e:
+            # OSError/IOError: disk error, ValueError: invalid config, PermissionError: no write access
             log(f"Error saving config: {e}", "ERROR")
+            import traceback
+            log(traceback.format_exc(), "DEBUG")
             print(f"Error saving settings: {e}")
             return False
 
@@ -422,7 +432,8 @@ class ConfigManager:
                 y = max(0, min(y, screen_geo.height() - 100))
                 width = min(width, screen_geo.width())
                 height = min(height, screen_geo.height())
-        except Exception as e:
+        except (ImportError, RuntimeError, AttributeError) as e:
+            # ImportError: PyQt5 not available, RuntimeError: QApplication not initialized, AttributeError: missing method
             log(f"Could not validate screen bounds: {e}", "WARNING")
 
         # Apply geometry
@@ -501,7 +512,8 @@ class ConfigManager:
                 y = max(0, min(y, screen_geo.height() - 100))
                 width = min(width, screen_geo.width())
                 height = min(height, screen_geo.height())
-        except Exception as e:
+        except (ImportError, RuntimeError, AttributeError) as e:
+            # ImportError: PyQt5 not available, RuntimeError: QApplication not initialized, AttributeError: missing method
             log(f"Could not validate screen bounds for detached radar: {e}", "WARNING")
 
         # Apply geometry
@@ -576,7 +588,8 @@ class ConfigManager:
                 y = max(0, min(y, screen_geo.height() - 100))
                 width = min(width, screen_geo.width())
                 height = min(height, screen_geo.height())
-        except Exception as e:
+        except (ImportError, RuntimeError, AttributeError) as e:
+            # ImportError: PyQt5 not available, RuntimeError: QApplication not initialized, AttributeError: missing method
             log(f"Could not validate screen bounds for detached LED: {e}", "WARNING")
 
         # Apply geometry

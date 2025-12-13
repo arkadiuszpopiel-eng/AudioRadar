@@ -55,7 +55,10 @@ except OSError as e:
     # DLL loading errors on Windows
     PYAUDIO_IMPORT_ERROR = f"OSError (likely missing DLL): {e}"
 except Exception as e:
+    # Catch-all for any other import-related errors (AttributeError, RuntimeError, etc.)
+    import traceback
     PYAUDIO_IMPORT_ERROR = f"{type(e).__name__}: {e}"
+    log(f"Unexpected pyaudiowpatch import error:\n{traceback.format_exc()}", "DEBUG")
 
 from core.logger import log
 
@@ -122,8 +125,11 @@ class AudioEngine:
                         'type': 'input' if dev['max_input_channels'] > 0 else 'output',
                         'backend': 'sounddevice'
                     })
-            except Exception as e:
+            except (OSError, RuntimeError, ValueError) as e:
+                # OSError: device access error, RuntimeError: driver issue, ValueError: invalid device data
                 log(f"Error listing sounddevice devices: {e}", "ERROR")
+                import traceback
+                log(traceback.format_exc(), "DEBUG")
 
         if sc is not None:
             try:
@@ -139,8 +145,11 @@ class AudioEngine:
                         'backend': 'soundcard',
                         'speaker_obj': spk
                     })
-            except Exception as e:
+            except (OSError, RuntimeError) as e:
+                # OSError: soundcard driver error, RuntimeError: COM/WASAPI initialization failure
                 log(f"Error listing soundcard devices: {e}", "ERROR")
+                import traceback
+                log(traceback.format_exc(), "DEBUG")
 
         return devices
 
@@ -185,8 +194,11 @@ class AudioEngine:
             self.stream.start()
             log(f"sounddevice stream started successfully", "INFO")
 
-        except Exception as e:
+        except (OSError, RuntimeError, ValueError) as e:
+            # OSError: device not available, RuntimeError: driver error, ValueError: invalid parameters
             log(f"Error starting sounddevice: {e}", "ERROR")
+            import traceback
+            log(traceback.format_exc(), "DEBUG")
             self.running = False
 
     def _start_loopback(self):
@@ -299,12 +311,20 @@ class AudioEngine:
                                 pass
 
                         except Exception as e:
+                            # CRITICAL: Keep broad exception - tight loop, must handle all errors
+                            # Common: OSError (device lost), RuntimeError (buffer overflow), ValueError (corrupted data)
                             if self.running:
                                 log(f"Loopback read error: {e}", "WARN")
+                                import traceback
+                                log(traceback.format_exc(), "DEBUG")
                             break
 
                 except Exception as e:
+                    # THREAD-LEVEL: Keep broad exception - must catch all errors to prevent thread crash
+                    # Common: OSError (device error), RuntimeError (stream init failed), AttributeError (missing method)
                     log(f"Error in pyaudiowpatch loopback thread: {e}", "ERROR")
+                    import traceback
+                    log(f"Thread traceback:\n{traceback.format_exc()}", "ERROR")
                     self.running = False
                 finally:
                     if stream is not None:
@@ -323,8 +343,11 @@ class AudioEngine:
             thread.start()
             return True
 
-        except Exception as e:
+        except (OSError, RuntimeError, AttributeError) as e:
+            # OSError: device not found, RuntimeError: WASAPI init failed, AttributeError: missing pyaudio method
             log(f"Failed to start pyaudiowpatch loopback: {e}", "ERROR")
+            import traceback
+            log(traceback.format_exc(), "DEBUG")
             return False
 
     def _start_loopback_soundcard(self):
@@ -347,9 +370,11 @@ class AudioEngine:
                         ctypes.windll.ole32.CoInitialize(None)
                         com_initialized = True
                         log("COM initialized via ctypes", "INFO")
-                    except Exception as e:
+                    except (OSError, AttributeError) as e:
+                        # OSError: COM init failed, AttributeError: windll.ole32 missing
                         log(f"COM init failed (ctypes): {e}", "WARN")
-                except Exception as e:
+                except (OSError, RuntimeError) as e:
+                    # OSError: pythoncom COM init failed, RuntimeError: COM already initialized
                     log(f"COM init error: {e}", "WARN")
 
             try:
@@ -378,7 +403,11 @@ class AudioEngine:
                             pass
 
             except Exception as e:
+                # THREAD-LEVEL: Keep broad exception - must catch all errors to prevent thread crash
+                # Common: OSError (soundcard driver error), RuntimeError (WASAPI error), AttributeError (missing method)
                 log(f"Error in soundcard loopback thread: {e}", "ERROR")
+                import traceback
+                log(f"Thread traceback:\n{traceback.format_exc()}", "ERROR")
                 self.running = False
             finally:
                 # Cleanup COM
@@ -415,9 +444,12 @@ class AudioEngine:
                     self.stream = None
                     log("Audio stream stopped successfully", "INFO")
                     break  # Success
-                except Exception as e:
+                except (OSError, RuntimeError, AttributeError) as e:
+                    # OSError: device hung, RuntimeError: stream already stopped, AttributeError: stream invalid
                     retry_count += 1
                     log(f"Error stopping stream (attempt {retry_count}/{max_retries}): {e}", "WARNING")
+                    import traceback
+                    log(traceback.format_exc(), "DEBUG")
 
                     if retry_count < max_retries:
                         time.sleep(0.5)  # Wait before retry

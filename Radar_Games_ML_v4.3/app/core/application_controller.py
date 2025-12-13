@@ -119,7 +119,9 @@ class ApplicationController:
         self.window.dev_panel.apply_settings()
         self.window.audio.start()
 
+        # v4.3.1 SPRINT 2.1: Sync state with window
         self.is_running = True
+        self.window.is_running = True
         self.window.record_btn.setEnabled(True)
 
         # Update audio status indicator
@@ -139,7 +141,10 @@ class ApplicationController:
         log("Stopping audio capture", "INFO")
 
         self.window.audio.stop()
+
+        # v4.3.1 SPRINT 2.1: Sync state with window
         self.is_running = False
+        self.window.is_running = False
 
         # Update audio status indicator
         self.window.dev_panel.update_audio_init_status(False, False)
@@ -203,38 +208,18 @@ class ApplicationController:
         """
         Main update loop - 20 FPS (50ms interval).
 
+        v4.3.1 SPRINT 2.1: Delegates to MainWindow.tick() for now.
+        Future: Move all processing logic into controller.
+
         Orchestrates:
         1. Radar sweep animation
         2. Audio acquisition and processing
         3. Detection and tracking
         4. UI updates
         """
-        # Update radar sweep
-        self._update_radar_sweep()
-
-        # Only process audio if running
-        if not self.is_running:
-            return
-
-        # Acquire audio block
-        block = self._acquire_audio_block()
-        if block is None:
-            return
-
-        # Update recording if active
-        self._update_recording(block)
-
-        # Process audio (FFT, energy calculation)
-        fft_result, energy = self._process_audio(block)
-
-        # Visualizations
-        self._process_audio_visualizations(block, fft_result)
-
-        # Audio level monitoring
-        self._process_audio_level_monitoring(energy)
-
-        # Detection and tracking
-        self._process_detection_and_tracking(block, fft_result, energy)
+        # v4.3.1 SPRINT 2.1: Delegate to window.tick() for full implementation
+        # This allows incremental refactoring without breaking existing functionality
+        self.window.tick()
 
     def _update_radar_sweep(self):
         """Update radar sweep angle and all radar widgets."""

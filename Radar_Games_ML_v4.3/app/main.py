@@ -352,24 +352,9 @@ class MainWindow(QMainWindow):
         # Connect game detector to DevicePanel (FIXED v3.5.2)
         self.dev_panel.set_game_detector(self.game_detector)
 
-        # Main update timer (20 FPS) - FIXED v3.5.0: Use constant
-        self.timer = QTimer()
-        self.timer.timeout.connect(self.tick)
-        self.timer.start(TICK_INTERVAL_MS)
-
-        # Game detection timer (scan every 5 seconds) - FIXED v3.5.0: Use constant
-        self.game_scan_timer = QTimer()
-        self.game_scan_timer.timeout.connect(self.scan_games)
-        self.game_scan_timer.start(GAME_SCAN_INTERVAL_MS)
-
-        # Audio source scan timer (scan every 2 seconds) - FIXED v3.5.0: Use constant
-        self.audio_scan_timer = QTimer()
-        self.audio_scan_timer.timeout.connect(self.scan_audio_sources)
-        self.audio_scan_timer.start(AUDIO_SCAN_INTERVAL_MS)
-
-        # Initial scans (v3.0) - FIXED v3.5.0: Use constants
-        QTimer.singleShot(STARTUP_DELAY_MS, self.scan_games)
-        QTimer.singleShot(STARTUP_AUDIO_DELAY_MS, self.scan_audio_sources)
+        # v4.3.1 SPRINT 2.1: Timer management delegated to ApplicationController
+        # Controller owns tick loop, game scanning, and audio scanning
+        self.controller.start_timers()
 
     def _inject_dependencies(self, container):
         """
@@ -408,6 +393,10 @@ class MainWindow(QMainWindow):
 
         # v4.3.1: Memory reader (create if not in container)
         self.memory_reader = container.get('memory_reader') if container.has('memory_reader') else GameMemoryReader("ArcRaiders.exe")
+
+        # v4.3.1 SPRINT 2.1: Application Controller (MVC Pattern)
+        from core.application_controller import ApplicationController
+        self.controller = ApplicationController(self)
 
     def _create_dependencies(self):
         """
@@ -449,6 +438,11 @@ class MainWindow(QMainWindow):
         self.memory_reader = GameMemoryReader("ArcRaiders.exe")
         # Note: Yaw offset must be configured manually via config or Cheat Engine
         # Example: self.memory_reader.set_manual_offset(0x5C2A8F0)
+
+        # v4.3.1 SPRINT 2.1: Application Controller (MVC Pattern)
+        # Import here to avoid circular dependency
+        from core.application_controller import ApplicationController
+        self.controller = ApplicationController(self)
 
     def create_ui(self):
         """
@@ -905,66 +899,14 @@ class MainWindow(QMainWindow):
         return self.event_handlers.toggle_recording()
 
     def start(self):
-        """Start audio capture"""
-        log("Starting audio capture", "INFO")
-
-        self.dev_panel.apply_settings()
-        self.audio.start()
-
-        self.is_running = True
-        self.record_btn.setEnabled(True)  # Enable recording when audio starts
-
-        # Update audio status indicator (FIXED v3.5.3)
-        self.dev_panel.update_audio_init_status(True, False)
-        self.start_btn.setText("⏹ STOP")
-        self.start_btn.setStyleSheet("""
-            QPushButton {
-                background: #aa0000;
-                color: white;
-                font-weight: bold;
-                padding: 8px 20px;
-                border-radius: 4px;
-                font-size: 11pt;
-            }
-            QPushButton:hover {
-                background: #cc0000;
-            }
-        """)
-        self.status_bar.showMessage("● RUNNING - Detection active" if get_language() == 'en' else "● DZIAŁA - Detekcja aktywna")
+        """Start audio capture (v4.3.1 SPRINT 2.1: Delegated to Controller)"""
+        # v4.3.1 SPRINT 2.1: Delegate to ApplicationController
+        self.controller.start()
 
     def stop(self):
-        """Stop audio capture"""
-        log("Stopping audio capture", "INFO")
-
-        self.audio.stop()
-
-        self.is_running = False
-
-        # Update audio status indicator (FIXED v3.5.3)
-        self.dev_panel.update_audio_init_status(False, False)
-
-        # FIXED v3.5.3: Reset detection labels and clear radars on stop
-        self.det_panel.reset_detection()
-        self.radar_widget.update_target(None, None)
-        self.radar_3d_widget.clear_targets()
-        self.target_tracker.clear()
-        self.dev_panel.rms_label.setText("RMS: --- dBFS")
-
-        self.start_btn.setText("▶ START")
-        self.start_btn.setStyleSheet("""
-            QPushButton {
-                background: #00aa00;
-                color: white;
-                font-weight: bold;
-                padding: 8px 20px;
-                border-radius: 4px;
-                font-size: 11pt;
-            }
-            QPushButton:hover {
-                background: #00cc00;
-            }
-        """)
-        self.status_bar.showMessage("✓ Stopped - Ready to start" if get_language() == 'en' else "✓ Zatrzymano - Gotowy do startu")
+        """Stop audio capture (v4.3.1 SPRINT 2.1: Delegated to Controller)"""
+        # v4.3.1 SPRINT 2.1: Delegate to ApplicationController
+        self.controller.stop()
 
     def _update_radar_sweep(self):
         """
@@ -1836,8 +1778,12 @@ class MainWindow(QMainWindow):
             import traceback
             log(traceback.format_exc(), "DEBUG")
 
-        # Stop audio first
-        self.stop()
+        # v4.3.1 SPRINT 2.1: Use controller cleanup (stops audio + timers)
+        if hasattr(self, 'controller'):
+            self.controller.cleanup()
+        else:
+            # Fallback for legacy code
+            self.stop()
 
         # Shutdown worker threads with timeout (v3.5.0)
         if hasattr(self, 'detection_worker'):
@@ -1849,16 +1795,6 @@ class MainWindow(QMainWindow):
                 log(f"Error shutting down detection worker: {e}", "ERROR")
                 import traceback
                 log(traceback.format_exc(), "DEBUG")
-
-        # Stop all timers
-        if hasattr(self, 'timer'):
-            self.timer.stop()
-
-        if hasattr(self, 'game_scan_timer'):
-            self.game_scan_timer.stop()
-
-        if hasattr(self, 'audio_scan_timer'):
-            self.audio_scan_timer.stop()
 
         # Stop toast notification timer (v3.5.0)
         if hasattr(self, 'toast') and hasattr(self.toast, 'animation_timer'):

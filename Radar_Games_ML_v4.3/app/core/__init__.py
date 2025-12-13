@@ -125,6 +125,9 @@ from .profiler import (
     timed,
 )
 
+# Application Controller (v4.3.1 - SPRINT 2.1: MVC Pattern)
+from .application_controller import ApplicationController
+
 __all__ = [
     # Constants
     'VERSION',
@@ -202,4 +205,7 @@ __all__ = [
     'profile',
     'measure',
     'timed',
+
+    # Application Controller (v4.3.1)
+    'ApplicationController',
 ]

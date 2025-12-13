@@ -189,8 +189,9 @@ from app.widgets import (
 
 # ============================================================================
 # UI MODULE IMPORTS (v4.2.0: UIBuilder extraction from MainWindow)
+# ENHANCED v4.3.1: EventHandlers extraction from MainWindow
 # ============================================================================
-from app.ui import UIBuilder
+from app.ui import UIBuilder, EventHandlers
 from app.diagnostics import SelfTestRunner
 
 # ============================================================================
@@ -345,6 +346,9 @@ class MainWindow(QMainWindow):
 
         self.create_ui()
 
+        # v4.3.1: Event handlers (extracted from MainWindow to reduce complexity)
+        self.event_handlers = EventHandlers(self)
+
         # Connect game detector to DevicePanel (FIXED v3.5.2)
         self.dev_panel.set_game_detector(self.game_detector)
 
@@ -457,39 +461,12 @@ class MainWindow(QMainWindow):
         ui_builder.build()
 
     def toggle_language(self):
-        """Toggle between EN and PL (FIXED v3.5.2: Use get_language function)"""
-        current_lang = get_language()
-
-        if current_lang == 'en':
-            set_language('pl')
-        else:
-            set_language('en')
-
-        log(f"Language changed to: {get_language()}", "INFO")
-        self.update_ui_translations()
+        """Toggle between EN and PL - Delegated to EventHandlers (v4.3.1)"""
+        return self.event_handlers.toggle_language()
 
     def update_ui_translations(self):
-        """Update all UI text with current language (FIXED v3.5.2: Use get_language function)"""
-        lang = get_language()
-
-        # Main window
-        self.setWindowTitle(f"{tr('app_title')} {VERSION}")
-
-        # Start/Stop button
-        if not self.is_running:
-            self.start_btn.setText("▶ START")
-        else:
-            self.start_btn.setText("⏹ STOP")
-
-        # Status bar
-        if not self.is_running:
-            self.status_bar.showMessage("✓ Ready - All systems operational" if lang == 'en' else "✓ Gotowy - Wszystkie systemy sprawne")
-        else:
-            self.status_bar.showMessage("● RUNNING - Detection active" if lang == 'en' else "● DZIAŁA - Detekcja aktywna")
-
-        if hasattr(self, 'test_btn'):
-            self.test_btn.setText(tr('self_test'))
-            self.test_btn.setToolTip(tr('self_test_title'))
+        """Update all UI text with current language - Delegated to EventHandlers (v4.3.1)"""
+        return self.event_handlers.update_ui_translations()
 
     def launch_self_test(self):
         """Run internal self-test and show summary dialog."""
@@ -845,57 +822,28 @@ class MainWindow(QMainWindow):
         log("Keyboard shortcuts initialized", "INFO")
 
     def toggle_start_stop_shortcut(self):
-        """Toggle start/stop via keyboard shortcut (with toast notification)"""
-        if self.is_running:
-            self.stop()
-            self.toast.show_toast("Audio detection stopped", "info", 2000)
-        else:
-            self.start()
-            self.toast.show_toast("Audio detection started", "success", 2000)
+        """Toggle start/stop via keyboard shortcut - Delegated to EventHandlers (v4.3.1)"""
+        return self.event_handlers.toggle_start_stop_shortcut()
 
     def reset_radar(self):
-        """Reset radar display"""
-        # Reset radar angle
-        self.radar_angle = 0.0
-        self.toast.show_toast("Radar reset", "info", 1500)
-        log("Radar reset via keyboard shortcut", "INFO")
+        """Reset radar display - Delegated to EventHandlers (v4.3.1)"""
+        return self.event_handlers.reset_radar()
 
     def quick_mute_toggle(self):
-        """Quick mute toggle (Space key)"""
-        # Stop/start audio without changing UI state
-        if self.is_running:
-            self.audio.stop()
-            self.toast.show_toast("Audio muted", "warning", 1500)
-            log("Audio muted via keyboard shortcut", "INFO")
-        else:
-            self.audio.start()
-            self.toast.show_toast("Audio unmuted", "success", 1500)
-            log("Audio unmuted via keyboard shortcut", "INFO")
+        """Quick mute toggle (Space key) - Delegated to EventHandlers (v4.3.1)"""
+        return self.event_handlers.quick_mute_toggle()
 
     def toggle_fullscreen(self):
-        """Toggle fullscreen mode (F11)"""
-        if self.isFullScreen():
-            self.showNormal()
-            self.toast.show_toast("Exited fullscreen", "info", 1500)
-        else:
-            self.showFullScreen()
-            self.toast.show_toast("Entered fullscreen (F11 to exit)", "info", 2000)
+        """Toggle fullscreen mode (F11) - Delegated to EventHandlers (v4.3.1)"""
+        return self.event_handlers.toggle_fullscreen()
 
     def update_radar_alpha(self, value):
-        """Update radar opacity"""
-        opacity = value / 100.0
-
-        if self.detached_radar:
-            self.detached_radar.set_opacity(opacity)
+        """Update radar opacity - Delegated to EventHandlers (v4.3.1)"""
+        return self.event_handlers.update_radar_alpha(value)
 
     def update_led_alpha(self, value):
-        """Update LED opacity"""
-        opacity = value / 100.0
-
-        if self.detached_led:
-            self.detached_led.set_opacity(opacity)
-        else:
-            self.led_widget.global_alpha = opacity
+        """Update LED opacity - Delegated to EventHandlers (v4.3.1)"""
+        return self.event_handlers.update_led_alpha(value)
 
     def _safe_update_detached_radar(self, method_name, *args):
         """
@@ -927,102 +875,28 @@ class MainWindow(QMainWindow):
             log(f"Error updating detached radar.{method_name}: {e}", "ERROR")
 
     def toggle_detach_radar(self, checked):
-        """Toggle radar detachment"""
-        if checked:
-            # Create detached radar
-            self.detached_radar = DetachableRadarWidget()
-            self.detached_radar.set_opacity(self.radar_alpha.value() / 100.0)
-            self.detached_radar.show()
-            log("Radar detached", "INFO")
-        else:
-            # Close detached radar
-            if self.detached_radar:
-                self.detached_radar.close()
-                self.detached_radar = None
-            log("Radar attached", "INFO")
+        """Toggle radar detachment - Delegated to EventHandlers (v4.3.1)"""
+        return self.event_handlers.toggle_detach_radar(checked)
 
     def toggle_detach_led(self, checked):
-        """Toggle LED detachment"""
-        if checked:
-            # Create detached LED
-            self.detached_led = DetachableLedWidget()
-            self.detached_led.set_opacity(self.led_alpha.value() / 100.0)
-            self.detached_led.show()
-            log("LED detached", "INFO")
-        else:
-            # Close detached LED
-            if self.detached_led:
-                self.detached_led.close()
-                self.detached_led = None
-            log("LED attached", "INFO")
+        """Toggle LED detachment - Delegated to EventHandlers (v4.3.1)"""
+        return self.event_handlers.toggle_detach_led(checked)
 
     def toggle_radar_frameless(self, checked):
-        """Toggle radar frameless mode"""
-        if self.detached_radar:
-            self.detached_radar.set_frameless(checked)
+        """Toggle radar frameless mode - Delegated to EventHandlers (v4.3.1)"""
+        return self.event_handlers.toggle_radar_frameless(checked)
 
     def toggle_led_frameless(self, checked):
-        """Toggle LED frameless mode"""
-        if self.detached_led:
-            self.detached_led.set_frameless(checked)
+        """Toggle LED frameless mode - Delegated to EventHandlers (v4.3.1)"""
+        return self.event_handlers.toggle_led_frameless(checked)
 
     def toggle_start_stop(self):
-        """Toggle audio capture"""
-        if not self.is_running:
-            self.start()
-        else:
-            self.stop()
+        """Toggle audio capture - Delegated to EventHandlers (v4.3.1)"""
+        return self.event_handlers.toggle_start_stop()
 
     def toggle_recording(self):
-        """Toggle audio recording (Module 9 - v3.3.0)"""
-        if not self.audio_recorder.is_recording:
-            # Start recording
-            self.audio_recorder.start_recording()
-            self.record_btn.setText("⏹ STOP REC")
-            self.record_btn.setStyleSheet("""
-                QPushButton {
-                    background: #00aa00;
-                    color: white;
-                    font-weight: bold;
-                    padding: 8px 15px;
-                    border-radius: 4px;
-                }
-                QPushButton:hover {
-                    background: #00cc00;
-                }
-            """)
-            log("Recording started", "INFO")
-        else:
-            # Stop recording and save
-            self.audio_recorder.stop_recording()
-
-            # Generate filename with timestamp
-            from datetime import datetime
-            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            filename = f"Radar Games ML_Recording_{timestamp}.wav"
-
-            # Save to file
-            if self.audio_recorder.save_to_wav(filename):
-                self.status_bar.showMessage(f"✓ Recording saved: {filename}")
-            else:
-                self.status_bar.showMessage("❌ Failed to save recording")
-
-            # Reset button
-            self.record_btn.setText("⏺ REC")
-            self.record_btn.setStyleSheet("""
-                QPushButton {
-                    background: #aa0000;
-                    color: white;
-                    font-weight: bold;
-                    padding: 8px 15px;
-                    border-radius: 4px;
-                }
-                QPushButton:hover {
-                    background: #cc0000;
-                }
-            """)
-
-            log(f"Recording saved to {filename}", "INFO")
+        """Toggle audio recording - Delegated to EventHandlers (v4.3.1)"""
+        return self.event_handlers.toggle_recording()
 
     def start(self):
         """Start audio capture"""
@@ -1714,62 +1588,8 @@ class MainWindow(QMainWindow):
         return stereo
 
     def quick_setup_game_audio(self):
-        """Quick setup for game audio capture (v3.1.0 - Fixed to restart audio when running)"""
-        log("Quick Setup: Enabling game audio capture", "INFO")
-
-        try:
-            # Remember if we were running
-            was_running = self.is_running
-
-            # Stop audio if running (to apply new settings)
-            if self.is_running:
-                log("Quick Setup: Stopping audio to apply new settings", "INFO")
-                self.stop()
-
-            # Enable loopback mode
-            self.dev_panel.loopback_mode.setChecked(True)
-
-            # Try to find and select a loopback device
-            found_loopback = False
-            for i in range(self.dev_panel.device_combo.count()):
-                device_name = self.dev_panel.device_combo.itemText(i).lower()
-                if 'loopback' in device_name or 'speaker' in device_name or 'output' in device_name:
-                    self.dev_panel.device_combo.setCurrentIndex(i)
-                    log(f"Quick Setup: Selected device: {self.dev_panel.device_combo.itemText(i)}", "INFO")
-                    found_loopback = True
-                    break
-
-            # Apply settings
-            self.dev_panel.apply_settings()
-
-            # Restart audio if it was running before
-            if was_running:
-                log("Quick Setup: Restarting audio with new settings", "INFO")
-                self.start()
-
-            # Show success message
-            if found_loopback:
-                self.status_bar.showMessage(
-                    "✓ Quick Setup Complete! Loopback mode enabled. Press START to capture game audio." if get_language() == 'en'
-                    else "✓ Szybka konfiguracja zakończona! Tryb loopback włączony. Naciśnij START aby przechwycić dźwięk."
-                )
-            else:
-                self.status_bar.showMessage(
-                    "⚠ Loopback mode enabled, but no loopback device found. Check Tab 2 settings." if get_language() == 'en'
-                    else "⚠ Tryb loopback włączony, ale nie znaleziono urządzenia. Sprawdź ustawienia w Zakładce 2."
-                )
-
-            # Switch to Detection & Audio tab to see settings
-            self.main_tabs.setCurrentIndex(1)
-
-        except Exception as e:
-            log(f"Error in quick_setup_game_audio: {e}", "ERROR")
-            import traceback
-            log(traceback.format_exc(), "ERROR")
-            self.status_bar.showMessage(
-                "❌ Quick Setup failed - please configure manually (Tab 2)" if get_language() == 'en'
-                else "❌ Szybka konfiguracja nie powiodła się - skonfiguruj ręcznie (Zakładka 2)"
-            )
+        """Quick setup for game audio capture - Delegated to EventHandlers (v4.3.1)"""
+        return self.event_handlers.quick_setup_game_audio()
 
     def scan_games(self):
         """

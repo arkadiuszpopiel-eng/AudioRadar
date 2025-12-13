@@ -140,8 +140,12 @@ class SpectralFeatureExtractor:
 
             return mfcc[:num_coeffs]
 
-        except Exception as e:
+        except (ValueError, TypeError, AttributeError, RuntimeError, ZeroDivisionError) as e:
+            # ValueError: invalid audio, TypeError: wrong type, AttributeError: missing numpy method
+            # RuntimeError: FFT error, ZeroDivisionError: division by zero
             log(f"Error extracting MFCC: {e}", "ERROR")
+            import traceback
+            log(traceback.format_exc(), "DEBUG")
             return None
 
     def extract_spectral_centroid(self, audio_block):
@@ -178,8 +182,12 @@ class SpectralFeatureExtractor:
             else:
                 return 0
 
-        except Exception as e:
+        except (ValueError, TypeError, AttributeError, RuntimeError, ZeroDivisionError) as e:
+            # ValueError: invalid audio, TypeError: wrong type, AttributeError: missing numpy method
+            # RuntimeError: FFT error, ZeroDivisionError: division by zero
             log(f"Error extracting spectral centroid: {e}", "ERROR")
+            import traceback
+            log(traceback.format_exc(), "DEBUG")
             return 0
 
     def extract_spectral_rolloff(self, audio_block, rolloff_percent=0.85):
@@ -219,8 +227,12 @@ class SpectralFeatureExtractor:
             else:
                 return freqs[-1]
 
-        except Exception as e:
+        except (ValueError, TypeError, AttributeError, RuntimeError, IndexError) as e:
+            # ValueError: invalid audio, TypeError: wrong type, AttributeError: missing numpy method
+            # RuntimeError: FFT error, IndexError: empty array access
             log(f"Error extracting spectral rolloff: {e}", "ERROR")
+            import traceback
+            log(traceback.format_exc(), "DEBUG")
             return 0
 
     def extract_spectral_flatness(self, audio_block):
@@ -261,8 +273,12 @@ class SpectralFeatureExtractor:
             else:
                 return 0
 
-        except Exception as e:
+        except (ValueError, TypeError, AttributeError, RuntimeError, ZeroDivisionError) as e:
+            # ValueError: invalid audio, TypeError: wrong type, AttributeError: missing numpy method
+            # RuntimeError: FFT error, ZeroDivisionError: division by zero
             log(f"Error extracting spectral flatness: {e}", "ERROR")
+            import traceback
+            log(traceback.format_exc(), "DEBUG")
             return 0
 
     def extract_band_energy_ratio(self, audio_block, freq_min, freq_max):
@@ -309,8 +325,12 @@ class SpectralFeatureExtractor:
             else:
                 return 0
 
-        except Exception as e:
+        except (ValueError, TypeError, AttributeError, RuntimeError, ZeroDivisionError) as e:
+            # ValueError: invalid audio, TypeError: wrong type, AttributeError: missing numpy method
+            # RuntimeError: FFT error, ZeroDivisionError: division by zero
             log(f"Error extracting band energy ratio: {e}", "ERROR")
+            import traceback
+            log(traceback.format_exc(), "DEBUG")
             return 0
 
     def extract_all_features(self, audio_block):
@@ -342,6 +362,10 @@ class SpectralFeatureExtractor:
 
             return features
 
-        except Exception as e:
+        except (ValueError, TypeError, AttributeError, RuntimeError, ZeroDivisionError) as e:
+            # ValueError: invalid audio, TypeError: wrong type, AttributeError: missing numpy method
+            # RuntimeError: FFT error, ZeroDivisionError: division by zero
             log(f"Error extracting all features: {e}", "ERROR")
+            import traceback
+            log(traceback.format_exc(), "DEBUG")
             return None

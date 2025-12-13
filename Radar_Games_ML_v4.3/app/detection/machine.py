@@ -91,8 +91,12 @@ class ARCMachineDetector:
             else:
                 return 0
 
-        except Exception as e:
+        except (ValueError, TypeError, AttributeError, RuntimeError, ZeroDivisionError) as e:
+            # ValueError: invalid audio, TypeError: wrong type, AttributeError: missing method
+            # RuntimeError: filter error, ZeroDivisionError: division by zero
             log(f"Error extracting bass envelope: {e}", "ERROR")
+            import traceback
+            log(traceback.format_exc(), "DEBUG")
             return 0
 
     def analyze_modulation(self, window_s=MACHINE_DETECTION_WINDOW_S):
@@ -148,8 +152,12 @@ class ARCMachineDetector:
 
             return modulation_depth, modulation_rate, is_rhythmic
 
-        except Exception as e:
+        except (ValueError, TypeError, AttributeError, RuntimeError, ZeroDivisionError) as e:
+            # ValueError: invalid audio, TypeError: wrong type, AttributeError: missing method
+            # RuntimeError: FFT error, ZeroDivisionError: division by zero
             log(f"Error analyzing modulation: {e}", "ERROR")
+            import traceback
+            log(traceback.format_exc(), "DEBUG")
             return 0, 0, False
 
     def classify_machine_state(self, audio_block):
@@ -233,8 +241,12 @@ class ARCMachineDetector:
                 'bass_ratio': bass_ratio
             }
 
-        except Exception as e:
+        except (ValueError, TypeError, AttributeError, RuntimeError, ZeroDivisionError) as e:
+            # ValueError: invalid audio, TypeError: wrong type, AttributeError: missing method
+            # RuntimeError: classification error, ZeroDivisionError: division by zero
             log(f"Error classifying machine state: {e}", "ERROR")
+            import traceback
+            log(traceback.format_exc(), "DEBUG")
             return {'state': 'none', 'confidence': 0, 'modulation_depth': 0, 'is_machine': False}
 
     def detect(self, audio_block):

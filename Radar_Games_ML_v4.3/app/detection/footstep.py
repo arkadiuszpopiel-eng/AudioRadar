@@ -495,7 +495,9 @@ class HumanFootstepDetector:
 
             return result
 
-        except Exception as e:
+        except (ValueError, TypeError, AttributeError, RuntimeError) as e:
+            # ValueError: invalid audio data, TypeError: wrong data type
+            # AttributeError: missing numpy method, RuntimeError: FFT computation error
             # FIXED v4.2.0: Rate-limited error logging to prevent log spam
             self.error_count_since_last_log += 1
             current_time = time.time()
@@ -513,6 +515,8 @@ class HumanFootstepDetector:
                     pass  # Shape info unavailable
 
                 log(error_msg, "ERROR")
+                import traceback
+                log(traceback.format_exc(), "DEBUG")
                 self.last_error_log_time = current_time
                 self.error_count_since_last_log = 0
 
@@ -630,7 +634,10 @@ class HumanFootstepDetector:
                 'spectral_flatness': flatness
             }
 
-        except Exception as e:
+        except (ValueError, TypeError, KeyError, AttributeError) as e:
+            # ValueError: invalid audio, TypeError: wrong type, KeyError: missing feature, AttributeError: missing method
             log(f"Error classifying surface type: {e}", "ERROR")
+            import traceback
+            log(traceback.format_exc(), "DEBUG")
             return {'surface_type': 'unknown', 'confidence': 0, 'spectral_centroid': 0}
 

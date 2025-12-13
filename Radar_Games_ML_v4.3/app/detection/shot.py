@@ -103,8 +103,12 @@ class ShotDetector:
 
             return is_transient, max_crest, max_ratio
 
-        except Exception as e:
+        except (ValueError, TypeError, AttributeError, RuntimeError, ZeroDivisionError) as e:
+            # ValueError: invalid audio, TypeError: wrong type, AttributeError: missing method
+            # RuntimeError: analysis error, ZeroDivisionError: division by zero
             log(f"Error detecting transient: {e}", "ERROR")
+            import traceback
+            log(traceback.format_exc(), "DEBUG")
             return False, 0, 0
 
     def classify_shot_type(self, audio_block, features=None):
@@ -215,8 +219,12 @@ class ShotDetector:
                 'spectral_centroid': spectral_centroid,
             }
 
-        except Exception as e:
+        except (ValueError, TypeError, AttributeError, RuntimeError, ZeroDivisionError, KeyError) as e:
+            # ValueError: invalid audio, TypeError: wrong type, AttributeError: missing method
+            # RuntimeError: classification error, ZeroDivisionError: division by zero, KeyError: missing data
             log(f"Error classifying shot type: {e}", "ERROR")
+            import traceback
+            log(traceback.format_exc(), "DEBUG")
             return {'type': 'unknown', 'confidence': 0, 'distance_estimate': 0, 'weapon_type': 'unknown'}
 
     def detect(self, audio_block):

@@ -88,8 +88,11 @@ class DetectionWorker:
             while not self.shutdown_event.wait(timeout=CLEANUP_INTERVAL_SEC):
                 try:
                     self._cleanup_done_futures()
-                except Exception as e:
+                except (RuntimeError, AttributeError) as e:
+                    # RuntimeError: thread state error, AttributeError: missing method/attribute
                     log(f"Error in cleanup thread: {e}", "ERROR")
+                    import traceback
+                    log(traceback.format_exc(), "DEBUG")
 
         self._cleanup_thread = threading.Thread(
             target=cleanup_loop,
@@ -282,7 +285,8 @@ class DetectionWorker:
                 success=True,
                 data={'events': events, 'bands': bands}
             )
-        except Exception as e:
+        except (ValueError, TypeError, AttributeError, RuntimeError) as e:
+            # ValueError: invalid audio, TypeError: wrong type, AttributeError: missing method, RuntimeError: analyze error
             # FIXED v4.2.0: Detailed error logging with traceback
             error_msg = f"Detection worker failed: {type(e).__name__}: {e}"
             log(error_msg, "ERROR")
@@ -317,7 +321,8 @@ class DetectionWorker:
                 success=True,
                 data=result
             )
-        except Exception as e:
+        except (ValueError, TypeError, AttributeError, RuntimeError) as e:
+            # ValueError: invalid audio, TypeError: wrong type, AttributeError: missing method, RuntimeError: classify error
             # FIXED v4.2.0: Detailed error logging with traceback
             error_msg = f"Classification worker failed: {type(e).__name__}: {e}"
             log(error_msg, "ERROR")
@@ -404,8 +409,11 @@ class DetectionWorker:
             else:
                 log("DetectionWorker shutdown complete - all tasks finished", "INFO")
 
-        except Exception as e:
+        except (RuntimeError, OSError, AttributeError) as e:
+            # RuntimeError: thread error, OSError: shutdown error, AttributeError: missing attribute
             log(f"DetectionWorker shutdown error: {e}", "WARNING")
+            import traceback
+            log(traceback.format_exc(), "DEBUG")
         finally:
             # FIXED v4.2.0: Clear futures list to free memory
             with self._lock:

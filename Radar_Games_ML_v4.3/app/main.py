@@ -323,6 +323,19 @@ class MainWindow(QMainWindow):
         self.radar_angle = 0.0
         self.test_phase = 0.0
 
+        # v4.3.1 POPRAWKA #1: Non-blocking detection cache (fixes UI freeze)
+        self._last_detection_result = {'events': {'walk': False, 'run': False, 'shot': False}, 'bands': {}}
+        self._last_classification_result = {'type': 'unknown', 'confidence': 0, 'details': {}}
+        self._pending_detection_future = None
+        self._pending_classification_future = None
+
+        # v4.3.1 POPRAWKA #2: Cache timeout fallback (prevents stale results)
+        import time
+        self._last_detection_update = time.time()
+        self._last_classification_update = time.time()
+        self._detection_timeout_count = 0
+        self._classification_timeout_count = 0
+
         # Detachable windows
         self.detached_radar = None
         self.detached_led = None
@@ -998,6 +1011,7 @@ class MainWindow(QMainWindow):
         """
         Perform detection, 3D localization, classification, and tracking (FIXED v3.5.0: Helper method)
         FIXED v4.2.0: Use DetectionWorker for parallel processing with proper error handling
+        FIXED v4.3.1 POPRAWKA #1: Non-blocking detection - prevents UI freeze
 
         Args:
             block: Audio block (numpy array)
@@ -1007,41 +1021,58 @@ class MainWindow(QMainWindow):
         Returns:
             Tuple of (events, bands, active_targets)
         """
-        # FIXED v4.2.0: Use DetectionWorker for parallel detection (offload from main thread)
+        # v4.3.1 POPRAWKA #1: Check if previous detection is ready (NON-BLOCKING)
+        if self._pending_detection_future is not None and self._pending_detection_future.done():
+            try:
+                # Get result immediately (no timeout needed - it's done)
+                detection_result = self._pending_detection_future.result(timeout=0)
+
+                if detection_result.success:
+                    # Cache successful result for next frame
+                    self._last_detection_result = {
+                        'events': detection_result.data['events'],
+                        'bands': detection_result.data['bands']
+                    }
+                    # v4.3.1 POPRAWKA #2: Update timestamp on successful result
+                    import time
+                    self._last_detection_update = time.time()
+                    self._detection_timeout_count = 0  # Reset timeout counter
+                else:
+                    log(f"Detection worker returned error: {detection_result.error}", "WARNING")
+                    self._detection_timeout_count += 1
+            except (RuntimeError, ValueError, TimeoutError) as e:
+                log(f"Error getting detection result: {e}", "ERROR")
+                import traceback
+                log(traceback.format_exc(), "DEBUG")
+                self._detection_timeout_count += 1
+
+            # Clear pending future
+            self._pending_detection_future = None
+
+        # v4.3.1 POPRAWKA #2: Check cache age - reset to defaults if too old (5 seconds)
+        import time
+        cache_age = time.time() - self._last_detection_update
+        if cache_age > 5.0:
+            if self._detection_timeout_count > 0:
+                log(f"Detection cache stale ({cache_age:.1f}s, {self._detection_timeout_count} timeouts) - resetting to defaults", "WARNING")
+            self._last_detection_result = {'events': {'walk': False, 'run': False, 'shot': False}, 'bands': {}}
+            self._last_detection_update = time.time()
+            self._detection_timeout_count = 0
+
+        # Submit new detection task (non-blocking)
         detection_future = self.detection_worker.submit_detection(
             self.det_panel, block, self.audio.sample_rate, fft_result
         )
 
-        # Handle detection result
         if detection_future:
-            try:
-                # Wait for detection to complete (max 1 second)
-                detection_result = detection_future.result(timeout=1.0)
-
-                if detection_result.success:
-                    events = detection_result.data['events']
-                    bands = detection_result.data['bands']
-                else:
-                    # Detection failed - log and use defaults
-                    log(f"Detection worker returned error: {detection_result.error}", "WARNING")
-                    events = {'walk': False, 'run': False, 'shot': False}
-                    bands = {}
-            except TimeoutError:
-                log("Detection worker timed out (>1s) - skipping frame", "WARNING")
-                events = {'walk': False, 'run': False, 'shot': False}
-                bands = {}
-            except (RuntimeError, ValueError) as e:
-                # RuntimeError: worker error, ValueError: invalid result
-                log(f"Unexpected error getting detection result: {e}", "ERROR")
-                import traceback
-                log(traceback.format_exc(), "DEBUG")
-                events = {'walk': False, 'run': False, 'shot': False}
-                bands = {}
+            # Store for next tick (don't wait for it now!)
+            self._pending_detection_future = detection_future
         else:
-            # Worker rejected task (backpressure or shutdown)
             log("DetectionWorker rejected task (backpressure or shutdown)", "DEBUG")
-            events = {'walk': False, 'run': False, 'shot': False}
-            bands = {}
+
+        # Use cached result from previous frame (non-blocking!)
+        events = self._last_detection_result['events']
+        bands = self._last_detection_result['bands']
 
         # Multi-target tracking
         has_detection = events.get('walk', False) or events.get('run', False) or events.get('shot', False)
@@ -1061,35 +1092,54 @@ class MainWindow(QMainWindow):
             distance = location_3d['distance']
             elevation = location_3d['elevation']
 
-            # FIXED v4.2.0: Use DetectionWorker for parallel classification
+            # v4.3.1 POPRAWKA #1: Check if previous classification is ready (NON-BLOCKING)
+            if self._pending_classification_future is not None and self._pending_classification_future.done():
+                try:
+                    # Get result immediately (no timeout needed - it's done)
+                    classification_result = self._pending_classification_future.result(timeout=0)
+
+                    if classification_result.success:
+                        # Cache successful result for next frame
+                        self._last_classification_result = classification_result.data
+                        # v4.3.1 POPRAWKA #2: Update timestamp on successful result
+                        import time
+                        self._last_classification_update = time.time()
+                        self._classification_timeout_count = 0  # Reset timeout counter
+                    else:
+                        log(f"Classification worker returned error: {classification_result.error}", "WARNING")
+                        self._classification_timeout_count += 1
+                except (RuntimeError, ValueError, TimeoutError) as e:
+                    log(f"Error getting classification result: {e}", "ERROR")
+                    import traceback
+                    log(traceback.format_exc(), "DEBUG")
+                    self._classification_timeout_count += 1
+
+                # Clear pending future
+                self._pending_classification_future = None
+
+            # v4.3.1 POPRAWKA #2: Check cache age - reset to defaults if too old (5 seconds)
+            import time
+            cache_age = time.time() - self._last_classification_update
+            if cache_age > 5.0:
+                if self._classification_timeout_count > 0:
+                    log(f"Classification cache stale ({cache_age:.1f}s, {self._classification_timeout_count} timeouts) - resetting to defaults", "WARNING")
+                self._last_classification_result = {'type': 'unknown', 'confidence': 0, 'details': {}}
+                self._last_classification_update = time.time()
+                self._classification_timeout_count = 0
+
+            # Submit new classification task (non-blocking)
             classification_future = self.detection_worker.submit_classification(
                 self.sound_classifier, block, self.audio.sample_rate, fft_result
             )
 
-            # Handle classification result
             if classification_future:
-                try:
-                    # Wait for classification to complete (max 1 second)
-                    classification_result = classification_future.result(timeout=1.0)
-
-                    if classification_result.success:
-                        sound_class = classification_result.data
-                    else:
-                        log(f"Classification worker returned error: {classification_result.error}", "WARNING")
-                        sound_class = {'type': 'unknown', 'confidence': 0, 'details': {}}
-                except TimeoutError:
-                    log("Classification worker timed out (>1s) - using unknown", "WARNING")
-                    sound_class = {'type': 'unknown', 'confidence': 0, 'details': {}}
-                except (RuntimeError, ValueError) as e:
-                    # RuntimeError: worker error, ValueError: invalid result
-                    log(f"Unexpected error getting classification result: {e}", "ERROR")
-                    import traceback
-                    log(traceback.format_exc(), "DEBUG")
-                    sound_class = {'type': 'unknown', 'confidence': 0, 'details': {}}
+                # Store for next tick (don't wait for it now!)
+                self._pending_classification_future = classification_future
             else:
-                # Worker rejected task
                 log("DetectionWorker rejected classification task", "DEBUG")
-                sound_class = {'type': 'unknown', 'confidence': 0, 'details': {}}
+
+            # Use cached result from previous frame (non-blocking!)
+            sound_class = self._last_classification_result
 
             # FIXED v4.1.2: Improved detection type classification
             # Prioritize classification, but distinguish walk vs run

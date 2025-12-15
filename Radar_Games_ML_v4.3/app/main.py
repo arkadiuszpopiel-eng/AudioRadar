@@ -463,6 +463,12 @@ class MainWindow(QMainWindow):
         from core.application_controller import ApplicationController
         self.controller = ApplicationController(self)
 
+        # v4.3.1-k0005: Audio device change monitoring (auto-reconnect on Bluetooth/USB changes)
+        from utils.audio_device_monitor import AudioDeviceMonitor
+        self.audio_device_monitor = AudioDeviceMonitor(auto_reconnect=True, poll_interval_ms=3000)
+        self.audio_device_monitor.device_changed.connect(self._on_audio_device_changed)
+        log("Audio device monitor initialized (auto-reconnect enabled)", "INFO")
+
     def create_ui(self):
         """
         Create modern tabbed UI (v4.2.0 - Refactored with UIBuilder).
@@ -917,15 +923,76 @@ class MainWindow(QMainWindow):
         """Toggle audio recording - Delegated to EventHandlers (v4.3.1)"""
         return self.event_handlers.toggle_recording()
 
+    def _on_audio_device_changed(self):
+        """
+        Handle audio device change event (v4.3.1-k0005).
+
+        Automatically restarts audio capture if running and auto-reconnect is enabled.
+        Shows toast notification to user.
+        """
+        if not hasattr(self, 'audio_device_monitor'):
+            return
+
+        log("Audio device changed - checking if restart needed", "INFO")
+
+        # Check if auto-reconnect is enabled
+        if not self.audio_device_monitor.auto_reconnect:
+            log("Auto-reconnect disabled - manual restart required", "INFO")
+            self.toast.show_toast(
+                "Audio device changed - restart manually" if get_language() == 'en'
+                else "Zmieniono urządzenie audio - zrestartuj ręcznie",
+                "warning",
+                3000
+            )
+            return
+
+        # Auto-reconnect if running
+        if self.is_running:
+            log("Auto-reconnecting audio after device change...", "INFO")
+
+            # Stop audio
+            self.stop()
+
+            # Wait briefly for device to stabilize
+            from PyQt5.QtCore import QTimer
+            QTimer.singleShot(500, self._restart_audio_after_device_change)
+        else:
+            # Not running - just notify
+            self.toast.show_toast(
+                "Audio device changed" if get_language() == 'en'
+                else "Zmieniono urządzenie audio",
+                "info",
+                2000
+            )
+
+    def _restart_audio_after_device_change(self):
+        """Restart audio after device change (delayed restart)"""
+        log("Restarting audio after device change...", "INFO")
+        self.start()
+        self.toast.show_toast(
+            "Audio reconnected automatically" if get_language() == 'en'
+            else "Audio automatycznie ponownie połączone",
+            "success",
+            3000
+        )
+
     def start(self):
         """Start audio capture (v4.3.1 SPRINT 2.1: Delegated to Controller)"""
         # v4.3.1 SPRINT 2.1: Delegate to ApplicationController
         self.controller.start()
 
+        # v4.3.1-k0005: Start audio device monitoring
+        if hasattr(self, 'audio_device_monitor'):
+            self.audio_device_monitor.start()
+            log("Audio device monitoring started", "INFO")
+
     def stop(self):
         """Stop audio capture (v4.3.1 SPRINT 2.1: Delegated to Controller)"""
         # v4.3.1 SPRINT 2.1: Delegate to ApplicationController
         self.controller.stop()
+
+        # v4.3.1-k0005: Keep monitoring running (don't stop on audio stop)
+        # Monitor continues so we can detect device changes even when not capturing
 
     def _update_radar_sweep(self):
         """

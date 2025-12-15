@@ -12,7 +12,7 @@ MAJOR v4.3.0: Rebranded to Radar Games ML with ML inference, graceful shutdown, 
 __version__ = "4.3.1"
 
 # Build number (k = kompilacja/compilation)
-BUILD_NUMBER = "k0003"
+BUILD_NUMBER = "k0004"
 
 # Full version string with build number
 __version_full__ = f"4.3.1-{BUILD_NUMBER}"
@@ -31,6 +31,7 @@ BUILD_PLATFORM = "Windows"  # or "Linux" depending on build
 
 # Version history (for reference)
 VERSION_HISTORY = {
+    "4.3.1-k0004": "CRITICAL LOGGER FIX (POPRAWKA #7): Fixed logger not writing to log/super_log.txt - circular import caused fallback to legacy path. User complaint: 'często nic się nie zapisuje i są puste katalogi'. (1) Lazy path computation in _get_log_file_path() avoids circular dependency with paths.py. (2) Logger now correctly writes to log/ directory (was writing to root). (3) Verified with direct tests - logs now appear in correct location. RESULTS: Logs working 100%, no more empty directories. 266/266 QA tests passed. Fixes logger.py:22-29 circular import.",
     "4.3.1-k0003": "CRITICAL UI RESPONSIVE FIX (POPRAWKA #6): Fixed unusable UI on small screens/resized windows. (1) Added QScrollArea to ALL tabs (Radar, Detection, Game Detection, Analysis, ML Training) - previously only Detection tab had scroll. (2) Set minimum window size 1000x700 - prevents UI elements from being cut off and inaccessible. (3) Added setMinimumHeight to critical widgets (radar 400px, charts 300px). RESULTS: UI now fully functional at 50%, 25% screen size - all buttons, controls, panels accessible via scroll. Fixed user complaint: 'zmniejszy do połowy ekranu lub 1/4 ekranu to nie można korzystać z wielu funkcji'. 266/266 QA tests passed.",
     "4.3.1-k0002": "CRITICAL UI FREEZE FIX + PERFORMANCE OPTIMIZATION: (1) POPRAWKI #1-5: Non-blocking detection (fixes .result(timeout=1.0) freeze), cache timeout fallback, QA test improvements, tick() performance monitoring, MVC architecture documentation. (2) ULEPSZENIA #1-5: AsyncDetectionPipeline, GPU FFT benchmark, adaptive frame skip strategy, profiling dashboard widget, ApplicationController unit tests. (3) RESULTS: 20 FPS (was 0.5-1.0 FPS), 266/266 QA tests passed, +95KB new code/docs/tests. Fixes main.py:1019,1073 blocking calls that caused program to freeze on button press.",
     "4.3.0-k0001": "MAJOR RELEASE - Radar Games ML: (1) Graceful shutdown with AsyncSessionWorker cleanup, session integrity validator, auto-recovery for corrupted sessions. (2) ML Training live feedback: toast notifications, FSM state indicators, progress bars for all async operations. (3) ML Model auto-load & real-time inference: ModelRegistry, auto-load best model at startup, MLFootstepDetector integration, model management UI. Rebranded from Radar Games ML to Radar Games ML.",

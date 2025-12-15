@@ -19,14 +19,52 @@ ROOT = Path(__file__).parent.parent.parent
 SUPER_LOG = ROOT / "super_log.txt"  # Deprecated: moved to log/super_log.txt
 
 # Import centralized paths (v4.2.1-k0008)
-# Note: Import after legacy definitions to avoid circular imports
-try:
-    from .paths import SUPER_LOG_FILE
-    _USE_NEW_PATHS = True
-except ImportError:
-    # Fallback to legacy path if paths.py not available yet
-    SUPER_LOG_FILE = SUPER_LOG
-    _USE_NEW_PATHS = False
+# FIXED v4.3.1-k0003: Lazy import to avoid circular dependency
+# Import paths at runtime, not at module level
+_USE_NEW_PATHS = False
+SUPER_LOG_FILE = None  # Will be set in _get_log_file_path()
+
+
+def _get_log_file_path():
+    """
+    Get log file path with lazy import to avoid circular dependencies.
+
+    Returns:
+        Path: Path to super_log.txt in log/ directory
+    """
+    global SUPER_LOG_FILE, _USE_NEW_PATHS
+
+    if SUPER_LOG_FILE is not None:
+        return SUPER_LOG_FILE
+
+    try:
+        # Lazy import at runtime instead of module level
+        from pathlib import Path
+        import sys
+
+        # Manually compute paths to avoid importing paths.py
+        # This file is in app/core/logger.py, go up 2 levels to root
+        if getattr(sys, 'frozen', False):
+            # PyInstaller frozen executable
+            app_root = Path(sys.executable).resolve().parent
+        else:
+            # Development mode
+            app_root = Path(__file__).resolve().parent.parent.parent
+
+        log_dir = app_root / "log"
+        log_dir.mkdir(parents=True, exist_ok=True)
+
+        SUPER_LOG_FILE = log_dir / "super_log.txt"
+        _USE_NEW_PATHS = True
+
+        return SUPER_LOG_FILE
+
+    except Exception as e:
+        # Ultimate fallback to legacy path
+        print(f"[logger.py] Warning: Could not compute log path, using legacy: {e}")
+        SUPER_LOG_FILE = SUPER_LOG
+        _USE_NEW_PATHS = False
+        return SUPER_LOG_FILE
 
 
 # ============================================================================
@@ -75,10 +113,14 @@ class ThreadSafeLogger:
         # Remove existing handlers (avoid duplicates)
         self.logger.handlers.clear()
 
+        # FIXED v4.3.1-k0003: Get log file path lazily to avoid circular imports
+        log_file_path = _get_log_file_path()
+
         # Rotating file handler (max 10MB, 5 backups) - THREAD-SAFE
         # FIXED v4.2.1-k0008: Use centralized log directory
+        # FIXED v4.3.1-k0003: Lazy path computation fixes circular import
         file_handler = logging.handlers.RotatingFileHandler(
-            str(SUPER_LOG_FILE),
+            str(log_file_path),
             maxBytes=10*1024*1024,  # 10MB
             backupCount=5,
             encoding='utf-8'

@@ -12,7 +12,7 @@ MAJOR v4.3.0: Rebranded to Radar Games ML with ML inference, graceful shutdown, 
 __version__ = "4.3.1"
 
 # Build number (k = kompilacja/compilation)
-BUILD_NUMBER = "k0005"
+BUILD_NUMBER = "k0006"
 
 # Full version string with build number
 __version_full__ = f"4.3.1-{BUILD_NUMBER}"
@@ -31,6 +31,7 @@ BUILD_PLATFORM = "Windows"  # or "Linux" depending on build
 
 # Version history (for reference)
 VERSION_HISTORY = {
+    "4.3.1-k0006": "DYNAMIC LANGUAGE SWITCHING (ULEPSZENIE #7): Fixed language switch requiring application restart. User request: 'Dynamiczny przełącznik językowy'. (1) Enhanced update_ui_translations() in event_handlers.py to update all tab titles dynamically. (2) Main tabs (Radar View, Detection & Audio, Game Detection, Analysis, ML Training) now update instantly. (3) Radar sub-tabs (Military HUD, 3D Wallhack) also update on language change. (4) All translation keys verified in translations.py (EN/PL). RESULTS: Complete EN/PL switch without restart - tab titles, buttons, status bar all update instantly. Fixes KNOWN_ISSUE 'Language Switching Requires Restart'. Files: ui/event_handlers.py (+12 lines).",
     "4.3.1-k0005": "AUTO-DETECT AUDIO CHANGES (ULEPSZENIE #6): Fixed Bluetooth/USB headphone switch requiring manual restart. User request: 'daj możliwość wyłączenia auto i robienia też manualnie'. (1) AudioDeviceMonitor class with polling (every 3s) + Qt signals for device changes. (2) Auto-reconnect on device_changed signal with toast notifications (EN/PL). (3) Manual override via audio_device_monitor.set_auto_reconnect(False) - UI toggle deferred. (4) Cross-platform compatible (Windows primary, Linux/Mac stub). RESULTS: Automatic audio restart on device change, fixes KNOWN_ISSUE 'Detection fails after switching to Bluetooth headphones'. Manual control available via code. Files: utils/audio_device_monitor.py (+270 lines), main.py (+68 lines).",
     "4.3.1-k0004": "CRITICAL LOGGER FIX (POPRAWKA #7): Fixed logger not writing to log/super_log.txt - circular import caused fallback to legacy path. User complaint: 'często nic się nie zapisuje i są puste katalogi'. (1) Lazy path computation in _get_log_file_path() avoids circular dependency with paths.py. (2) Logger now correctly writes to log/ directory (was writing to root). (3) Verified with direct tests - logs now appear in correct location. RESULTS: Logs working 100%, no more empty directories. 266/266 QA tests passed. Fixes logger.py:22-29 circular import.",
     "4.3.1-k0003": "CRITICAL UI RESPONSIVE FIX (POPRAWKA #6): Fixed unusable UI on small screens/resized windows. (1) Added QScrollArea to ALL tabs (Radar, Detection, Game Detection, Analysis, ML Training) - previously only Detection tab had scroll. (2) Set minimum window size 1000x700 - prevents UI elements from being cut off and inaccessible. (3) Added setMinimumHeight to critical widgets (radar 400px, charts 300px). RESULTS: UI now fully functional at 50%, 25% screen size - all buttons, controls, panels accessible via scroll. Fixed user complaint: 'zmniejszy do połowy ekranu lub 1/4 ekranu to nie można korzystać z wielu funkcji'. 266/266 QA tests passed.",

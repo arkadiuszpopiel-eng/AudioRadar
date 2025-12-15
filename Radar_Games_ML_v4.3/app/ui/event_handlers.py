@@ -76,6 +76,19 @@ class EventHandlers:
             self.window.lang_btn.setText("🇬🇧 EN" if lang == 'en' else "🇵🇱 PL")
             self.window.lang_btn.setChecked(lang == 'pl')
 
+        # ENHANCED v4.3.1-k0006: Update tab titles dynamically (no restart needed!)
+        if hasattr(self.window, 'main_tabs'):
+            self.window.main_tabs.setTabText(0, f"🎯 {tr('tab_radar_view')}")
+            self.window.main_tabs.setTabText(1, f"🔊 {tr('tab_detection_audio')}")
+            self.window.main_tabs.setTabText(2, f"🎮 {tr('tab_game_detection')}")
+            self.window.main_tabs.setTabText(3, f"📊 {tr('tab_analysis')}")
+            self.window.main_tabs.setTabText(4, f"🧠 {tr('tab_ml_training')}")
+
+        # ENHANCED v4.3.1-k0006: Update radar sub-tabs
+        if hasattr(self.window, 'radar_tabs'):
+            self.window.radar_tabs.setTabText(0, f"🎯 {tr('military_hud')}")
+            self.window.radar_tabs.setTabText(1, f"🌐 {tr('3d_wallhack')}")
+
         # Update panels
         self.window.dev_panel.update_translations()
         self.window.det_panel.update_translations()

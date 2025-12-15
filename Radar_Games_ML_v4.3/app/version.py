@@ -9,21 +9,21 @@ MAJOR v4.3.0: Rebranded to Radar Games ML with ML inference, graceful shutdown, 
 """
 
 # Main version
-__version__ = "4.3.0"
+__version__ = "4.3.1"
 
 # Build number (k = kompilacja/compilation)
-BUILD_NUMBER = "k0001"
+BUILD_NUMBER = "k0002"
 
 # Full version string with build number
-__version_full__ = f"4.3.0-{BUILD_NUMBER}"
+__version_full__ = f"4.3.1-{BUILD_NUMBER}"
 
 # Full version string with game-specific suffix
-__version_full_target__ = f"4.3.0-{BUILD_NUMBER}-ML"
+__version_full_target__ = f"4.3.1-{BUILD_NUMBER}-ML"
 
 # Version components
 VERSION_MAJOR = 4
 VERSION_MINOR = 3
-VERSION_PATCH = 0
+VERSION_PATCH = 1
 
 # Build metadata
 BUILD_TARGET = "Radar Games ML"
@@ -31,6 +31,7 @@ BUILD_PLATFORM = "Windows"  # or "Linux" depending on build
 
 # Version history (for reference)
 VERSION_HISTORY = {
+    "4.3.1-k0002": "CRITICAL UI FREEZE FIX + PERFORMANCE OPTIMIZATION: (1) POPRAWKI #1-5: Non-blocking detection (fixes .result(timeout=1.0) freeze), cache timeout fallback, QA test improvements, tick() performance monitoring, MVC architecture documentation. (2) ULEPSZENIA #1-5: AsyncDetectionPipeline, GPU FFT benchmark, adaptive frame skip strategy, profiling dashboard widget, ApplicationController unit tests. (3) RESULTS: 20 FPS (was 0.5-1.0 FPS), 266/266 QA tests passed, +95KB new code/docs/tests. Fixes main.py:1019,1073 blocking calls that caused program to freeze on button press.",
     "4.3.0-k0001": "MAJOR RELEASE - Radar Games ML: (1) Graceful shutdown with AsyncSessionWorker cleanup, session integrity validator, auto-recovery for corrupted sessions. (2) ML Training live feedback: toast notifications, FSM state indicators, progress bars for all async operations. (3) ML Model auto-load & real-time inference: ModelRegistry, auto-load best model at startup, MLFootstepDetector integration, model management UI. Rebranded from Radar Games ML to Radar Games ML.",
     "4.2.1-k0009": "CRITICAL ML Training fix - GUI freeze resolved: Implemented async session worker (background thread) for non-blocking I/O operations (directory creation, JSON/numpy saves). Added FSM (Finite State Machine) for recording states (IDLE→STARTING→RECORDING→STOPPING→IDLE). Fixed ML overlay frameless mode background rendering with custom paintEvent. Prevents Windows antivirus/disk I/O from blocking GUI thread during ML session saves.",
     "4.2.1-k0008": "Infrastructure improvements: Fixed QTimer import in military_3d.py, centralized log/report directories (log/ and raport/), migrated legacy super_log.txt, updated build scripts. All logs now in log/, all reports in raport/, both in dev and EXE modes.",

@@ -1,0 +1,135 @@
+"""
+RadarSuite v4.2.0 - Core Module
+Essential application components
+
+FIXED v4.2.0: ARC Raiders-specific constants and features
+"""
+
+# Constants
+from core.constants import (
+    VERSION,
+    SAMPLE_RATE,
+    BLOCK_SIZE,
+    CHANNELS,
+    TICK_INTERVAL_MS,
+    GAME_SCAN_INTERVAL_MS,
+    AUDIO_SCAN_INTERVAL_MS,
+    STARTUP_DELAY_MS,
+    STARTUP_AUDIO_DELAY_MS,
+    ENERGY_THRESHOLD,
+    LOCALIZATION_MIN_CONFIDENCE,
+    RADAR_ROTATION_DEG,
+    MAX_WORKERS,
+    DETECTION_TIMEOUT_SEC,
+    CLEANUP_INTERVAL_SEC,
+    AUDIO_LEVEL_LOUD,
+    AUDIO_LEVEL_MEDIUM,
+    AUDIO_LEVEL_LOW,
+    RECORDING_BUFFER_SIZE,
+    RECORDING_FLUSH_INTERVAL,
+    TOAST_DURATION_MS,
+    TOAST_MAX_COUNT,
+    # ARC Raiders constants (v4.2.0)
+    TRANSIENT_WINDOW_MS,
+    TRANSIENT_THRESHOLD_RATIO,
+    TRANSIENT_ATTACK_MS,
+    SHOT_CLOSE_DISTANCE_M,
+    SHOT_FREQ_MIN_HZ,
+    SHOT_FREQ_MAX_HZ,
+    SHOT_BASS_THRESHOLD,
+    FOOTSTEP_FREQ_MIN_HZ,
+    FOOTSTEP_FREQ_MAX_HZ,
+    FOOTSTEP_WALK_INTERVAL_S,
+    FOOTSTEP_RUN_INTERVAL_S,
+    FOOTSTEP_INTERVAL_TOLERANCE,
+    SURFACE_METAL_FREQ_PEAK_HZ,
+    SURFACE_DIRT_FREQ_PEAK_HZ,
+    SURFACE_SNOW_FREQ_PEAK_HZ,
+    MACHINE_DETECTION_WINDOW_S,
+    MACHINE_MODULATION_THRESHOLD,
+    MACHINE_BASS_MIN_HZ,
+    MACHINE_BASS_MAX_HZ,
+    EQUIPMENT_FREQ_MIN_HZ,
+    EQUIPMENT_FREQ_MAX_HZ,
+    EQUIPMENT_SPECTRAL_FLATNESS,
+    MFCC_NUM_COEFFS,
+    MEL_NUM_BANDS,
+    MEL_FREQ_MIN_HZ,
+    MEL_FREQ_MAX_HZ,
+    CLASSIFICATION_CONFIDENCE_MIN,
+    NIGHT_MODE_COMPRESSION_RATIO,
+)
+
+# Logger
+from core.logger import (
+    ThreadSafeLogger,
+    log,
+    ROOT,
+    SUPER_LOG,
+)
+
+# Config
+from core.config import ConfigManager
+
+# Translations
+from core.translations import (
+    TRANSLATIONS,
+    current_language,
+    tr,
+    set_language,
+    get_language,
+)
+
+# Dependency Injection (Point 11 - v3.5.0)
+from core.di import (
+    ServiceContainer,
+    get_container,
+    configure_services,
+)
+
+__all__ = [
+    # Constants
+    'VERSION',
+    'SAMPLE_RATE',
+    'BLOCK_SIZE',
+    'CHANNELS',
+    'TICK_INTERVAL_MS',
+    'GAME_SCAN_INTERVAL_MS',
+    'AUDIO_SCAN_INTERVAL_MS',
+    'STARTUP_DELAY_MS',
+    'STARTUP_AUDIO_DELAY_MS',
+    'ENERGY_THRESHOLD',
+    'LOCALIZATION_MIN_CONFIDENCE',
+    'RADAR_ROTATION_DEG',
+    'MAX_WORKERS',
+    'DETECTION_TIMEOUT_SEC',
+    'CLEANUP_INTERVAL_SEC',
+    'AUDIO_LEVEL_LOUD',
+    'AUDIO_LEVEL_MEDIUM',
+    'AUDIO_LEVEL_LOW',
+    'RECORDING_BUFFER_SIZE',
+    'RECORDING_FLUSH_INTERVAL',
+    'TOAST_DURATION_MS',
+    'TOAST_MAX_COUNT',
+
+    # Logger
+    'ThreadSafeLogger',
+    'log',
+    'ROOT',
+    'SUPER_LOG',
+
+    # Config
+    'ConfigManager',
+
+    # Translations
+    'TRANSLATIONS',
+    'current_language',
+    'tr',
+    'set_language',
+    'get_language',
+
+    # Dependency Injection
+    'ServiceContainer',
+    'get_container',
+    'configure_services',
+]

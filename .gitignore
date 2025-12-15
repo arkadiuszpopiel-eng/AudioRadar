@@ -1,0 +1,62 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual environments
+venv/
+ENV/
+env/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Legacy logs (moved to log/ directory in v4.2.1-k0008)
+/RadarSuite_Windows_V4.2/super_log.txt
+/RadarSuite_Linux_V4.2/super_log.txt
+
+# Runtime log and report directories (v4.2.1-k0008)
+/RadarSuite_Windows_V4.2/log/
+/RadarSuite_Windows_V4.2/raport/
+/RadarSuite_Linux_V4.2/log/
+/RadarSuite_Linux_V4.2/raport/
+
+# Radar Games ML v4.3 runtime directories
+/Radar_Games_ML_v4.3/log/
+/Radar_Games_ML_v4.3/__pycache__/
+/Radar_Games_ML_v4.3/app/__pycache__/
+
+# Extracted v4.2.1 reference (used for porting build system)
+/RadarSuite_Windows_V4.2.1/
+
+# RadarSuite specific
+*.wav
+*.pcm

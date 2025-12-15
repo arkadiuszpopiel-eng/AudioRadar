@@ -1,9 +1,9 @@
-# Known Issues & Limitations - Radar Games ML v4.3.1-k0002
+# Known Issues & Limitations - Radar Games ML v4.3.1-k0006
 
 Documented limitations, workarounds, and future improvements.
 
-**Last Updated:** 2025-12-14
-**Version:** 4.3.1-k0002
+**Last Updated:** 2025-12-15
+**Version:** 4.3.1-k0006
 
 ---
 
@@ -95,29 +95,24 @@ Documented limitations, workarounds, and future improvements.
 
 ## Audio System Limitations
 
-### Bluetooth Audio Switching
+### ✅ Bluetooth Audio Switching - FIXED in v4.3.1-k0005
 
-**Issue:** Detection fails after switching to Bluetooth headphones
+**Previous Issue:** Detection fails after switching to Bluetooth headphones
 
 **Cause:** Device ID changes, audio stream not reinitialized
 
-**Symptoms:**
-- "No audio device" after Bluetooth connection
-- Audio waveform flatlines
-- Detection stops working
+**Status:** ✅ **FIXED in v4.3.1-k0005**
 
-**Workaround:**
-1. Stop detection (press STOP)
-2. Tab 2 → Click "Rescan Devices"
-3. Select Bluetooth device from dropdown
-4. Click "Apply"
-5. Press START
+**Solution Implemented:**
+- AudioDeviceMonitor with automatic device change detection (3s polling)
+- Auto-reconnect on Bluetooth connect/disconnect
+- Toast notifications for device changes (EN/PL)
+- Manual override available via `audio_device_monitor.set_auto_reconnect(False)`
 
-**Alternatively:**
-- Restart Radar Games ML after Bluetooth connection
-- Use wired headphones for lowest latency
-
-**Status:** **Planned fix in V4.3.0** - Auto-detect device changes
+**Result:**
+- Automatic audio restart when switching to/from Bluetooth headphones
+- No manual intervention required
+- Manual mode available if auto-reconnect not desired
 
 ---
 
@@ -370,37 +365,46 @@ TICK_INTERVAL_MS = 100  # Lower FPS
 
 ---
 
-### Language Switching Requires Restart
+### ✅ Language Switching Requires Restart - FIXED in v4.3.1-k0006
 
-**Issue:** Switching EN/PL doesn't update all UI elements
+**Previous Issue:** Switching EN/PL doesn't update all UI elements
 
 **Cause:** Static text set during initialization
 
-**Impact:**
-- Some labels remain in old language
-- Restart required for full language change
+**Status:** ✅ **FIXED in v4.3.1-k0006**
 
-**Workaround:**
-- Restart application after language change
+**Solution Implemented:**
+- Enhanced update_ui_translations() to update all tab titles dynamically
+- Main tabs (Radar View, Detection & Audio, Game Detection, Analysis, ML Training) update instantly
+- Radar sub-tabs (Military HUD, 3D Wallhack) also update on language change
+- All translation keys verified in translations.py (EN/PL)
 
-**Status:** **Improvement planned** - Dynamic i18n
+**Result:**
+- Complete EN/PL switch without restart
+- Tab titles, buttons, status bar all update instantly
+- No restart required
 
 ---
 
-### Detached Windows Not Saved
+### ✅ Detached Windows Not Saved - FIXED in v4.3.1
 
-**Issue:** Detached window positions not persisted
+**Previous Issue:** Detached window positions not persisted
 
 **Cause:** No position saving in config
 
-**Impact:**
-- Detached windows reset to center on restart
-- Multi-monitor setup requires manual repositioning
+**Status:** ✅ **FIXED in v4.3.1**
 
-**Workaround:**
-- Position windows manually each session
+**Solution Implemented:**
+- save_detached_radar_state() and save_detached_led_state() in config.py
+- restore_detached_radar_state() and restore_detached_led_state() restore positions
+- Positions saved automatically on window detach
+- Positions restored automatically on next detach
+- Multi-monitor support with geometry persistence
 
-**Status:** **Feature request** - Save window positions
+**Result:**
+- Detached windows remember positions between sessions
+- Multi-monitor setups work perfectly
+- No manual repositioning required
 
 ---
 
@@ -434,18 +438,22 @@ TICK_INTERVAL_MS = 100  # Lower FPS
 - [x] Profiling dashboard widget
 - [x] ApplicationController unit tests
 
+### ✅ Completed in v4.3.1-k0005 to k0006
+
+**ULEPSZENIA (Enhancements):**
+- [x] Auto-detect audio device changes (Bluetooth fix) - k0005
+- [x] Dynamic language switching (no restart) - k0006
+- [x] Save detached window positions - v4.3.1
+
 ### V4.3.2 (Next Patch)
 
 **Priority: HIGH**
 - [ ] Integrate ProfilingDashboard into DevPanel
 - [ ] Enable AdaptiveFrameSkip in tick()
 - [ ] GPU benchmark integration in Settings
-- [ ] Auto-detect audio device changes (Bluetooth fix)
 
 **Priority: MEDIUM**
-- [ ] Save detached window positions
 - [ ] Dark mode theme
-- [ ] Dynamic language switching (no restart)
 - [ ] Better 5.1/7.1 downmix matrix
 
 **Priority: LOW**
@@ -535,16 +543,16 @@ Detection stops, radar shows no targets.
 
 | Issue | Quick Fix |
 |-------|-----------|
-| Bluetooth audio not working | Stop → Rescan → Apply → Start |
+| ~~Bluetooth audio not working~~ | ✅ **FIXED in v4.3.1-k0005** - Auto-reconnect |
 | No loopback device | Install VB-Audio Virtual Cable |
 | High CPU usage | Reduce MAX_WORKERS to 2 |
-| UI freezing | Update to V4.2.0 |
+| ~~UI freezing~~ | ✅ **FIXED in v4.3.1-k0002** - Non-blocking detection |
 | Distant shot misclassification | Trust detection, ignore weapon type |
 | False positives | Increase detection thresholds |
 | Memory leak | Restart every 2-3 hours |
 | Vertical positioning wrong | Game bug, not fixable |
-| Language doesn't fully switch | Restart application |
+| ~~Language doesn't fully switch~~ | ✅ **FIXED in v4.3.1-k0006** - Dynamic update |
 
 ---
 
-**Radar Games ML V4.2.0** - Honest documentation of limitations and solutions.
+**Radar Games ML v4.3.1-k0006** - Honest documentation of limitations and solutions.

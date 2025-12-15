@@ -359,6 +359,12 @@ class MainWindow(QMainWindow):
 
         self.create_ui()
 
+        # v4.3.1 POPRAWKA #6: Set minimum window size for usability on small screens
+        # Ensures all UI elements remain accessible when window is resized
+        # 1000x700 provides comfortable space for all tabs with scroll areas
+        self.setMinimumSize(1000, 700)
+        log("MainWindow: Minimum size set to 1000x700 (responsive UI fix)", "INFO")
+
         # v4.3.1: Event handlers (extracted from MainWindow to reduce complexity)
         self.event_handlers = EventHandlers(self)
 

@@ -218,9 +218,20 @@ class UIBuilder:
         radar_layout = QVBoxLayout()
         radar_layout.setContentsMargins(5, 5, 5, 5)
 
+        # v4.3.1 POPRAWKA #6: Scrollable container for responsive layout
+        scroll_area = QScrollArea()
+        scroll_area.setWidgetResizable(True)
+        scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+        scroll_area.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+
+        container = QWidget()
+        container_layout = QVBoxLayout(container)
+        container_layout.setContentsMargins(5, 5, 5, 5)
+
         # Radar sub-tabs (2D/3D)
         self.main.radar_tabs = QTabWidget()
         self.main.radar_tabs.setStyleSheet("QTabWidget::pane { border: 1px solid #222; }")
+        self.main.radar_tabs.setMinimumHeight(400)  # Ensure radar is visible
 
         # 2D Radar - Military HUD Style
         self.main.radar_widget = MilitaryHUDRadar()
@@ -230,12 +241,16 @@ class UIBuilder:
         self.main.radar_3d_widget = Military3DRadar()
         self.main.radar_tabs.addTab(self.main.radar_3d_widget, f"🌐 {tr('3d_wallhack')}")
 
-        radar_layout.addWidget(self.main.radar_tabs)
+        container_layout.addWidget(self.main.radar_tabs)
 
         # Radar controls (compact bottom panel)
         radar_controls = self._build_radar_controls()
-        radar_layout.addLayout(radar_controls)
+        container_layout.addLayout(radar_controls)
 
+        container.setLayout(container_layout)
+        scroll_area.setWidget(container)
+
+        radar_layout.addWidget(scroll_area)
         radar_tab.setLayout(radar_layout)
         self.main.main_tabs.addTab(radar_tab, f"🎯 {tr('tab_radar_view')}")
 
@@ -301,21 +316,35 @@ class UIBuilder:
         """Build Tab 3: Game Detection."""
         game_tab = QWidget()
         game_layout = QVBoxLayout()
-        game_layout.setContentsMargins(10, 10, 10, 10)
+        game_layout.setContentsMargins(5, 5, 5, 5)
+
+        # v4.3.1 POPRAWKA #6: Scrollable container for responsive layout
+        scroll_area = QScrollArea()
+        scroll_area.setWidgetResizable(True)
+        scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+        scroll_area.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+
+        container = QWidget()
+        container_layout = QVBoxLayout(container)
+        container_layout.setContentsMargins(10, 10, 10, 10)
 
         # Game detection section
         game_group = self._build_game_group()
-        game_layout.addWidget(game_group)
+        container_layout.addWidget(game_group)
 
         # Platform Launchers section
         platform_group = self._build_platform_group()
-        game_layout.addWidget(platform_group)
+        container_layout.addWidget(platform_group)
 
         # Audio sources section
         sources_group = self._build_audio_sources_group()
-        game_layout.addWidget(sources_group)
+        container_layout.addWidget(sources_group)
 
-        game_layout.addStretch()
+        container_layout.addStretch()
+        container.setLayout(container_layout)
+        scroll_area.setWidget(container)
+
+        game_layout.addWidget(scroll_area)
         game_tab.setLayout(game_layout)
         self.main.main_tabs.addTab(game_tab, f"🎮 {tr('tab_game_detection')}")
 
@@ -423,8 +452,19 @@ class UIBuilder:
         analysis_layout = QVBoxLayout()
         analysis_layout.setContentsMargins(5, 5, 5, 5)
 
+        # v4.3.1 POPRAWKA #6: Scrollable container for responsive layout
+        scroll_area = QScrollArea()
+        scroll_area.setWidgetResizable(True)
+        scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+        scroll_area.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+
+        container = QWidget()
+        container_layout = QVBoxLayout(container)
+        container_layout.setContentsMargins(5, 5, 5, 5)
+
         # Spectrum & Waterfall & Waveform tabs
         spectrum_waterfall_tabs = QTabWidget()
+        spectrum_waterfall_tabs.setMinimumHeight(300)  # Ensure charts are visible
 
         self.main.spectrum = MilitarySpectrumWidget()
         spectrum_waterfall_tabs.addTab(self.main.spectrum, f"📡 {tr('live_spectrum')}")
@@ -435,12 +475,16 @@ class UIBuilder:
         self.main.waveform = MilitaryWaveformWidget()
         spectrum_waterfall_tabs.addTab(self.main.waveform, f"〰️ {tr('waveform').upper()}")
 
-        analysis_layout.addWidget(spectrum_waterfall_tabs, 3)
+        container_layout.addWidget(spectrum_waterfall_tabs, 3)
 
         # LED Alert section
         led_group = self._build_led_group()
-        analysis_layout.addWidget(led_group, 1)
+        container_layout.addWidget(led_group, 1)
 
+        container.setLayout(container_layout)
+        scroll_area.setWidget(container)
+
+        analysis_layout.addWidget(scroll_area)
         analysis_tab.setLayout(analysis_layout)
         self.main.main_tabs.addTab(analysis_tab, f"📊 {tr('tab_analysis')}")
 
@@ -548,30 +592,47 @@ class UIBuilder:
             # Create placeholder tab if ML training is not available and surface the reason.
             placeholder = QWidget()
             layout = QVBoxLayout()
+            layout.setContentsMargins(5, 5, 5, 5)
+
+            # v4.3.1 POPRAWKA #6: Scrollable container for error messages
+            scroll_area = QScrollArea()
+            scroll_area.setWidgetResizable(True)
+            scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+            scroll_area.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+
+            container = QWidget()
+            container_layout = QVBoxLayout(container)
+            container_layout.setContentsMargins(10, 10, 10, 10)
+
             label = QLabel(f"🧠 {tr('ml_training_unavailable_title')}")
             label.setStyleSheet("font-size: 12pt; color: #888888; padding: 10px;")
             label.setAlignment(Qt.AlignCenter)
-            layout.addWidget(label)
+            container_layout.addWidget(label)
 
             error_hint = QLabel(
                 tr('ml_training_dependency_hint').format(error=str(ML_TRAINING_ERROR))
             )
             error_hint.setWordWrap(True)
             error_hint.setStyleSheet("color: #AAAAAA; padding: 0 15px 5px 15px;")
-            layout.addWidget(error_hint)
+            container_layout.addWidget(error_hint)
 
             install_hint = QLabel(tr('ml_training_install_hint'))
             install_hint.setWordWrap(True)
             install_hint.setStyleSheet("color: #AAAAAA; padding: 0 15px 10px 15px;")
-            layout.addWidget(install_hint)
+            container_layout.addWidget(install_hint)
 
             if ML_TRAINING_ERROR_TRACE:
                 trace_box = QTextEdit()
                 trace_box.setReadOnly(True)
                 trace_box.setText(ML_TRAINING_ERROR_TRACE)
                 trace_box.setStyleSheet("font-family: monospace; font-size: 8pt; color: #CCCCCC;")
-                layout.addWidget(trace_box)
+                container_layout.addWidget(trace_box)
 
+            container_layout.addStretch()
+            container.setLayout(container_layout)
+            scroll_area.setWidget(container)
+
+            layout.addWidget(scroll_area)
             placeholder.setLayout(layout)
             self.main.main_tabs.addTab(placeholder, f"🧠 {tr('tab_ml_training')}")
             self.main.ml_training_panel = None
@@ -600,11 +661,26 @@ class UIBuilder:
             overlay.raise_()
             overlay.activateWindow()
 
+        # v4.3.1 POPRAWKA #6: Wrap ML Training Panel in scroll area
+        ml_tab = QWidget()
+        ml_layout = QVBoxLayout()
+        ml_layout.setContentsMargins(5, 5, 5, 5)
+
+        scroll_area = QScrollArea()
+        scroll_area.setWidgetResizable(True)
+        scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+        scroll_area.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+
         self.main.ml_training_panel = MLTrainingPanel(
             recording_controller=controller,
             overlay_launcher=launch_overlay,
         )
-        self.main.main_tabs.addTab(self.main.ml_training_panel, f"🧠 {tr('tab_ml_training')}")
+
+        scroll_area.setWidget(self.main.ml_training_panel)
+        ml_layout.addWidget(scroll_area)
+        ml_tab.setLayout(ml_layout)
+
+        self.main.main_tabs.addTab(ml_tab, f"🧠 {tr('tab_ml_training')}")
 
     def _build_statusbar(self) -> None:
         """Build status bar."""

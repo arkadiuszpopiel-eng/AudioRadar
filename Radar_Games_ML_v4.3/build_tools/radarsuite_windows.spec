@@ -47,15 +47,19 @@ hiddenimports += [
     # Core modules (v4.3: with app. prefix)
     'app.core', 'app.core.constants', 'app.core.config', 'app.core.logger', 'app.core.translations',
     'app.core.di', 'app.core.confidence', 'app.core.error_handler', 'app.core.profiler', 'app.core.export_import',
+    'app.core.paths', 'app.core.log_aggregator',  # ADDED v4.3.1-k0006: Logging system
     # Also include without prefix for backward compatibility
     'core', 'core.constants', 'core.config', 'core.logger', 'core.translations',
     'core.di', 'core.confidence', 'core.error_handler', 'core.profiler', 'core.export_import',
+    'core.paths', 'core.log_aggregator',  # ADDED v4.3.1-k0006
     # Hardware modules
     'app.hardware', 'app.hardware.gpu', 'app.hardware.soundblaster',
     'hardware', 'hardware.gpu', 'hardware.soundblaster',
     # Utilities
     'app.utils', 'app.utils.performance', 'app.utils.game_detector', 'app.utils.audio_scanner', 'app.utils.launcher',
+    'app.utils.audio_device_monitor',  # ADDED v4.3.1-k0005: Auto-detect audio changes
     'utils', 'utils.performance', 'utils.game_detector', 'utils.audio_scanner', 'utils.launcher',
+    'utils.audio_device_monitor',  # ADDED v4.3.1-k0005
     # Tracking modules
     'app.tracking', 'app.tracking.target', 'app.tracking.threat',
     'tracking', 'tracking.target', 'tracking.threat',

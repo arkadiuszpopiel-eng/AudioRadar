@@ -23,6 +23,10 @@ REM Get script directory
 set "SCRIPT_DIR=%~dp0"
 cd /d "%SCRIPT_DIR%"
 
+REM FIXED v4.3.1-k0006: Create centralized log directory (regression fix)
+set "LOG_DIR=%SCRIPT_DIR%log"
+if not exist "%LOG_DIR%" mkdir "%LOG_DIR%"
+
 REM Set version (read from app/version.py dynamically)
 for /f "delims=" %%i in ('python -c "import sys; sys.path.insert(0, 'app'); from version import __version_full__; print(__version_full__)"') do set "VERSION=%%i"
 if "%VERSION%"=="" set "VERSION=v4.3.0-k0001"
@@ -32,8 +36,8 @@ set "BUILD_DATE=%date:~-4%-%date:~3,2%-%date:~0,2%"
 set "BUILD_TIME=%time:~0,2%-%time:~3,2%-%time:~6,2%"
 set "BUILD_TIME=!BUILD_TIME: =0!"
 
-REM Log file
-set "LOG_FILE=build_windows.log"
+REM Log file - FIXED v4.3.1-k0006: Moved to log directory
+set "LOG_FILE=%LOG_DIR%\build_windows.log"
 
 REM Start logging
 echo [%date% %time%] ============================================================ >> "%LOG_FILE%"

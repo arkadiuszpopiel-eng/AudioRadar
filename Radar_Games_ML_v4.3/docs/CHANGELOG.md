@@ -6,6 +6,99 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [4.3.1-k0006] - 2025-12-15
+
+### 🎯 ULEPSZENIA (Enhancements)
+
+#### #7 - Dynamic Language Switching (No Restart Required)
+- **Fixed**: Language switching EN/PL now updates all UI elements instantly
+- **Added**: Tab title updates in `update_ui_translations()`
+  - Main tabs: Radar View, Detection & Audio, Game Detection, Analysis, ML Training
+  - Radar sub-tabs: Military HUD, 3D Wallhack
+- **Result**: Complete EN/PL switch without application restart
+- **Files**: `ui/event_handlers.py` (+12 lines)
+
+#### #9 - Centralized Log Viewer System
+- **Added**: `all_logs/` directory with categorized log copies
+  - `runtime/` - super_log.txt copies
+  - `build/` - build_*.log copies
+  - `selftest/` - test logs and reports
+  - `ml_training/` - ML training reports
+- **Added**: `app/core/log_aggregator.py` - auto-copy logs to all_logs/
+- **Added**: `SYNC_ALL_LOGS.cmd` - manual sync script
+- **Integration**: Auto-copy on selftest and build completion
+- **Result**: All logs accessible in one convenient location
+- **Files**: `log_aggregator.py` (+157 lines), `SYNC_ALL_LOGS.cmd` (+42 lines)
+
+### 🔧 POPRAWKI (Fixes)
+
+#### #8 - Build Logs Regression Fix
+- **Fixed**: `RUN_BUILD_Win.cmd` writing logs to ROOT instead of log/
+- **Changed**:
+  - OLD: `set "LOG_FILE=build_windows.log"` (ROOT)
+  - NEW: `set "LOG_FILE=%LOG_DIR%\build_windows.log"` (log/)
+- **Result**: Build logs now consistent with other build scripts
+- **Files**: `RUN_BUILD_Win.cmd` (+5 lines)
+
+### 🧹 CLEANUP
+
+#### #10 - Legacy Files Removal
+- **Removed**: `legacy_super_log_v2.3.0.txt` (old test logs)
+- **Removed**: `radar_legacy.py` (15-line deprecated stub)
+- **Fixed**: `paths.py` - removed hardcoded "v2.3.0" version string
+  - Now uses dynamic timestamp: `legacy_super_log_{timestamp}.txt`
+- **Added**: `.gitignore` entries for `__pycache__/`, `*.pyc`, `*.pyo`
+- **Result**: Clean project structure, no legacy artifacts
+
+---
+
+## [4.3.1-k0005] - 2025-12-15
+
+### 🎯 ULEPSZENIA (Enhancements)
+
+#### #6 - Auto-Detect Audio Device Changes
+- **Added**: `AudioDeviceMonitor` class - automatic Bluetooth/USB device switching
+- **Features**:
+  - 3-second polling for device changes
+  - Qt signals for device added/removed/changed
+  - Auto-reconnect with 500ms stabilization delay
+  - Manual override: `set_auto_reconnect(False)`
+  - Toast notifications (EN/PL)
+- **Result**: No manual restart needed when switching audio devices
+- **Fixes**: KNOWN_ISSUE "Detection fails after switching to Bluetooth headphones"
+- **Files**: `utils/audio_device_monitor.py` (+270 lines), `main.py` (+68 lines)
+
+---
+
+## [4.3.1-k0004] - 2025-12-15
+
+### 🔴 CRITICAL Logger Fix
+
+#### #7 - Logger Not Writing to log/super_log.txt
+- **Fixed**: Circular import caused logger to write to ROOT directory
+- **Root Cause**: `from .paths import SUPER_LOG_FILE` at module level
+- **Solution**: Lazy path computation in `_get_log_file_path()`
+- **Result**: Logs now correctly write to `log/super_log.txt`
+- **User Complaint**: "często nic się nie zapisuje i są puste katalogi"
+- **Files**: `core/logger.py` (+46 lines)
+
+---
+
+## [4.3.1-k0003] - 2025-12-14
+
+### 🔴 CRITICAL UI Responsive Fix
+
+#### #6 - UI Unusable on Small Screens
+- **Fixed**: UI elements cut off/inaccessible when window resized to 50%/25%
+- **Added**: `QScrollArea` to ALL tabs (Radar, Detection, Game Detection, Analysis, ML Training)
+- **Added**: Minimum window size: 1000x700
+- **Added**: Minimum heights for critical widgets (radar: 400px, charts: 300px)
+- **Result**: UI fully functional at any screen size
+- **User Complaint**: "zmniejszy do połowy ekranu lub 1/4 ekranu to nie można korzystać z wielu funkcji"
+- **QA Tests**: 266/266 PASSED
+
+---
+
 ## [4.3.1-k0002] - 2025-12-14
 
 ### 🔴 CRITICAL UI FREEZE FIX + PERFORMANCE OPTIMIZATION

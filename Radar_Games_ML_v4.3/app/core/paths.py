@@ -106,27 +106,26 @@ def cleanup_legacy_log() -> None:
     One-time cleanup of legacy super_log.txt from repository root
 
     If old super_log.txt exists in root, move it to log/ as legacy file
+    FIXED v4.3.1-k0006: Use timestamp instead of hardcoded version
     """
     if LEGACY_SUPER_LOG.exists() and LEGACY_SUPER_LOG.is_file():
         try:
-            # Move to log directory with legacy prefix
-            legacy_destination = LOG_DIR / "legacy_super_log_v2.3.0.txt"
+            # FIXED v4.3.1-k0006: Use timestamp for unique naming
+            from datetime import datetime
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            legacy_destination = LOG_DIR / f"legacy_super_log_{timestamp}.txt"
 
-            # Avoid overwriting if legacy file already exists
-            if not legacy_destination.exists():
-                import shutil
-                shutil.move(str(LEGACY_SUPER_LOG), str(legacy_destination))
+            # Move to log directory with timestamp
+            import shutil
+            shutil.move(str(LEGACY_SUPER_LOG), str(legacy_destination))
 
-                # Log the migration (but carefully - logger might not be initialized yet)
-                try:
-                    from .logger import log
-                    log(f"Migrated legacy super_log.txt to {legacy_destination}", "INFO")
-                except:
-                    # If logger not ready, just print
-                    print(f"[paths.py] Migrated legacy super_log.txt to {legacy_destination}")
-            else:
-                # Legacy file already exists, just remove the old one
-                LEGACY_SUPER_LOG.unlink()
+            # Log the migration (but carefully - logger might not be initialized yet)
+            try:
+                from .logger import log
+                log(f"Migrated legacy super_log.txt to {legacy_destination}", "INFO")
+            except:
+                # If logger not ready, just print
+                print(f"[paths.py] Migrated legacy super_log.txt to {legacy_destination}")
         except Exception as e:
             # Silent fail - this is just cleanup
             print(f"[paths.py] Could not migrate legacy super_log.txt: {e}")

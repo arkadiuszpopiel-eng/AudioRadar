@@ -1,2 +1,5 @@
 super_log.txt
 all_logs/
+__pycache__/
+*.pyc
+*.pyo

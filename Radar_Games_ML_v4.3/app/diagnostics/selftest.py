@@ -177,4 +177,12 @@ class SelfTestRunner:
                 status = "✓ PASS" if result.success else "✗ FAIL"
                 fh.write(f"{status} - {result.name}: {result.message}\n")
 
+        # ADDED v4.3.1-k0006: Copy to centralized all_logs/ for easy review
+        try:
+            from app.core.log_aggregator import copy_to_all_logs
+            copy_to_all_logs(log_path, "selftest")
+            copy_to_all_logs(report_path, "selftest")
+        except Exception:
+            pass  # Silent fail - aggregation is optional
+
         return log_path  # Return log path for backward compatibility

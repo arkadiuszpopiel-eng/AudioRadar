@@ -298,4 +298,13 @@ echo [%date% %time%] BUILD COMPLETED SUCCESSFULLY >> "%LOG_FILE%"
 echo [%date% %time%] ============================================================ >> "%LOG_FILE%"
 echo. >> "%LOG_FILE%"
 
+REM ADDED v4.3.1-k0006: Copy build log to centralized all_logs/ for easy review
+echo [%date% %time%] Copying build log to all_logs/... >> "%LOG_FILE%"
+python -c "from pathlib import Path; from app.core.log_aggregator import copy_to_all_logs; copy_to_all_logs(Path('log/build_windows.log'), 'build')" 2>nul
+if errorlevel 1 (
+    echo [%date% %time%] Warning: Could not copy to all_logs/ ^(optional^) >> "%LOG_FILE%"
+) else (
+    echo [%date% %time%] Build log copied to all_logs/build/ >> "%LOG_FILE%"
+)
+
 pause

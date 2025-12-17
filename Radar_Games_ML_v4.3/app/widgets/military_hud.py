@@ -39,22 +39,23 @@ class MilitaryHUDRadar(QWidget):
         self.setMinimumSize(600, 500)
         self.setStyleSheet("background-color: #030508;")
 
-        # Colors
+        # Colors - IMPROVED v4.3.1-k0007: Better contrast for readability
         self.COLOR_BG = QColor(3, 5, 8)
-        self.COLOR_GRID = QColor(0, 60, 80, 80)
-        self.COLOR_GRID_MAJOR = QColor(0, 100, 120, 120)
+        self.COLOR_GRID = QColor(0, 80, 100, 120)         # was 60, 80, 80 - brighter grid
+        self.COLOR_GRID_MAJOR = QColor(0, 150, 180, 180)  # was 100, 120, 120 - much brighter
         self.COLOR_SWEEP = QColor(0, 255, 100, 150)
-        self.COLOR_TEXT = QColor(0, 200, 150)
-        self.COLOR_TEXT_DIM = QColor(0, 120, 100)
+        self.COLOR_TEXT = QColor(0, 255, 200)             # was 200, 150 - brighter
+        self.COLOR_TEXT_DIM = QColor(0, 180, 150)         # was 120, 100 - 50% brighter
         self.COLOR_ACCENT = QColor(0, 255, 200)
         self.COLOR_WARNING = QColor(255, 200, 0)
         self.COLOR_DANGER = QColor(255, 50, 50)
+        self.COLOR_DISTANCE_LABEL = QColor(100, 200, 255) # NEW: distinct blue for distance labels
 
-        # Fonts
-        self.FONT_MAIN = QFont("Consolas", 9)
-        self.FONT_LABEL = QFont("Consolas", 8)
-        self.FONT_STATUS = QFont("Consolas", 10, QFont.Bold)
-        self.FONT_TITLE = QFont("Consolas", 11, QFont.Bold)
+        # Fonts - IMPROVED v4.3.1-k0007: +30-50% larger for better readability
+        self.FONT_MAIN = QFont("Consolas", 12)     # was 9
+        self.FONT_LABEL = QFont("Consolas", 11)    # was 8
+        self.FONT_STATUS = QFont("Consolas", 13, QFont.Bold)  # was 10
+        self.FONT_TITLE = QFont("Consolas", 15, QFont.Bold)   # was 11
 
         # Radar state
         self.sweep_angle = 0
@@ -238,6 +239,7 @@ class MilitaryHUDRadar(QWidget):
         self._draw_right_panel(painter, w, panel_width)
         self._draw_status_bar(painter, w, h, status_height)
         self._draw_corner_decorations(painter, w, h)
+        self._draw_legend(painter, w, h)  # ADDED v4.3.1-k0007: Icon legend
 
     def _draw_radar_grid(self, painter, cx, cy):
         """Draw radar grid with concentric circles and coordinate lines"""
@@ -262,10 +264,10 @@ class MilitaryHUDRadar(QWidget):
             painter.setBrush(Qt.NoBrush)
             painter.drawEllipse(cx - radius, cy - radius, radius * 2, radius * 2)
 
-            # Distance labels
+            # Distance labels - IMPROVED v4.3.1-k0007: Distinct color, larger font
             dist_label = f"{int(self.max_distance * ratio)}m"
-            painter.setFont(self.FONT_LABEL)
-            painter.setPen(self.COLOR_TEXT_DIM)
+            painter.setFont(self.FONT_LABEL)  # Now 11pt instead of 8pt
+            painter.setPen(self.COLOR_DISTANCE_LABEL)  # Distinct blue instead of dim cyan
             painter.drawText(cx + 5, cy - radius + 12, dist_label)
 
         # Radial lines (every 30 degrees)
@@ -352,81 +354,81 @@ class MilitaryHUDRadar(QWidget):
                 painter.drawText(tx + 12, ty + 16, target['label'])
 
     def _draw_walk_icon(self, painter, x, y, color):
-        """Draw walking person silhouette"""
+        """Draw walking person silhouette - IMPROVED v4.3.1-k0007: 50% larger, brighter glow"""
         painter.setPen(QPen(color, 2))
         painter.setBrush(Qt.NoBrush)
 
-        # Head
-        painter.drawEllipse(x - 3, y - 12, 6, 6)
+        # Head - 50% larger
+        painter.drawEllipse(x - 4, y - 18, 9, 9)  # was (x-3, y-12, 6, 6)
 
-        # Body
-        painter.drawLine(x, y - 6, x, y + 2)
+        # Body - 50% longer
+        painter.drawLine(x, y - 9, x, y + 3)  # was (x, y-6, x, y+2)
 
-        # Arms (one forward, one back)
-        painter.drawLine(x, y - 4, x - 5, y - 1)
-        painter.drawLine(x, y - 4, x + 4, y - 6)
+        # Arms (one forward, one back) - scaled proportionally
+        painter.drawLine(x, y - 6, x - 7, y - 1)  # was (x, y-4, x-5, y-1)
+        painter.drawLine(x, y - 6, x + 6, y - 9)  # was (x, y-4, x+4, y-6)
 
-        # Legs (walking stance)
-        painter.drawLine(x, y + 2, x - 4, y + 10)
-        painter.drawLine(x, y + 2, x + 4, y + 10)
+        # Legs (walking stance) - scaled proportionally
+        painter.drawLine(x, y + 3, x - 6, y + 15)  # was (x, y+2, x-4, y+10)
+        painter.drawLine(x, y + 3, x + 6, y + 15)  # was (x, y+2, x+4, y+10)
 
-        # Glow effect
-        painter.setPen(QPen(QColor(color.red(), color.green(), color.blue(), 50), 6))
-        painter.drawEllipse(x - 8, y - 14, 16, 26)
+        # Glow effect - 2x brighter (100 alpha instead of 50), larger area
+        painter.setPen(QPen(QColor(color.red(), color.green(), color.blue(), 100), 8))
+        painter.drawEllipse(x - 12, y - 21, 24, 39)  # was (x-8, y-14, 16, 26)
 
     def _draw_run_icon(self, painter, x, y, color):
-        """Draw running person silhouette"""
+        """Draw running person silhouette - IMPROVED v4.3.1-k0007: 50% larger, brighter glow"""
         painter.setPen(QPen(color, 2))
         painter.setBrush(Qt.NoBrush)
 
-        # Head (leaning forward)
-        painter.drawEllipse(x + 2, y - 12, 6, 6)
+        # Head (leaning forward) - 50% larger
+        painter.drawEllipse(x + 3, y - 18, 9, 9)  # was (x+2, y-12, 6, 6)
 
-        # Body (angled forward)
-        painter.drawLine(x + 5, y - 6, x - 2, y + 2)
+        # Body (angled forward) - scaled proportionally
+        painter.drawLine(x + 7, y - 9, x - 3, y + 3)  # was (x+5, y-6, x-2, y+2)
 
-        # Arms (dynamic running pose)
-        painter.drawLine(x + 1, y - 3, x - 6, y - 8)
-        painter.drawLine(x + 1, y - 3, x + 8, y)
+        # Arms (dynamic running pose) - scaled proportionally
+        painter.drawLine(x + 1, y - 4, x - 9, y - 12)  # was (x+1, y-3, x-6, y-8)
+        painter.drawLine(x + 1, y - 4, x + 12, y)  # was (x+1, y-3, x+8, y)
 
-        # Legs (wide running stride)
-        painter.drawLine(x - 2, y + 2, x - 8, y + 10)
-        painter.drawLine(x - 2, y + 2, x + 6, y + 8)
+        # Legs (wide running stride) - scaled proportionally
+        painter.drawLine(x - 3, y + 3, x - 12, y + 15)  # was (x-2, y+2, x-8, y+10)
+        painter.drawLine(x - 3, y + 3, x + 9, y + 12)  # was (x-2, y+2, x+6, y+8)
 
-        # Speed lines
-        painter.setPen(QPen(QColor(color.red(), color.green(), color.blue(), 100), 1))
-        painter.drawLine(x - 10, y - 2, x - 15, y - 2)
-        painter.drawLine(x - 10, y + 2, x - 14, y + 2)
-        painter.drawLine(x - 10, y + 6, x - 13, y + 6)
+        # Speed lines - brighter and more visible
+        painter.setPen(QPen(QColor(color.red(), color.green(), color.blue(), 150), 2))  # was 100 alpha, 1px
+        painter.drawLine(x - 15, y - 3, x - 22, y - 3)  # was (x-10, y-2, x-15, y-2)
+        painter.drawLine(x - 15, y + 3, x - 21, y + 3)  # was (x-10, y+2, x-14, y+2)
+        painter.drawLine(x - 15, y + 9, x - 19, y + 9)  # was (x-10, y+6, x-13, y+6)
 
-        # Glow effect
-        painter.setPen(QPen(QColor(color.red(), color.green(), color.blue(), 50), 6))
-        painter.drawEllipse(x - 10, y - 14, 20, 26)
+        # Glow effect - 2x brighter (100 alpha instead of 50), larger area
+        painter.setPen(QPen(QColor(color.red(), color.green(), color.blue(), 100), 8))
+        painter.drawEllipse(x - 15, y - 21, 30, 39)  # was (x-10, y-14, 20, 26)
 
     def _draw_shot_icon(self, painter, x, y, color):
-        """Draw bullet/shot icon"""
+        """Draw bullet/shot icon - IMPROVED v4.3.1-k0007: 50% larger, brighter effects"""
         painter.setPen(QPen(color, 2))
         painter.setBrush(QBrush(color))
 
-        # Bullet shape (pointed oval)
+        # Bullet shape (pointed oval) - 50% larger
         path = QPainterPath()
-        path.moveTo(x + 8, y)
-        path.lineTo(x - 4, y - 4)
-        path.lineTo(x - 6, y)
-        path.lineTo(x - 4, y + 4)
+        path.moveTo(x + 12, y)  # was x+8
+        path.lineTo(x - 6, y - 6)  # was x-4, y-4
+        path.lineTo(x - 9, y)  # was x-6
+        path.lineTo(x - 6, y + 6)  # was x-4, y+4
         path.closeSubpath()
         painter.drawPath(path)
 
-        # Muzzle flash lines
-        painter.setPen(QPen(color.lighter(150), 1))
-        painter.drawLine(x - 8, y, x - 14, y)
-        painter.drawLine(x - 7, y - 3, x - 12, y - 5)
-        painter.drawLine(x - 7, y + 3, x - 12, y + 5)
+        # Muzzle flash lines - longer and brighter
+        painter.setPen(QPen(color.lighter(150), 2))  # was 1px thick
+        painter.drawLine(x - 12, y, x - 21, y)  # was (x-8, y, x-14, y)
+        painter.drawLine(x - 10, y - 4, x - 18, y - 7)  # was (x-7, y-3, x-12, y-5)
+        painter.drawLine(x - 10, y + 4, x - 18, y + 7)  # was (x-7, y+3, x-12, y+5)
 
-        # Impact ring effect
-        painter.setPen(QPen(QColor(255, 100, 100, 80), 2))
+        # Impact ring effect - larger and brighter
+        painter.setPen(QPen(QColor(255, 100, 100, 120), 3))  # was 80 alpha, 2px
         painter.setBrush(Qt.NoBrush)
-        painter.drawEllipse(x - 10, y - 10, 20, 20)
+        painter.drawEllipse(x - 15, y - 15, 30, 30)  # was (x-10, y-10, 20, 20)
 
     def _draw_left_panel(self, painter, panel_width):
         """Draw left panel - Target list"""
@@ -434,9 +436,9 @@ class MilitaryHUDRadar(QWidget):
         x = 5
         y = 5
 
-        # Panel background
+        # Panel background - IMPROVED v4.3.1-k0007: Higher opacity for better text contrast
         painter.fillRect(x, y, panel_width - 10, h - 10,
-                        QColor(0, 15, 20, 200))
+                        QColor(0, 20, 30, 240))  # was (0, 15, 20, 200) - now 94% opaque
         painter.setPen(QPen(self.COLOR_GRID_MAJOR, 1))
         painter.drawRect(x, y, panel_width - 10, h - 10)
 
@@ -449,31 +451,36 @@ class MilitaryHUDRadar(QWidget):
         painter.setPen(QPen(self.COLOR_GRID, 1))
         painter.drawLine(x + 5, y + 28, x + panel_width - 15, y + 28)
 
-        # Target list
-        painter.setFont(self.FONT_LABEL)
-        ty = y + 45
-        for i, target in enumerate(self.targets[:8]):  # Max 8 targets shown
+        # Target list - IMPROVED v4.3.1-k0007: Better spacing, show more targets
+        painter.setFont(self.FONT_LABEL)  # Now 11pt instead of 8pt
+        ty = y + 50
+        for i, target in enumerate(self.targets[:10]):  # Max 10 targets shown (was 8)
             state_color = TargetState.COLORS.get(target['state'], self.COLOR_TEXT_DIM)
             state_label = TargetState.LABELS.get(target['state'], "???")
 
-            # Status indicator
+            # Status indicator - slightly larger
             painter.setBrush(QBrush(state_color))
             painter.setPen(Qt.NoPen)
-            painter.drawEllipse(x + 10, ty - 4, 6, 6)
+            painter.drawEllipse(x + 10, ty - 5, 8, 8)  # was 6x6
 
             # Target info
             painter.setPen(state_color)
-            painter.drawText(x + 20, ty,
+            painter.drawText(x + 22, ty + 2,
                            f"T{target['id']:02d} {target['distance']:.0f}m")
             painter.setPen(self.COLOR_TEXT_DIM)
-            painter.drawText(x + 20, ty + 12,
+            painter.drawText(x + 22, ty + 14,
                            f"{state_label} {target['speed']:.1f}m/s")
 
-            ty += 32
+            ty += 40  # was 32 - 25% more spacing
 
-        # Count
+        # Count - IMPROVED v4.3.1-k0007: Show overflow indicator
         painter.setFont(self.FONT_LABEL)
-        painter.setPen(self.COLOR_TEXT_DIM)
+        if len(self.targets) > 10:
+            painter.setPen(self.COLOR_WARNING)
+            painter.drawText(x + 10, h - 35, f"▼ +{len(self.targets) - 10} more")
+            painter.setPen(self.COLOR_TEXT_DIM)
+        else:
+            painter.setPen(self.COLOR_TEXT_DIM)
         painter.drawText(x + 10, h - 20, f"{tr('count')}: {len(self.targets)}")
 
     def _draw_right_panel(self, painter, w, panel_width):
@@ -482,9 +489,9 @@ class MilitaryHUDRadar(QWidget):
         x = w - panel_width + 5
         y = 5
 
-        # Panel background
+        # Panel background - IMPROVED v4.3.1-k0007: Higher opacity for better text contrast
         painter.fillRect(x, y, panel_width - 10, h - 10,
-                        QColor(0, 15, 20, 200))
+                        QColor(0, 20, 30, 240))  # was (0, 15, 20, 200) - now 94% opaque
         painter.setPen(QPen(self.COLOR_GRID_MAJOR, 1))
         painter.drawRect(x, y, panel_width - 10, h - 10)
 
@@ -612,6 +619,52 @@ class MilitaryHUDRadar(QWidget):
         # Bottom-right
         painter.drawLine(w - corner_size, h, w, h)
         painter.drawLine(w, h - corner_size, w, h)
+
+    def _draw_legend(self, painter, w, h):
+        """Draw legend showing target types - ADDED v4.3.1-k0007: Better UX"""
+        legend_width = 160
+        legend_height = 110
+        x = w - legend_width - 10
+        y = h - legend_height - 50  # Above status bar
+
+        # Legend background
+        painter.fillRect(x, y, legend_width, legend_height,
+                        QColor(0, 20, 30, 240))
+        painter.setPen(QPen(self.COLOR_GRID_MAJOR, 1))
+        painter.drawRect(x, y, legend_width, legend_height)
+
+        # Title
+        painter.setFont(self.FONT_STATUS)
+        painter.setPen(self.COLOR_ACCENT)
+        painter.drawText(x + 10, y + 20, tr('legend'))
+
+        # Separator
+        painter.setPen(QPen(self.COLOR_GRID, 1))
+        painter.drawLine(x + 5, y + 26, x + legend_width - 5, y + 26)
+
+        # Legend items
+        painter.setFont(self.FONT_LABEL)
+        legend_y = y + 45
+
+        # Walk
+        self._draw_walk_icon(painter, x + 25, legend_y,
+                            TargetState.COLORS[TargetState.WALK])
+        painter.setPen(TargetState.COLORS[TargetState.WALK])
+        painter.drawText(x + 50, legend_y + 5, tr('walk'))
+        legend_y += 26
+
+        # Run
+        self._draw_run_icon(painter, x + 25, legend_y,
+                           TargetState.COLORS[TargetState.RUN])
+        painter.setPen(TargetState.COLORS[TargetState.RUN])
+        painter.drawText(x + 50, legend_y + 5, tr('run'))
+        legend_y += 26
+
+        # Shot
+        self._draw_shot_icon(painter, x + 25, legend_y,
+                            TargetState.COLORS[TargetState.SHOT])
+        painter.setPen(TargetState.COLORS[TargetState.SHOT])
+        painter.drawText(x + 50, legend_y + 5, tr('shot'))
 
 
 # =============================================================================

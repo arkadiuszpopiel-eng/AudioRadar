@@ -134,6 +134,7 @@ TRANSLATIONS = {
         # Radar HUD
         'targets': 'TARGETS',
         'tactical': 'TACTICAL',
+        'legend': 'LEGEND',  # ADDED v4.3.1-k0007: Radar icon legend
         'range': 'RANGE',
         'lock': 'LOCK',
         'statistics': 'STATISTICS',
@@ -276,6 +277,7 @@ TRANSLATIONS = {
         # Radar HUD
         'targets': 'CELE',
         'tactical': 'TAKTYKA',
+        'legend': 'LEGENDA',  # ADDED v4.3.1-k0007: Radar icon legend
         'range': 'ZASIĘG',
         'lock': 'NAMIAR',
         'statistics': 'STATYSTYKI',

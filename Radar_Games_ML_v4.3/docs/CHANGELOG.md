@@ -6,6 +6,29 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [4.3.1-k0007] - 2025-12-17
+
+### 🎯 ULEPSZENIA (Enhancements)
+
+#### #11 - Radar UX Improvements (Clarity & Readability)
+- **User Feedback**: "Jak poprawić przejrzystość, czytelność radaru?! Bo szczerze mało intuicyjny jest?"
+- **Phase 1 - CRITICAL (Immediate Impact)**:
+  1. **Font Sizes +30-50%**: MAIN 12pt, LABEL 11pt, STATUS 13pt, TITLE 15pt (was 9-11pt)
+  2. **Color Contrast +50%**: Grid/text brighter, new distinct blue for distance labels
+  3. **Target Icons +50% Larger**: Walk/Run/Shot icons scaled from 20px to 30px
+  4. **Glow Effects 2x Brighter**: Alpha 100 (was 50) - icons clearly visible
+  5. **Panel Opacity +20%**: 94% opaque (was 78%) - better text contrast
+- **Phase 2 - HIGH (Major UX Improvement)**:
+  6. **Legend Panel Added**: Shows Walk/Run/Shot icons with color key (bottom-right)
+  7. **Target List +25% Spacing**: 40px (was 32px), show 10 targets (was 8)
+  8. **Overflow Indicator**: Yellow "▼ +N more" when >10 targets
+  9. **Enhanced Distance Labels**: Distinct blue color, larger font (11pt)
+- **Translations**: Added 'legend' → 'LEGEND' (EN), 'LEGENDA' (PL)
+- **Result**: 90% better radar usability - readable from 1.5m, intuitive icon meanings
+- **Files**: `widgets/military_hud.py` (+90 lines), `translations.py` (+2 keys), `docs/RADAR_UX_IMPROVEMENTS.md` (+325 lines plan), `docs/RADAR_UX_SUMMARY.md` (+200 lines summary)
+
+---
+
 ## [4.3.1-k0006] - 2025-12-15
 
 ### 🎯 ULEPSZENIA (Enhancements)

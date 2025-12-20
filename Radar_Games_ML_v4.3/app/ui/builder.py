@@ -644,7 +644,8 @@ class UIBuilder:
                 controller = RecordingController()
             except Exception as exc:
                 controller = None
-                ML_TRAINING_ERROR_TRACE = str(exc)
+                # NOTE: Error trace already captured at module level during import
+                log(f"Failed to create RecordingController: {exc}", "WARNING")
         self.main.recording_controller = controller
 
         def launch_overlay():

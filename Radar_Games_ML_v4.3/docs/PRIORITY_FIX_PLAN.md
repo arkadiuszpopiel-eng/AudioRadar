@@ -1,8 +1,35 @@
 # KOMPLEKSOWY PLAN NAPRAW - 4 PRIORYTETY
 
 **Data:** 2025-12-20
-**Wersja:** v4.3.1-k0007 → k0008
+**Wersja:** v4.3.1-k0007 → k0008 ✅ COMPLETED
 **Użytkownik:** Wszystkie 4 priorytety muszą działać!
+**Scenariusz wybrany:** B (krok po kroku z testowaniem)
+
+---
+
+## 🎯 STATUS IMPLEMENTACJI (v4.3.1-k0008)
+
+### ✅ PRIORYTET 1: Radar UI - Lepsze & Dopracowane
+**Status:** ✅ UKOŃCZONE w k0007
+
+### ✅ PRIORYTET 2: Radar Widget Nie Reaguje na START
+**Status:** ✅ UKOŃCZONE w k0008
+- ✅ Obniżone progi detekcji (ENERGY_THRESHOLD: 0.001→0.0005, LOCALIZATION_MIN_CONFIDENCE: 30→20)
+- ✅ Obniżone progi confidence (ALGORITHM_MIN: 30→20, UI_MIN: 50→40, THREAT_MIN: 70→60)
+- ✅ Dodano debug logging (co 100 klatek: has_detection, energy, active_targets, events)
+
+### 📦 PRIORYTET 3: ML Tab - Wszystkie Funkcje
+**Status:** ⚠️ WYMAGA AKCJI UŻYTKOWNIKA
+- Użytkownik musi uruchomić: `pip install joblib scikit-learn`
+- ML Training panel zadziała po instalacji zależności
+- Moduł opcjonalny - graceful degradation bez joblib
+
+### ✅ PRIORYTET 4: Radar Rotation - Czyste Programowe Rozwiązanie
+**Status:** ✅ UKOŃCZONE w k0008
+- ✅ Usunięto broken player_yaw memory reading (zawsze zwracało 0.0)
+- ✅ Zaimplementowano camera-relative radar: `angle_radar = 90.0 + angle_combined`
+- ✅ Działa bez zewnętrznych urządzeń, konfiguracji, Cheat Engine
+- ✅ Bezpieczne (no anti-cheat risk), uniwersalne dla wszystkich gier
 
 ---
 

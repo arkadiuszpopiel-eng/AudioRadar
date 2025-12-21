@@ -1133,6 +1133,16 @@ class MainWindow(QMainWindow):
         # Multi-target tracking
         has_detection = events.get('walk', False) or events.get('run', False) or events.get('shot', False)
 
+        # FIXED v4.3.1-k0008: Debug logging for radar responsiveness (every 100 frames)
+        if not hasattr(self, '_debug_frame_count'):
+            self._debug_frame_count = 0
+        self._debug_frame_count += 1
+        if self._debug_frame_count % 100 == 0:
+            active_count = len(self.target_tracker.get_active_targets())
+            log(f"Detection debug: has_detection={has_detection}, energy={energy:.6f} "
+                f"(threshold={ENERGY_THRESHOLD:.6f}), active_targets={active_count}, "
+                f"events={events}", "DEBUG")
+
         # Prepare detections for tracker
         detections = []
         if has_detection and energy > ENERGY_THRESHOLD:
@@ -1521,22 +1531,14 @@ class MainWindow(QMainWindow):
             # Weight: 70% ITD, 30% ILD (ITD is generally more accurate)
             angle_combined = 0.7 * angle_from_itd + 0.3 * angle_from_ild
 
-            # FIXED v4.3.1: Player-centric radar transformation with memory reading
-            # Read player yaw from game memory (requires manual offset configuration)
-            try:
-                player_yaw = self.memory_reader.read_player_yaw()
-            except (OSError, RuntimeError, AttributeError) as e:
-                # OSError: memory read fail, RuntimeError: game not running, AttributeError: reader not initialized
-                # Fallback to 0 if reading fails (game not running, no offset set, etc.)
-                player_yaw = 0.0
-
+            # FIXED v4.3.1-k0008: Camera-relative radar positioning (pure software solution)
+            # Radar shows sounds relative to where you're listening (headphones/camera direction)
+            # - When you hear sounds from front → radar shows front (0°)
+            # - When you hear sounds from left → radar shows left (270°)
+            # - When you turn in game, audio changes → radar updates automatically
+            # This is intuitive and works without any external hardware or memory reading!
             # Convert to radar coordinates (0° = forward, 90° = right, 180° = back, 270° = left)
-            # Relative to sound source
-            angle_radar = 90.0 + angle_combined  # Center at front (90°)
-
-            # Transform to player-centric coordinates
-            # If player faces East (yaw=90°), sounds from North should appear on left
-            angle_radar = (angle_radar - player_yaw) % 360.0
+            angle_radar = 90.0 + angle_combined  # Simple camera-relative positioning ✅
 
             # === Distance Estimation ===
             total_energy = (rms_left + rms_right) / 2.0

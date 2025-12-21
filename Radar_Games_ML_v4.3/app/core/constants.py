@@ -35,15 +35,16 @@ AUDIO_SCAN_INTERVAL_MS = 2000 # Scan audio every 2s
 STARTUP_DELAY_MS = 500        # Initial scan delay
 STARTUP_AUDIO_DELAY_MS = 1000 # Audio scan delay
 
-# Detection
-ENERGY_THRESHOLD = 0.001         # Minimum energy for detection (FIXED v4.1.1: increased 100x to reduce noise)
-LOCALIZATION_MIN_CONFIDENCE = 30  # Minimum confidence for target tracking (FIXED v4.1.1)
+# Detection (FIXED v4.3.1-k0008: Lowered thresholds for better radar responsiveness)
+ENERGY_THRESHOLD = 0.0005        # Minimum energy for detection (lowered 50% - was 0.001)
+LOCALIZATION_MIN_CONFIDENCE = 20  # Minimum confidence for target tracking (lowered 33% - was 30)
 RADAR_ROTATION_DEG = 4.0         # Degrees per frame
 
 # FIXED v4.2.0: Target confidence thresholds (normalized 0-100%)
-TARGET_CONFIDENCE_ALGORITHM_MIN = 30.0  # Minimum confidence to create target (30%)
-TARGET_CONFIDENCE_UI_MIN = 50.0         # Minimum confidence to show in UI (50%)
-TARGET_CONFIDENCE_THREAT_MIN = 70.0     # Minimum confidence for threat classification (70%)
+# FIXED v4.3.1-k0008: Lowered algorithm threshold for easier target detection
+TARGET_CONFIDENCE_ALGORITHM_MIN = 20.0  # Minimum confidence to create target (lowered from 30%)
+TARGET_CONFIDENCE_UI_MIN = 40.0         # Minimum confidence to show in UI (lowered from 50%)
+TARGET_CONFIDENCE_THREAT_MIN = 60.0     # Minimum confidence for threat classification (lowered from 70%)
 
 # FIXED v4.2.0: Radar orientation configuration
 RADAR_ORIENTATION_MODE = "player_up"  # "north_up" or "player_up" (head-up mode for ARC Raiders)

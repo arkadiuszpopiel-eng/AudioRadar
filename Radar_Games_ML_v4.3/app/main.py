@@ -489,7 +489,6 @@ class MainWindow(QMainWindow):
 
     def launch_self_test(self):
         """Run internal self-test and show summary dialog."""
-        lang = get_language()
         if hasattr(self, 'test_btn'):
             self.test_btn.setEnabled(False)
 
@@ -523,22 +522,6 @@ class MainWindow(QMainWindow):
             QTimer.singleShot(0, finish)
 
         threading.Thread(target=worker, daemon=True).start()
-
-        # Update language button to show current language
-        if hasattr(self, 'lang_btn'):
-            self.lang_btn.setText("🇬🇧 EN" if lang == 'en' else "🇵🇱 PL")
-            self.lang_btn.setChecked(lang == 'pl')
-
-        # Update panels
-        self.dev_panel.update_translations()
-        self.det_panel.update_translations()
-
-        # Update detached windows titles
-        if self.detached_radar:
-            self.detached_radar.setWindowTitle(f"{tr('radar')} - Radar Games ML {VERSION}")
-
-        if self.detached_led:
-            self.detached_led.setWindowTitle(f"{tr('led_alert')} - Radar Games ML {VERSION}")
 
     # ========================================================================
     # EXPORT/IMPORT METHODS (v4.2.1 - ZADANIE 5)

@@ -38,7 +38,9 @@ if errorlevel 1 (
 REM Start the application
 echo Starting Radar Games ML...
 echo.
-python app\main.py
+
+REM Run as Python module (required for absolute imports)
+python -m app.main
 
 REM If there was an error, keep window open
 if errorlevel 1 (

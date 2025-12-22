@@ -20,7 +20,7 @@ try:
 except ImportError:
     from PyQt5.QtCore import QObject, pyqtSignal, QTimer
 
-from core.logger import log
+from app.core.logger import log
 
 
 class AudioDeviceMonitor(QObject):

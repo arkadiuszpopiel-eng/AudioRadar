@@ -18,7 +18,7 @@ try:
 except ImportError:
     from PyQt5.QtCore import QTimer
 
-from core.application_controller import ApplicationController
+from app.core.application_controller import ApplicationController
 
 
 class MockMainWindow:

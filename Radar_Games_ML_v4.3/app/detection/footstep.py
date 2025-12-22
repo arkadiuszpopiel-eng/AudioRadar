@@ -23,7 +23,7 @@ import numpy as np
 from scipy import signal as sp_signal
 from collections import deque
 
-from core.logger import log
+from app.core.logger import log
 from core import (
     FOOTSTEP_FREQ_MIN_HZ, FOOTSTEP_FREQ_MAX_HZ,
     FOOTSTEP_WALK_INTERVAL_S, FOOTSTEP_RUN_INTERVAL_S,

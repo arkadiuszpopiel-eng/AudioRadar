@@ -16,8 +16,8 @@ import traceback
 from concurrent.futures import ThreadPoolExecutor
 from typing import Optional, Dict, Any, Tuple
 
-from core.logger import log
-from core.constants import MAX_WORKERS, CLEANUP_INTERVAL_SEC, DETECTION_TIMEOUT_SEC
+from app.core.logger import log
+from app.core.constants import MAX_WORKERS, CLEANUP_INTERVAL_SEC, DETECTION_TIMEOUT_SEC
 
 
 class DetectionResult:

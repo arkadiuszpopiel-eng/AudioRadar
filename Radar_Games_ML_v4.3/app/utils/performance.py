@@ -16,7 +16,7 @@ from typing import Dict, List, Optional, Any, Callable
 from dataclasses import dataclass, field
 from functools import wraps
 
-from core.logger import log
+from app.core.logger import log
 
 
 @dataclass

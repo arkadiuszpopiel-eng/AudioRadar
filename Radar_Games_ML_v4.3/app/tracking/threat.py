@@ -3,7 +3,7 @@ Radar Games ML v3.5.0 - Threat Priority System
 Intelligent threat ranking by danger level
 """
 
-from core.logger import log
+from app.core.logger import log
 
 
 class ThreatPrioritySystem:

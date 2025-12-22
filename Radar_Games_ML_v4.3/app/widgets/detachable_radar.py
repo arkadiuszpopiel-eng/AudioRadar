@@ -9,7 +9,7 @@ from PyQt5.QtWidgets import QWidget, QVBoxLayout
 from PyQt5.QtCore import Qt, QPoint
 
 from core import log
-from core.translations import tr
+from app.core.translations import tr
 from version import __version_full__ as VERSION
 from .minimal_radar import MinimalRadarWidget
 from .target_state import TargetState

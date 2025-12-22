@@ -8,7 +8,7 @@ Dynamically adjusts processing rate based on system performance.
 import time
 from collections import deque
 from typing import Optional
-from core.logger import log
+from app.core.logger import log
 
 
 class AdaptiveFrameSkip:

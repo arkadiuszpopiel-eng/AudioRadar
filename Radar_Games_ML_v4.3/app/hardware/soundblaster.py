@@ -11,7 +11,7 @@ except ImportError:
 
 from scipy.signal import butter, sosfilt
 
-from core.logger import log
+from app.core.logger import log
 
 
 class SoundBlasterOptimizer:

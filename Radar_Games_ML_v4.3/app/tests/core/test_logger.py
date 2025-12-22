@@ -9,7 +9,7 @@ import threading
 import time
 from pathlib import Path
 from unittest.mock import patch, MagicMock
-from core.logger import ThreadSafeLogger, log
+from app.core.logger import ThreadSafeLogger, log
 
 
 class TestThreadSafeLogger:

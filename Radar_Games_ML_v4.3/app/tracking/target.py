@@ -12,9 +12,9 @@ import threading
 import gc
 from collections import deque
 
-from core.logger import log
-from core.confidence import ConfidenceNormalizer
-from core.constants import TARGET_CONFIDENCE_ALGORITHM_MIN, TARGET_CONFIDENCE_UI_MIN
+from app.core.logger import log
+from app.core.confidence import ConfidenceNormalizer
+from app.core.constants import TARGET_CONFIDENCE_ALGORITHM_MIN, TARGET_CONFIDENCE_UI_MIN
 
 
 class Target:

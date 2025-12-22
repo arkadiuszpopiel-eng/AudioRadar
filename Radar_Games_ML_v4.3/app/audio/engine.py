@@ -60,7 +60,7 @@ except Exception as e:
     PYAUDIO_IMPORT_ERROR = f"{type(e).__name__}: {e}"
     log(f"Unexpected pyaudiowpatch import error:\n{traceback.format_exc()}", "DEBUG")
 
-from core.logger import log
+from app.core.logger import log
 
 # Log pyaudiowpatch availability at module load
 if PYAUDIO_AVAILABLE:

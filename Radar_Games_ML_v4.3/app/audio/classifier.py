@@ -10,7 +10,7 @@ import numpy as np
 from collections import deque
 from scipy import signal as sp_signal
 
-from core.logger import log
+from app.core.logger import log
 
 
 class SoundClassifier:

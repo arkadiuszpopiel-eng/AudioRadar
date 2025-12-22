@@ -20,7 +20,7 @@ try:
 except ImportError:
     PSUTIL_AVAILABLE = False
 
-from core.logger import log
+from app.core.logger import log
 
 
 class GameMemoryReader:

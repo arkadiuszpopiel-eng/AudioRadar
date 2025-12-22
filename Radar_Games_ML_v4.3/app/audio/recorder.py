@@ -7,8 +7,8 @@ FIXED v3.5.0: Buffering for reduced I/O
 import time
 import numpy as np
 
-from core.logger import log
-from core.constants import RECORDING_BUFFER_SIZE
+from app.core.logger import log
+from app.core.constants import RECORDING_BUFFER_SIZE
 
 
 class AudioRecorder:

@@ -9,9 +9,9 @@ Reduces MainWindow from 2080 lines to ~1880 lines (~200 line reduction)
 from PyQt5.QtWidgets import QMessageBox
 from PyQt5.QtCore import QTimer
 
-from core.logger import log
-from core.translations import get_language, set_language, tr
-from core.constants import VERSION
+from app.core.logger import log
+from app.core.translations import get_language, set_language, tr
+from app.core.constants import VERSION
 
 
 class EventHandlers:

@@ -16,7 +16,7 @@ except ImportError:
     from PyQt5.QtCore import Qt
     from PyQt5.QtGui import QFont
 
-from core.logger import log
+from app.core.logger import log
 
 
 class ProfilingDashboard(QWidget):

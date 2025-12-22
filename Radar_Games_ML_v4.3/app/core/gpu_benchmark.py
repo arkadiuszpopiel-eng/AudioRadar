@@ -7,7 +7,7 @@ Benchmark GPU vs CPU FFT performance and provide metrics.
 import numpy as np
 import time
 from typing import Dict, Any
-from core.logger import log
+from app.core.logger import log
 
 
 class GPUBenchmark:

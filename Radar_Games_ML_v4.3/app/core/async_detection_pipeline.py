@@ -8,7 +8,7 @@ Decouples detection processing from main UI thread for maximum responsiveness.
 from queue import Queue, Empty, Full
 from typing import Optional, Dict, Any
 import time
-from core.logger import log
+from app.core.logger import log
 
 
 class AsyncDetectionPipeline:

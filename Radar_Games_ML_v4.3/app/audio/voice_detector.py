@@ -7,7 +7,7 @@ import time
 import numpy as np
 from scipy.signal import find_peaks
 
-from core.logger import log
+from app.core.logger import log
 
 
 class HumanVoiceDetector:

@@ -11,7 +11,7 @@ from typing import TYPE_CHECKING
 from PyQt5.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QTabWidget, QGroupBox,
     QLabel, QPushButton, QCheckBox, QSlider, QToolBar, QStatusBar,
-    QSizePolicy, QScrollArea, QTextEdit
+    QSizePolicy, QScrollArea, QTextEdit, QFrame, QLineEdit
 )
 from PyQt5.QtCore import Qt
 
@@ -589,50 +589,117 @@ class UIBuilder:
     def _build_ml_training_tab(self) -> None:
         """Build Tab 5: ML Training (v4.2.0 - Roadmap Item 1)."""
         if not ML_TRAINING_AVAILABLE:
-            # Create placeholder tab if ML training is not available and surface the reason.
+            # FIXED v4.3.1-k0008: Improved ML Training error UI (POPRAWKA #15)
             placeholder = QWidget()
             layout = QVBoxLayout()
-            layout.setContentsMargins(5, 5, 5, 5)
+            layout.setContentsMargins(20, 20, 20, 20)
 
-            # v4.3.1 POPRAWKA #6: Scrollable container for error messages
-            scroll_area = QScrollArea()
-            scroll_area.setWidgetResizable(True)
-            scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarAsNeeded)
-            scroll_area.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+            # Title with icon
+            title = QLabel(f"🧠 {tr('ml_training_unavailable_title')}")
+            title.setStyleSheet("font-size: 18pt; font-weight: bold; color: #FF6B6B; padding: 20px;")
+            title.setAlignment(Qt.AlignCenter)
+            layout.addWidget(title)
 
-            container = QWidget()
-            container_layout = QVBoxLayout(container)
-            container_layout.setContentsMargins(10, 10, 10, 10)
+            # Error message
+            error_msg = QLabel(tr('ml_training_dependency_hint').format(error=str(ML_TRAINING_ERROR)))
+            error_msg.setWordWrap(True)
+            error_msg.setStyleSheet("font-size: 11pt; color: #CCCCCC; padding: 10px 40px;")
+            error_msg.setAlignment(Qt.AlignCenter)
+            layout.addWidget(error_msg)
 
-            label = QLabel(f"🧠 {tr('ml_training_unavailable_title')}")
-            label.setStyleSheet("font-size: 12pt; color: #888888; padding: 10px;")
-            label.setAlignment(Qt.AlignCenter)
-            container_layout.addWidget(label)
+            # Separator
+            line1 = QFrame()
+            line1.setFrameShape(QFrame.HLine)
+            line1.setStyleSheet("background-color: #444444; max-height: 2px; margin: 20px 100px;")
+            layout.addWidget(line1)
 
-            error_hint = QLabel(
-                tr('ml_training_dependency_hint').format(error=str(ML_TRAINING_ERROR))
+            # "How to Fix" section
+            fix_title = QLabel(f"🔧 {tr('ml_training_how_to_fix')}")
+            fix_title.setStyleSheet("font-size: 14pt; font-weight: bold; color: #4ECDC4; padding: 10px;")
+            fix_title.setAlignment(Qt.AlignCenter)
+            layout.addWidget(fix_title)
+
+            # Step 1
+            step1 = QLabel(tr('ml_training_step1'))
+            step1.setStyleSheet("font-size: 11pt; color: #DDDDDD; padding: 5px 60px;")
+            layout.addWidget(step1)
+
+            # Step 2
+            step2 = QLabel(tr('ml_training_step2'))
+            step2.setStyleSheet("font-size: 11pt; color: #DDDDDD; padding: 5px 60px;")
+            layout.addWidget(step2)
+
+            # Command box with copy button
+            cmd_container = QHBoxLayout()
+            cmd_container.addStretch()
+
+            install_command = "pip install joblib scikit-learn numpy"
+            command_box = QLineEdit(install_command)
+            command_box.setReadOnly(True)
+            command_box.setStyleSheet(
+                "font-family: monospace; font-size: 12pt; padding: 10px; "
+                "background-color: #2D2D2D; color: #FFE66D; border: 2px solid #4ECDC4; "
+                "border-radius: 5px; min-width: 400px;"
             )
-            error_hint.setWordWrap(True)
-            error_hint.setStyleSheet("color: #AAAAAA; padding: 0 15px 5px 15px;")
-            container_layout.addWidget(error_hint)
+            cmd_container.addWidget(command_box)
 
-            install_hint = QLabel(tr('ml_training_install_hint'))
-            install_hint.setWordWrap(True)
-            install_hint.setStyleSheet("color: #AAAAAA; padding: 0 15px 10px 15px;")
-            container_layout.addWidget(install_hint)
+            copy_btn = QPushButton(f"📋 {tr('ml_training_copy_command')}")
+            copy_btn.setStyleSheet(
+                "font-size: 10pt; padding: 10px 20px; background-color: #4ECDC4; "
+                "color: #1A1A1A; border: none; border-radius: 5px; font-weight: bold;"
+            )
 
+            def copy_command():
+                from PyQt5.QtWidgets import QApplication
+                QApplication.clipboard().setText(install_command)
+                from core.toast import show_toast
+                show_toast(self.main, tr('ml_training_command_copied'), duration=2000)
+
+            copy_btn.clicked.connect(copy_command)
+            cmd_container.addWidget(copy_btn)
+            cmd_container.addStretch()
+            layout.addLayout(cmd_container)
+
+            # Step 3
+            step3 = QLabel(tr('ml_training_step3'))
+            step3.setStyleSheet("font-size: 11pt; color: #DDDDDD; padding: 15px 60px 5px 60px;")
+            layout.addWidget(step3)
+
+            # Technical details (collapsible)
             if ML_TRAINING_ERROR_TRACE:
+                details_btn = QPushButton(f"▼ {tr('ml_training_show_details')}")
+                details_btn.setCheckable(True)
+                details_btn.setStyleSheet(
+                    "font-size: 10pt; padding: 8px; background-color: #333333; "
+                    "color: #999999; border: 1px solid #555555; border-radius: 3px; "
+                    "margin: 20px 100px 10px 100px;"
+                )
+
                 trace_box = QTextEdit()
                 trace_box.setReadOnly(True)
                 trace_box.setText(ML_TRAINING_ERROR_TRACE)
-                trace_box.setStyleSheet("font-family: monospace; font-size: 8pt; color: #CCCCCC;")
-                container_layout.addWidget(trace_box)
+                trace_box.setStyleSheet(
+                    "font-family: monospace; font-size: 9pt; color: #AAAAAA; "
+                    "background-color: #1A1A1A; border: 1px solid #333333; "
+                    "padding: 10px; margin: 0 100px;"
+                )
+                trace_box.setMaximumHeight(200)
+                trace_box.hide()  # Hidden by default
 
-            container_layout.addStretch()
-            container.setLayout(container_layout)
-            scroll_area.setWidget(container)
+                def toggle_details(checked):
+                    if checked:
+                        trace_box.show()
+                        details_btn.setText(f"▲ {tr('ml_training_hide_details')}")
+                    else:
+                        trace_box.hide()
+                        details_btn.setText(f"▼ {tr('ml_training_show_details')}")
 
-            layout.addWidget(scroll_area)
+                details_btn.toggled.connect(toggle_details)
+
+                layout.addWidget(details_btn)
+                layout.addWidget(trace_box)
+
+            layout.addStretch()
             placeholder.setLayout(layout)
             self.main.main_tabs.addTab(placeholder, f"🧠 {tr('tab_ml_training')}")
             self.main.ml_training_panel = None

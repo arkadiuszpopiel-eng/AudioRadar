@@ -2,10 +2,15 @@
   RADAR GAMES ML v4.3.1 - JAK URUCHOMIĆ (DLA KAŻDEGO!)
 ═══════════════════════════════════════════════════════════════
 
+⚠️ NIE UŻYWAJ PLIKU .EXE! (Może być zepsuty)
+
 📌 NAJPROŚCIEJ - 2 KLIKNIĘCIA:
 
 1. Kliknij 2 razy na plik: START_RADAR.bat
 2. Gotowe! Program się uruchomi!
+
+(Jeśli widzisz plik Radar_Games_ML.exe - IGNORUJ GO!)
+(START_RADAR.bat jest lepszy i zawsze działa!)
 
 ───────────────────────────────────────────────────────────────
 

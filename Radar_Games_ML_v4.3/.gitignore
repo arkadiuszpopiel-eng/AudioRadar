@@ -3,3 +3,15 @@ all_logs/
 __pycache__/
 *.pyc
 *.pyo
+
+# Build artifacts (executables should not be in repo)
+*.exe
+*.dll
+*.spec.bak
+build/
+dist/
+_internal/
+
+# PyInstaller files
+*.manifest
+*.spec~

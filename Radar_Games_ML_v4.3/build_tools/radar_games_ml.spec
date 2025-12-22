@@ -88,6 +88,9 @@ hiddenimports += [
 # Scientific computing
 hiddenimports += ['numpy', 'scipy', 'scipy.signal', 'scipy.fft']
 
+# ML libraries (FIXED v4.3.1-k0010: Added for ML Training Studio)
+hiddenimports += ['joblib', 'sklearn', 'sklearn.ensemble', 'sklearn.tree', 'threadpoolctl']
+
 # Audio libraries
 hiddenimports += ['sounddevice', 'soundcard']
 

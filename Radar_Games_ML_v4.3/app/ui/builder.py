@@ -213,7 +213,13 @@ class UIBuilder:
         self.main.setCentralWidget(self.main.main_tabs)
 
     def _build_radar_tab(self) -> None:
-        """Build Tab 1: Radar View (Main tactical display)."""
+        """Build Tab 1: Radar View (Main tactical display).
+
+        FIXED v4.3.1-k0009: Improved layout for better usability (ULEPSZENIE #16)
+        - Radar display 50% larger (600px minimum vs 400px)
+        - Controls more visible and better organized
+        - Better visual hierarchy
+        """
         radar_tab = QWidget()
         radar_layout = QVBoxLayout()
         radar_layout.setContentsMargins(5, 5, 5, 5)
@@ -231,7 +237,8 @@ class UIBuilder:
         # Radar sub-tabs (2D/3D)
         self.main.radar_tabs = QTabWidget()
         self.main.radar_tabs.setStyleSheet("QTabWidget::pane { border: 1px solid #222; }")
-        self.main.radar_tabs.setMinimumHeight(400)  # Ensure radar is visible
+        # FIXED v4.3.1-k0009: Increased from 400px to 600px for better visibility
+        self.main.radar_tabs.setMinimumHeight(600)
 
         # 2D Radar - Military HUD Style
         self.main.radar_widget = MilitaryHUDRadar()
@@ -243,7 +250,13 @@ class UIBuilder:
 
         container_layout.addWidget(self.main.radar_tabs)
 
-        # Radar controls (compact bottom panel)
+        # FIXED v4.3.1-k0009: Visual separator for better organization
+        separator = QFrame()
+        separator.setFrameShape(QFrame.HLine)
+        separator.setStyleSheet("background-color: #444444; max-height: 2px; margin: 10px 0;")
+        container_layout.addWidget(separator)
+
+        # Radar controls (improved panel - ULEPSZENIE #16)
         radar_controls = self._build_radar_controls()
         container_layout.addLayout(radar_controls)
 
@@ -255,25 +268,121 @@ class UIBuilder:
         self.main.main_tabs.addTab(radar_tab, f"🎯 {tr('tab_radar_view')}")
 
     def _build_radar_controls(self) -> QHBoxLayout:
-        """Build radar control panel (detach, frameless, opacity)."""
-        radar_controls = QHBoxLayout()
+        """Build radar control panel (detach, frameless, opacity).
 
+        FIXED v4.3.1-k0009: Improved controls for better visibility (ULEPSZENIE #16)
+        - Buttons 50% larger with better styling
+        - Clearer labels and better spacing
+        - Modern color scheme with hover effects
+        """
+        radar_controls = QHBoxLayout()
+        radar_controls.setSpacing(15)  # More space between controls
+
+        # FIXED v4.3.1-k0009: Larger, more visible Detach button
         self.main.detach_radar_btn = QPushButton(f"⬜ {tr('detach_radar')}")
         self.main.detach_radar_btn.setCheckable(True)
+        self.main.detach_radar_btn.setMinimumHeight(40)  # Taller button
+        self.main.detach_radar_btn.setMinimumWidth(140)  # Wider button
+        self.main.detach_radar_btn.setStyleSheet("""
+            QPushButton {
+                font-size: 11pt;
+                font-weight: bold;
+                padding: 8px 15px;
+                background-color: #2D3E50;
+                color: #FFFFFF;
+                border: 2px solid #4ECDC4;
+                border-radius: 6px;
+            }
+            QPushButton:hover {
+                background-color: #34495E;
+                border: 2px solid #5FDED5;
+            }
+            QPushButton:checked {
+                background-color: #4ECDC4;
+                color: #1A1A1A;
+                border: 2px solid #6FEDE5;
+            }
+        """)
         self.main.detach_radar_btn.clicked.connect(self.main.toggle_detach_radar)
         radar_controls.addWidget(self.main.detach_radar_btn)
 
+        # FIXED v4.3.1-k0009: Larger, more visible Frameless checkbox
         self.main.radar_frameless_btn = QCheckBox(tr('frameless_mode'))
+        self.main.radar_frameless_btn.setMinimumHeight(40)
+        self.main.radar_frameless_btn.setStyleSheet("""
+            QCheckBox {
+                font-size: 11pt;
+                font-weight: bold;
+                color: #DDDDDD;
+                spacing: 8px;
+            }
+            QCheckBox::indicator {
+                width: 24px;
+                height: 24px;
+                border: 2px solid #666666;
+                border-radius: 4px;
+                background-color: #2D2D2D;
+            }
+            QCheckBox::indicator:hover {
+                border: 2px solid #4ECDC4;
+            }
+            QCheckBox::indicator:checked {
+                background-color: #4ECDC4;
+                border: 2px solid #6FEDE5;
+            }
+        """)
         self.main.radar_frameless_btn.toggled.connect(self.main.toggle_radar_frameless)
         radar_controls.addWidget(self.main.radar_frameless_btn)
 
-        radar_controls.addWidget(QLabel(tr('opacity')))
+        # Vertical separator
+        v_sep = QFrame()
+        v_sep.setFrameShape(QFrame.VLine)
+        v_sep.setStyleSheet("background-color: #555555; max-width: 2px;")
+        radar_controls.addWidget(v_sep)
+
+        # FIXED v4.3.1-k0009: Better opacity control with clearer label
+        opacity_label = QLabel(f"🔆 {tr('opacity')}:")
+        opacity_label.setStyleSheet("font-size: 11pt; font-weight: bold; color: #DDDDDD; padding: 0 5px;")
+        radar_controls.addWidget(opacity_label)
+
         self.main.radar_alpha = QSlider(Qt.Horizontal)
         self.main.radar_alpha.setRange(0, 100)
         self.main.radar_alpha.setValue(100)
-        self.main.radar_alpha.setMaximumWidth(150)
+        self.main.radar_alpha.setMinimumWidth(180)  # Wider slider
+        self.main.radar_alpha.setMinimumHeight(40)  # Taller slider
+        self.main.radar_alpha.setStyleSheet("""
+            QSlider::groove:horizontal {
+                height: 8px;
+                background: #2D2D2D;
+                border: 1px solid #444444;
+                border-radius: 4px;
+            }
+            QSlider::handle:horizontal {
+                background: #4ECDC4;
+                border: 2px solid #6FEDE5;
+                width: 20px;
+                height: 20px;
+                margin: -7px 0;
+                border-radius: 10px;
+            }
+            QSlider::handle:horizontal:hover {
+                background: #5FDED5;
+            }
+        """)
         self.main.radar_alpha.valueChanged.connect(self.main.update_radar_alpha)
         radar_controls.addWidget(self.main.radar_alpha)
+
+        # Opacity value label
+        self.main.radar_alpha_label = QLabel("100%")
+        self.main.radar_alpha_label.setStyleSheet("font-size: 10pt; color: #AAAAAA; min-width: 45px;")
+        self.main.radar_alpha_label.setAlignment(Qt.AlignCenter)
+
+        def update_opacity_label(value):
+            self.main.radar_alpha_label.setText(f"{value}%")
+
+        self.main.radar_alpha.valueChanged.connect(update_opacity_label)
+        radar_controls.addWidget(self.main.radar_alpha_label)
+
         radar_controls.addStretch()
 
         return radar_controls

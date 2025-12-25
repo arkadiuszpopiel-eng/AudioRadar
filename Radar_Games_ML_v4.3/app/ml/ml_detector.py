@@ -35,7 +35,7 @@ class MLFootstepDetector:
             auto_load_best: If True, automatically load best model on init
         """
         self.sample_rate = sample_rate
-        self.feature_extractor = FeatureExtractor(sample_rate=sample_rate)
+        self.feature_extractor = FeatureExtractor(source_sample_rate=sample_rate)
         self.registry = get_model_registry()
 
         # Model state

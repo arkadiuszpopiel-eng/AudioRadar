@@ -70,6 +70,7 @@ class SpectrumWidget(pg.PlotWidget):
         Update spectrum from cached FFT result (PERFORMANCE OPTIMIZATION)
 
         FIXED v3.5.0: Eliminates duplicate FFT computation
+        FIXED v4.3.1-k0011: Array shape validation to prevent inhomogeneous errors
 
         Args:
             fft_result: Dict with keys 'fft_data', 'freqs', 'power'
@@ -83,12 +84,22 @@ class SpectrumWidget(pg.PlotWidget):
 
             self.spectrum_curve.setData(freqs, power)
 
+            # FIXED v4.3.1-k0011: Validate array shape before adding to buffer
+            if len(self.avg_buffer) > 0:
+                # Check if new power array matches existing buffer shape
+                expected_length = len(self.avg_buffer[0])
+                if len(power) != expected_length:
+                    # Shape mismatch - clear buffer and start fresh
+                    self.avg_buffer.clear()
+
             self.avg_buffer.append(power)
             if len(self.avg_buffer) > self.avg_size:
                 self.avg_buffer.pop(0)
 
-            avg_power = np.mean(self.avg_buffer, axis=0)
-            self.avg_curve.setData(freqs, avg_power)
+            # Only average if we have data and all arrays are same shape
+            if len(self.avg_buffer) > 0:
+                avg_power = np.mean(self.avg_buffer, axis=0)
+                self.avg_curve.setData(freqs, avg_power)
 
         except Exception as e:
             log(f"Error in update_from_cache: {e}", "ERROR")

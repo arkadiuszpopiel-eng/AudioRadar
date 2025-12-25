@@ -116,6 +116,15 @@ hiddenimports += [
 # Scientific computing
 hiddenimports += ['numpy', 'scipy', 'scipy.signal', 'scipy.fft']
 
+# ML libraries (FIXED v4.3.1-k0011: Added for ML Training Studio)
+hiddenimports += [
+    'joblib',           # ML model persistence
+    'sklearn',          # scikit-learn main
+    'sklearn.ensemble', # Random Forest models
+    'sklearn.tree',     # Decision trees
+    'threadpoolctl'     # Required by sklearn
+]
+
 # Audio libraries
 hiddenimports += ['sounddevice', 'soundcard']
 

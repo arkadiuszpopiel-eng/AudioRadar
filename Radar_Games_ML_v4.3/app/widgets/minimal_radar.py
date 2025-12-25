@@ -54,10 +54,11 @@ class MinimalRadarWidget(QWidget):
         # Targets
         self.targets = []
 
-        # Animation timer
-        self.sweep_timer = QTimer()
-        self.sweep_timer.timeout.connect(self._update_sweep)
-        self.sweep_timer.start(50)  # 20 FPS
+        # FIXED v4.3.1-k0011: Sweep animation DISABLED per user request
+        # Animation timer (disabled - user doesn't want sweep)
+        # self.sweep_timer = QTimer()
+        # self.sweep_timer.timeout.connect(self._update_sweep)
+        # self.sweep_timer.start(50)  # 20 FPS
 
     def _update_sweep(self):
         """Update sweep line animation"""
@@ -129,7 +130,8 @@ class MinimalRadarWidget(QWidget):
 
         # Draw radar components
         self._draw_radar_grid(painter, center_x, center_y)
-        self._draw_sweep_line(painter, center_x, center_y)
+        # FIXED v4.3.1-k0011: Sweep line DISABLED per user request ("nie chce tego")
+        # self._draw_sweep_line(painter, center_x, center_y)
         self._draw_targets(painter, center_x, center_y)
 
     def _draw_radar_grid(self, painter, cx, cy):

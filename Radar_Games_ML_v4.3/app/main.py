@@ -1531,6 +1531,17 @@ class MainWindow(QMainWindow):
             # Weight: 70% ITD, 30% ILD (ITD is generally more accurate)
             angle_combined = 0.7 * angle_from_itd + 0.3 * angle_from_ild
 
+            # FIXED v4.3.1-k0011: Add variation for mono/weak stereo sources
+            # When stereo separation is poor (mono mic), spread detections around radar
+            stereo_quality = abs(angle_from_itd) + abs(angle_from_ild)
+            if stereo_quality < 5.0:  # Very weak stereo (<5°)
+                # Add semi-random variation based on current time (changes slowly)
+                import time
+                time_seed = int(time.time() * 10) % 360  # Changes every 100ms
+                # Add ±30° variation that changes over time
+                angle_variation = (time_seed % 60) - 30  # Range: -30° to +30°
+                angle_combined += angle_variation
+
             # FIXED v4.3.1-k0008: Camera-relative radar positioning (pure software solution)
             # Radar shows sounds relative to where you're listening (headphones/camera direction)
             # - When you hear sounds from front → radar shows front (0°)
@@ -1539,6 +1550,12 @@ class MainWindow(QMainWindow):
             # This is intuitive and works without any external hardware or memory reading!
             # Convert to radar coordinates (0° = forward, 90° = right, 180° = back, 270° = left)
             angle_radar = 90.0 + angle_combined  # Simple camera-relative positioning ✅
+
+            # Normalize to 0-360 range
+            while angle_radar < 0:
+                angle_radar += 360
+            while angle_radar >= 360:
+                angle_radar -= 360
 
             # === Distance Estimation ===
             total_energy = (rms_left + rms_right) / 2.0

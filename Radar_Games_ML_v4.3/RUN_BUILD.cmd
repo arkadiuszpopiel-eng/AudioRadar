@@ -151,11 +151,25 @@ echo    All Python requirements installed
 echo [%date% %time%] All requirements installed >> "%LOG_FILE%"
 echo.
 
+REM FIXED v4.3.1-k0013: Ensure ML dependencies are installed (auto-install from PyPI)
+echo    - Ensuring ML dependencies (joblib, scikit-learn)...
+echo [%date% %time%] Installing ML dependencies... >> "%LOG_FILE%"
+pip install --quiet joblib scikit-learn >> "%LOG_FILE%" 2>&1
+if errorlevel 1 (
+    echo [WARNING] ML dependencies install had issues, continuing...
+    echo [%date% %time%] [WARNING] ML dependencies install issues >> "%LOG_FILE%"
+) else (
+    echo    - ML dependencies installed successfully
+    echo [%date% %time%] ML dependencies installed >> "%LOG_FILE%"
+)
+echo.
+
 echo [STEP 5/6] Verifying installation...
 echo [%date% %time%] [STEP 5/6] Verifying installation... >> "%LOG_FILE%"
 
 REM Verify modules without initializing native libraries (sounddevice/soundcard)
-python -c "import sys; import importlib.util; modules=['PyQt5', 'pyqtgraph', 'OpenGL', 'numpy', 'scipy', 'sounddevice', 'soundcard', 'psutil', 'PyInstaller']; failed=[]; [failed.append(m) if importlib.util.find_spec(m) is None else print(f'OK: {m}') for m in modules]; sys.exit(1) if failed else print('All modules installed OK')" >> "%LOG_FILE%" 2>&1
+REM FIXED v4.3.1-k0013: Added joblib and sklearn to verification
+python -c "import sys; import importlib.util; modules=['PyQt5', 'pyqtgraph', 'OpenGL', 'numpy', 'scipy', 'sounddevice', 'soundcard', 'psutil', 'PyInstaller', 'joblib', 'sklearn']; failed=[]; [failed.append(m) if importlib.util.find_spec(m) is None else print(f'OK: {m}') for m in modules]; sys.exit(1) if failed else print('All modules installed OK')" >> "%LOG_FILE%" 2>&1
 if errorlevel 1 (
     echo [ERROR] Module verification failed!
     echo [%date% %time%] [ERROR] Module verification failed >> "%LOG_FILE%"

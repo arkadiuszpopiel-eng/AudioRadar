@@ -156,7 +156,9 @@ class LabeledRecorder:
             (f" (error: {error_msg})" if error_msg else ""), "INFO")
 
         if self._on_state_change:
+            log(f"[DEBUG] _transition_state: About to call on_state_change callback", "DEBUG")
             self._on_state_change(self.state)
+            log(f"[DEBUG] _transition_state: on_state_change callback returned", "DEBUG")
 
     def start_recording(self, notes: str = "") -> bool:
         """
@@ -179,9 +181,11 @@ class LabeledRecorder:
             try:
                 # Transition to STARTING
                 self._transition_state(RecordingStateEnum.STARTING)
+                log(f"[DEBUG] CHECKPOINT 1: After transition to STARTING", "DEBUG")
 
                 # FIXED v4.3.1-k0017: Callback must handle BOTH success and error
                 # Only transition to RECORDING after directory is successfully created
+                log(f"[DEBUG] CHECKPOINT 2: About to define callback", "DEBUG")
                 def on_dir_created(success: bool, error: Optional[str]) -> None:
                     log(f"[DEBUG] on_dir_created callback called: success={success}, error={error}", "DEBUG")
                     with self._lock:
@@ -199,6 +203,7 @@ class LabeledRecorder:
                             self._transition_state(RecordingStateEnum.RECORDING)
                             log(f"Recording started: {self._session.session_id}", "INFO")
 
+                log(f"[DEBUG] CHECKPOINT 3: Callback defined successfully", "DEBUG")
                 log(f"[DEBUG] About to call create_session, session_manager={self.session_manager}", "DEBUG")
                 self._session = self.session_manager.create_session(
                     sample_rate=self.sample_rate,

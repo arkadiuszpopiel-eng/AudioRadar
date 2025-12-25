@@ -201,7 +201,14 @@ class LabeledRecorder:
                             self._state.labels_added = 0
 
                             self._transition_state(RecordingStateEnum.RECORDING)
-                            log(f"Recording started: {self._session.session_id}", "INFO")
+
+                            # FIXED v4.3.1-k0020: Safe session_id access for sync mode
+                            # In sync mode, callback is called BEFORE self._session assignment completes
+                            try:
+                                session_id = self._session.session_id if self._session else "unknown"
+                                log(f"Recording started: {session_id}", "INFO")
+                            except (AttributeError, TypeError):
+                                log(f"Recording started", "INFO")
 
                 log(f"[DEBUG] CHECKPOINT 3: Callback defined successfully", "DEBUG")
                 log(f"[DEBUG] About to call create_session, session_manager={self.session_manager}", "DEBUG")

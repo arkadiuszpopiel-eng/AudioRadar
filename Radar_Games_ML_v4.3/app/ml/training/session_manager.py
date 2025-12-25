@@ -291,18 +291,24 @@ class SessionManager:
 
         # FIXED v4.2.1-k0009: Non-blocking directory creation
         session_dir = self.base_path / session_id
+        log(f"[DEBUG] SessionManager.create_session: session_id={session_id}, use_async={self.use_async}, callback={'present' if callback else 'None'}", "DEBUG")
 
         worker = self._get_async_worker()
+        log(f"[DEBUG] SessionManager.create_session: worker={'present' if worker else 'None'}", "DEBUG")
         if worker:
             # Async mode: queue directory creation
+            log(f"[DEBUG] SessionManager: Queuing async directory creation for {session_dir}", "DEBUG")
             worker.queue_create_dir(session_dir, callback=callback)
             log(f"Created new session (async dir creation): {session_id}", "INFO")
         else:
             # Sync mode (fallback for tests or disabled async)
+            log(f"[DEBUG] SessionManager: Creating directory synchronously: {session_dir}", "DEBUG")
             session_dir.mkdir(parents=True, exist_ok=True)
             log(f"Created new session: {session_id}", "INFO")
             if callback:
+                log(f"[DEBUG] SessionManager: Calling callback synchronously with success=True", "DEBUG")
                 callback(True, None)
+                log(f"[DEBUG] SessionManager: Callback returned", "DEBUG")
 
         return session
 

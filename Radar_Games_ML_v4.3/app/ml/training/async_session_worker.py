@@ -219,15 +219,21 @@ class AsyncSessionWorker:
 
     def _do_create_dir(self, op: SessionOperation) -> None:
         """Execute directory creation."""
+        log(f"[DEBUG] AsyncWorker: _do_create_dir started for {op.session_dir}", "DEBUG")
         try:
             if op.session_dir is None:
                 raise ValueError("session_dir is None")
 
+            log(f"[DEBUG] AsyncWorker: About to create directory {op.session_dir}", "DEBUG")
             op.session_dir.mkdir(parents=True, exist_ok=True)
             log(f"Created directory: {op.session_dir}", "INFO")
 
             if op.callback:
+                log(f"[DEBUG] AsyncWorker: Calling callback with success=True", "DEBUG")
                 op.callback(True, None)
+                log(f"[DEBUG] AsyncWorker: Callback returned", "DEBUG")
+            else:
+                log(f"[DEBUG] AsyncWorker: No callback provided", "DEBUG")
 
         except Exception as e:
             log(f"Error creating directory {op.session_dir}: {e}", "ERROR")

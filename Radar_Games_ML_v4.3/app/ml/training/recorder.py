@@ -183,6 +183,7 @@ class LabeledRecorder:
                 # FIXED v4.3.1-k0017: Callback must handle BOTH success and error
                 # Only transition to RECORDING after directory is successfully created
                 def on_dir_created(success: bool, error: Optional[str]) -> None:
+                    log(f"[DEBUG] on_dir_created callback called: success={success}, error={error}", "DEBUG")
                     with self._lock:
                         if not success:
                             log(f"Session directory creation failed: {error}", "ERROR")
@@ -198,12 +199,14 @@ class LabeledRecorder:
                             self._transition_state(RecordingStateEnum.RECORDING)
                             log(f"Recording started: {self._session.session_id}", "INFO")
 
+                log(f"[DEBUG] About to call create_session, session_manager={self.session_manager}", "DEBUG")
                 self._session = self.session_manager.create_session(
                     sample_rate=self.sample_rate,
                     channels=self.channels,
                     notes=notes,
                     callback=on_dir_created
                 )
+                log(f"[DEBUG] create_session returned, session_id={self._session.session_id}", "DEBUG")
 
                 # Reset buffers (safe to do immediately)
                 self._audio_buffer = []

@@ -87,7 +87,7 @@ class LabeledRecorder:
 
         # Recording state (v4.2.1-k0009: FSM initialized to IDLE)
         self._state = RecordingState(fsm_state=RecordingStateEnum.IDLE)
-        self._lock = threading.Lock()
+        self._lock = threading.RLock()  # FIXED v4.3.1-k0018: Use RLock to allow reentrant locking (same thread can acquire multiple times)
         self._error_message: Optional[str] = None  # v4.2.1-k0009: Error tracking
 
         # Callbacks

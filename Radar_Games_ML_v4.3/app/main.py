@@ -277,6 +277,7 @@ def apply_dark_theme(app: QApplication):
             padding-top: 10px;
             font-weight: bold;
             color: #2A82DA;
+            background-color: #191923;
         }
         QGroupBox::title {
             subcontrol-origin: margin;
@@ -284,6 +285,11 @@ def apply_dark_theme(app: QApplication):
             padding: 0 5px;
         }
         QCheckBox { color: #DCDCE6; }
+        QScrollArea { background-color: #191923; }
+        QTabWidget::pane { background-color: #191923; border: 1px solid #2A82DA; }
+        QTabBar::tab { background-color: #2D2D37; color: #DCDCE6; padding: 8px 16px; }
+        QTabBar::tab:selected { background-color: #2A82DA; }
+        QFrame { background-color: #191923; }
     """
     app.setStyleSheet(stylesheet)
 

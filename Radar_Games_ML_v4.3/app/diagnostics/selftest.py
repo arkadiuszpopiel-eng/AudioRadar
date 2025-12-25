@@ -73,7 +73,9 @@ class SelfTestRunner:
         from app.ml.training import RecordingController
         from app.ml.training.session_manager import SessionManager
 
-        manager = SessionManager(base_path=Path("./Data/TestSessions"))
+        # FIXED v4.3.1-k0017: Use synchronous mode for tests to avoid race conditions
+        # Async mode requires waiting for callbacks which adds complexity to tests
+        manager = SessionManager(base_path=Path("./Data/TestSessions"), use_async=False)
         controller = RecordingController(session_manager=manager, test_mode=True)
         session = controller.simulate_quick_capture()
         assert session is not None
@@ -89,8 +91,9 @@ class SelfTestRunner:
         app = QApplication.instance()
         if app is None:
             owned_app = QApplication([])
+        # FIXED v4.3.1-k0017: Use synchronous mode for tests
         controller = RecordingController(
-            session_manager=SessionManager(base_path=Path("./Data/TestSessions")),
+            session_manager=SessionManager(base_path=Path("./Data/TestSessions"), use_async=False),
             test_mode=True,
         )
         overlay = MLQuickRecordOverlay(controller=controller, config_manager=self.config_manager)

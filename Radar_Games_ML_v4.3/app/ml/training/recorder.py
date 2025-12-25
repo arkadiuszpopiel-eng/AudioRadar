@@ -180,12 +180,23 @@ class LabeledRecorder:
                 # Transition to STARTING
                 self._transition_state(RecordingStateEnum.STARTING)
 
-                # Create new session (async directory creation)
+                # FIXED v4.3.1-k0017: Callback must handle BOTH success and error
+                # Only transition to RECORDING after directory is successfully created
                 def on_dir_created(success: bool, error: Optional[str]) -> None:
-                    if not success:
-                        log(f"Session directory creation failed: {error}", "ERROR")
-                        with self._lock:
+                    with self._lock:
+                        if not success:
+                            log(f"Session directory creation failed: {error}", "ERROR")
                             self._transition_state(RecordingStateEnum.ERROR, error)
+                        else:
+                            # Success: transition STARTING -> RECORDING
+                            self._state.is_recording = True
+                            self._state.start_time = time.time()
+                            self._state.elapsed_sec = 0.0
+                            self._state.samples_recorded = 0
+                            self._state.labels_added = 0
+
+                            self._transition_state(RecordingStateEnum.RECORDING)
+                            log(f"Recording started: {self._session.session_id}", "INFO")
 
                 self._session = self.session_manager.create_session(
                     sample_rate=self.sample_rate,
@@ -194,19 +205,12 @@ class LabeledRecorder:
                     callback=on_dir_created
                 )
 
-                # Reset buffers
+                # Reset buffers (safe to do immediately)
                 self._audio_buffer = []
 
-                # Update state and transition to RECORDING
-                self._state.is_recording = True
-                self._state.start_time = time.time()
-                self._state.elapsed_sec = 0.0
-                self._state.samples_recorded = 0
-                self._state.labels_added = 0
-
-                self._transition_state(RecordingStateEnum.RECORDING)
-
-                log(f"Recording started: {self._session.session_id}", "INFO")
+                # FIXED v4.3.1-k0017: Return True to indicate start was queued
+                # Actual RECORDING transition happens in callback
+                log(f"Recording start queued: {self._session.session_id}", "INFO")
                 return True
 
             except Exception as e:

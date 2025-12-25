@@ -68,6 +68,9 @@ RECORDING_FLUSH_INTERVAL = 1.0  # Seconds between flushes
 TOAST_DURATION_MS = 3000     # Default toast display time
 TOAST_MAX_COUNT = 3          # Max concurrent toasts
 
+# File Paths / Directories (FIXED v4.3.1-k0013)
+ML_SESSIONS_DIR = "Data/LabeledSessions"  # ML training sessions storage directory
+
 # ============================================================================
 # ARC RAIDERS DETECTION PARAMETERS (FIXED v4.2.0)
 # ============================================================================

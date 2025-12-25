@@ -207,10 +207,51 @@ class UIBuilder:
         self.main.setup_shortcuts()
 
     def _create_main_tabs(self) -> None:
-        """Create main tab widget and set as central widget."""
+        """Create main tab widget and set as central widget.
+
+        FIXED v4.3.1-k0012: Added tab change handler to prevent white screen bug
+        """
         self.main.main_tabs = QTabWidget()
         self.main.main_tabs.setStyleSheet(self.TAB_WIDGET_STYLE)
+
+        # FIXED v4.3.1-k0012: Force repaint when switching tabs
+        # Prevents white screen bug with pyqtgraph widgets
+        self.main.main_tabs.currentChanged.connect(self._on_tab_changed)
+
         self.main.setCentralWidget(self.main.main_tabs)
+
+    def _on_tab_changed(self, index):
+        """
+        Handle tab change event - force widget repaint (FIXED v4.3.1-k0012)
+
+        Solves white screen bug when switching tabs:
+        - pyqtgraph widgets lose OpenGL context
+        - Layouts don't trigger repaint automatically
+        - QScrollArea content needs manual update
+        """
+        try:
+            # Get the current tab widget
+            current_widget = self.main.main_tabs.widget(index)
+            if current_widget:
+                # Force immediate repaint of the entire tab
+                current_widget.update()
+                current_widget.repaint()
+
+                # Force update of all child widgets (including pyqtgraph)
+                for child in current_widget.findChildren(QWidget):
+                    child.update()
+
+                # Special handling for scroll areas
+                from PyQt5.QtWidgets import QScrollArea
+                scroll_areas = current_widget.findChildren(QScrollArea)
+                for scroll in scroll_areas:
+                    if scroll.widget():
+                        scroll.widget().update()
+                        scroll.widget().repaint()
+
+        except Exception as e:
+            from app.core.logger import log
+            log(f"Error in tab change handler: {e}", "WARNING")
 
     def _build_radar_tab(self) -> None:
         """Build Tab 1: Radar View (Main tactical display).

@@ -497,7 +497,9 @@ class MainWindow(QMainWindow):
             results = []
             report_path = None
             try:
-                runner = SelfTestRunner(config_manager=self.config_manager)
+                # FIXED v4.3.1-k0016: Disable GUI checks when running from GUI (prevents thread deadlock)
+                # GUI widgets CANNOT be created in worker threads - causes Qt freeze
+                runner = SelfTestRunner(config_manager=self.config_manager, include_gui_checks=False)
                 results, report_path = runner.run_quick()
             except Exception as exc:  # pragma: no cover - defensive
                 error = exc
@@ -511,13 +513,40 @@ class MainWindow(QMainWindow):
                 if error:
                     QMessageBox.critical(self, tr('self_test_title'), str(error))
                     return
+
+                # FIXED v4.3.1-k0016: Detailed test report with pass/fail for each test
+                passed = [r for r in results if r.success]
                 failed = [r for r in results if not r.success]
+
+                # Build detailed report
+                report_lines = []
+                report_lines.append(f"✅ PASSED: {len(passed)}/{len(results)}")
+                report_lines.append(f"❌ FAILED: {len(failed)}/{len(results)}")
+                report_lines.append("")
+
+                if passed:
+                    report_lines.append("TESTS PASSED:")
+                    for r in passed:
+                        report_lines.append(f"  ✅ {r.name}")
+                    report_lines.append("")
+
                 if failed:
-                    msg = f"{tr('self_test_failure')}\n{tr('self_test_report').format(path=report_path)}"
-                    QMessageBox.warning(self, tr('self_test_title'), msg)
+                    report_lines.append("TESTS FAILED:")
+                    for r in failed:
+                        error_msg = r.error if r.error else r.message
+                        report_lines.append(f"  ❌ {r.name}")
+                        if error_msg:
+                            report_lines.append(f"     Error: {error_msg}")
+                    report_lines.append("")
+
+                report_lines.append(f"Full report: {report_path}")
+
+                detailed_msg = "\n".join(report_lines)
+
+                if failed:
+                    QMessageBox.warning(self, tr('self_test_title'), detailed_msg)
                 else:
-                    msg = f"{tr('self_test_success')}\n{tr('self_test_report').format(path=report_path)}"
-                    QMessageBox.information(self, tr('self_test_title'), msg)
+                    QMessageBox.information(self, tr('self_test_title'), detailed_msg)
 
             QTimer.singleShot(0, finish)
 

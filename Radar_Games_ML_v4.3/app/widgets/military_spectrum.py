@@ -12,7 +12,7 @@ from PyQt5.QtCore import Qt, QTimer, QRectF, QPointF
 from PyQt5.QtGui import (QPainter, QColor, QPen, QBrush, QFont,
                          QLinearGradient, QPainterPath, QPolygonF)
 
-from core import log
+from app.core import log
 
 
 # =============================================================================

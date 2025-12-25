@@ -11,12 +11,12 @@ FIXED v4.2.0: Implements:
 
 import numpy as np
 from collections import deque
-from core import (
+from app.core import (
     SAMPLE_RATE, SHOT_FREQ_MIN_HZ, SHOT_FREQ_MAX_HZ,
     SHOT_BASS_THRESHOLD, SHOT_CLOSE_DISTANCE_M,
     TRANSIENT_THRESHOLD_RATIO, log
 )
-from detection.spectral import SpectralFeatureExtractor
+from app.detection.spectral import SpectralFeatureExtractor
 
 
 class ShotDetector:

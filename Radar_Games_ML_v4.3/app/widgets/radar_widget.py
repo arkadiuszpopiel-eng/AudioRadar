@@ -8,7 +8,7 @@ Split radar.py (1674 lines) into focused, single-responsibility modules
 import pyqtgraph as pg
 from PyQt5.QtGui import QColor
 
-from core import log
+from app.core import log
 
 
 class RadarWidget(pg.PlotWidget):

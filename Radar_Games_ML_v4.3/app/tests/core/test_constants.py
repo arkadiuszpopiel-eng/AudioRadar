@@ -4,7 +4,7 @@ Tests for core/constants.py
 """
 
 from tests.compat import pytest
-from core import constants
+from app.core import constants
 
 
 class TestConstants:

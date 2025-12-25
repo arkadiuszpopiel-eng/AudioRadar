@@ -7,7 +7,7 @@ FIXED v4.2.0: Comprehensive tests for ARC Raiders integration
 
 import numpy as np
 import pytest
-from detection.footstep import HumanFootstepDetector
+from app.detection.footstep import HumanFootstepDetector
 
 
 class TestHumanFootstepDetector:

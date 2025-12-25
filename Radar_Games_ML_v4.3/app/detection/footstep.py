@@ -24,14 +24,14 @@ from scipy import signal as sp_signal
 from collections import deque
 
 from app.core.logger import log
-from core import (
+from app.core import (
     FOOTSTEP_FREQ_MIN_HZ, FOOTSTEP_FREQ_MAX_HZ,
     FOOTSTEP_WALK_INTERVAL_S, FOOTSTEP_RUN_INTERVAL_S,
     FOOTSTEP_INTERVAL_TOLERANCE,
     SURFACE_METAL_FREQ_PEAK_HZ, SURFACE_DIRT_FREQ_PEAK_HZ,
     SURFACE_SNOW_FREQ_PEAK_HZ
 )
-from detection.spectral import SpectralFeatureExtractor
+from app.detection.spectral import SpectralFeatureExtractor
 
 
 class HumanFootstepDetector:

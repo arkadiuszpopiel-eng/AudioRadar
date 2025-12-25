@@ -4,7 +4,7 @@ Tests for tracking/threat.py
 """
 
 from tests.compat import pytest
-from tracking.threat import ThreatPrioritySystem
+from app.tracking.threat import ThreatPrioritySystem
 
 
 class TestThreatPrioritySystem:

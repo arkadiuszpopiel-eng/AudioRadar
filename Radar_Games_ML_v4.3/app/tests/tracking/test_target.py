@@ -5,7 +5,7 @@ Tests for tracking/target.py
 
 import time
 from tests.compat import pytest
-from tracking.target import Target, TargetTracker
+from app.tracking.target import Target, TargetTracker
 
 
 class TestTarget:

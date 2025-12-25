@@ -11,12 +11,12 @@ FIXED v4.2.0: ARC Raiders-specific machine detection:
 
 import numpy as np
 from collections import deque
-from core import (
+from app.core import (
     SAMPLE_RATE, MACHINE_DETECTION_WINDOW_S,
     MACHINE_MODULATION_THRESHOLD, MACHINE_BASS_MIN_HZ,
     MACHINE_BASS_MAX_HZ, log
 )
-from detection.spectral import SpectralFeatureExtractor
+from app.detection.spectral import SpectralFeatureExtractor
 
 
 class ARCMachineDetector:

@@ -11,9 +11,9 @@ from PyQt5.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButt
 from PyQt5.QtCore import Qt, QTimer, pyqtSignal, QPoint
 from PyQt5.QtGui import QPainter, QColor, QPen, QBrush, QPalette
 
-from core import log, tr, TOAST_DURATION_MS, TOAST_MAX_COUNT
-from detection import HumanFootstepDetector
-from audio import HumanVoiceDetector
+from app.core import log, tr, TOAST_DURATION_MS, TOAST_MAX_COUNT
+from app.detection import HumanFootstepDetector
+from app.audio import HumanVoiceDetector
 
 # ML Detection imports (v4.2.0)
 try:

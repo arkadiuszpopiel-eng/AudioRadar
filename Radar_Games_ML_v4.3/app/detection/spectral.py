@@ -12,7 +12,7 @@ FIXED v4.2.0: Implements MFCC and spectral features for:
 import numpy as np
 from scipy.signal import get_window
 from scipy.fftpack import dct
-from core import (
+from app.core import (
     SAMPLE_RATE, MFCC_NUM_COEFFS, MEL_NUM_BANDS,
     MEL_FREQ_MIN_HZ, MEL_FREQ_MAX_HZ, log
 )

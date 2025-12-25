@@ -8,7 +8,7 @@ Split radar.py (1674 lines) into focused, single-responsibility modules
 import numpy as np
 import pyqtgraph.opengl as gl
 
-from core import log, VERSION
+from app.core import log, VERSION
 
 
 class Radar3DWidget(gl.GLViewWidget):

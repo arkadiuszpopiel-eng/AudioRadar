@@ -13,7 +13,7 @@ import os
 # Add parent directory to path for imports
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
-from audio.processor import AudioProcessor, get_audio_processor
+from app.audio.processor import AudioProcessor, get_audio_processor
 
 
 class TestAudioProcessor:

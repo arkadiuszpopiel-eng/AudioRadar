@@ -10,7 +10,7 @@ import os
 # Add app directory to path
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from core import configure_services, ConfigManager
+from app.core import configure_services, ConfigManager
 
 def test_di_container():
     """Test DI container service resolution"""

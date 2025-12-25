@@ -14,7 +14,7 @@ from PyQt5.QtCore import Qt, QTimer, pyqtSignal
 from PyQt5.QtGui import (QPainter, QColor, QPen, QBrush, QFont,
                          QRadialGradient, QPainterPath)
 
-from core import log, tr
+from app.core import log, tr
 from .target_state import TargetState
 
 

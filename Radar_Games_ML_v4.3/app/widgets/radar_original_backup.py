@@ -21,7 +21,7 @@ from PyQt5.QtGui import (QPainter, QColor, QPen, QBrush, QPalette, QFont,
                          QLinearGradient, QRadialGradient, QPainterPath,
                          QPolygonF, QPaintEvent)
 
-from core import log, tr, VERSION
+from app.core import log, tr, VERSION
 
 if TYPE_CHECKING:
     from numpy.typing import NDArray

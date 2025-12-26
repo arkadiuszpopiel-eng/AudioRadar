@@ -47,6 +47,7 @@ class SelfTestRunner:
             ("Config load", self._step_config_load),
             ("ML imports", self._step_ml_imports),
             ("Recording FSM", self._step_recording_flow),
+            ("Radar rendering", self._step_radar_rendering),
         ]
 
         if self.include_gui_checks:
@@ -79,6 +80,60 @@ class SelfTestRunner:
         controller = RecordingController(session_manager=manager, test_mode=True)
         session = controller.simulate_quick_capture()
         assert session is not None
+
+    def _step_radar_rendering(self) -> None:
+        """Test radar widget creation and target rendering."""
+        if not QT_AVAILABLE:
+            # Headless test: verify radar logic without GUI
+            from app.core.target_tracker import TargetTracker
+            tracker = TargetTracker()
+
+            # Simulate detection and verify tracking works
+            test_angle = 45.0
+            test_distance = 50.0
+            target_id = tracker.add_or_update_target(
+                angle=test_angle,
+                distance=test_distance,
+                target_type="walk",
+                confidence=0.8,
+                timestamp=0.0
+            )
+            assert target_id is not None, "Failed to add target to tracker"
+
+            targets = tracker.get_active_targets()
+            assert len(targets) > 0, "No active targets after adding"
+            assert targets[0].angle == test_angle, "Target angle mismatch"
+            return
+
+        # GUI test: verify radar widget can be created and rendered
+        from app.widgets.military_hud import MilitaryHUDRadar
+
+        owned_app = None
+        app = QApplication.instance()
+        if app is None:
+            owned_app = QApplication([])
+
+        # Create radar widget
+        radar = MilitaryHUDRadar()
+        radar.hide()  # Don't actually show window
+
+        # Simulate target update
+        test_targets = [{
+            'angle': 45.0,
+            'distance': 50.0,
+            'type': 'walk',
+            'confidence': 0.8
+        }]
+
+        # Verify radar can process targets without crashing
+        try:
+            radar.update_targets(test_targets)
+        except Exception as e:
+            raise AssertionError(f"Radar failed to update targets: {e}")
+
+        radar.close()
+        if owned_app:
+            owned_app.quit()
 
     def _step_overlay_logic(self) -> None:
         if not QT_AVAILABLE:

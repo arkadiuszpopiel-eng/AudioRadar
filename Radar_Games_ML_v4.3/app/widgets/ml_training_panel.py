@@ -120,11 +120,19 @@ class MLTrainingPanel(QWidget):
         # Set callbacks
         self.recording_controller.add_state_listener(self._on_recording_state_change)
         self.recording_controller.add_label_listener(self._on_label_added)
-        self.trainer.set_callbacks(
-            on_progress=self._on_training_progress,
-            on_complete=self._on_training_complete,
-            on_log=self._on_training_log
-        )
+
+        # v4.3.1-k0024: Connect to Qt signals (THREAD-SAFE!) instead of direct callbacks
+        self.trainer.progress_updated.connect(self._on_training_progress)
+        self.trainer.training_complete.connect(self._on_training_complete)
+        self.trainer.log_message.connect(self._on_training_log)
+
+        # v4.3.1-k0024: DEPRECATED - Old callback system kept for compatibility
+        # But signals are used now for thread safety!
+        # self.trainer.set_callbacks(
+        #     on_progress=self._on_training_progress,
+        #     on_complete=self._on_training_complete,
+        #     on_log=self._on_training_log
+        # )
 
         self._overlay_launcher = overlay_launcher
 

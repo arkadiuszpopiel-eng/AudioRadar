@@ -383,9 +383,10 @@ class AudioPlaybackEngine(QObject):
                     pass
                 self._stream = None
 
-            # Update state (v4.3.1-k0024: Always set to STOPPED after playback ends)
-            if not self._pause_event.is_set():
-                self._set_state(PlaybackState.STOPPED)
+            # v4.3.1-k0024: Clear pause event and ALWAYS set to STOPPED
+            # This ensures UI buttons are correctly enabled after playback ends
+            self._pause_event.clear()
+            self._set_state(PlaybackState.STOPPED)
 
     def _emit_position_update(self):
         """Timer callback to emit position updates (runs in Qt main thread)."""

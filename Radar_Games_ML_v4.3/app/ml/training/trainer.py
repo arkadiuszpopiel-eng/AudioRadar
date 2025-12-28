@@ -19,6 +19,8 @@ from dataclasses import dataclass, field
 from typing import List, Dict, Optional, Callable, Tuple, Any
 from enum import Enum
 
+from PyQt5.QtCore import QObject, pyqtSignal
+
 from app.core.logger import log
 from app.core.constants import VERSION
 from app.ml.feature_extractor import FeatureExtractor
@@ -102,16 +104,23 @@ class TrainingResult:
         }
 
 
-class ModelTrainer:
+class ModelTrainer(QObject):
     """
-    Trains audio classification models from labeled data.
+    Trains audio classification models from labeled data (v4.3.1-k0024: Qt signals for thread safety).
 
     Supports:
     - Training from multiple sessions
     - Feature extraction with mel-spectrograms
     - Simple sklearn classifier (no TensorFlow required)
     - Optional neural network if TensorFlow available
+
+    CRITICAL: Uses Qt signals to safely communicate from background thread to main thread!
     """
+
+    # Qt Signals (v4.3.1-k0024: Thread-safe communication)
+    progress_updated = pyqtSignal(object)  # TrainingProgress
+    training_complete = pyqtSignal(object)  # TrainingResult
+    log_message = pyqtSignal(str)  # Log message
 
     def __init__(
         self,
@@ -127,6 +136,8 @@ class ModelTrainer:
             config: Training configuration
             output_dir: Directory for saving models
         """
+        super().__init__()  # v4.3.1-k0024: Initialize QObject
+
         self.session_manager = session_manager or SessionManager()
         self.config = config or TrainingConfig()
 
@@ -143,12 +154,13 @@ class ModelTrainer:
         self._cancel_requested = False
         self._training_thread: Optional[threading.Thread] = None
 
-        # Callbacks
+        # v4.3.1-k0024: DEPRECATED - Use signals instead!
+        # Keeping for backward compatibility but signals are preferred
         self._on_progress: Optional[Callable[[TrainingProgress], None]] = None
         self._on_complete: Optional[Callable[[TrainingResult], None]] = None
         self._on_log: Optional[Callable[[str], None]] = None
 
-        log("ModelTrainer initialized", "INFO")
+        log("ModelTrainer initialized with Qt signals", "INFO")
 
     @property
     def is_training(self) -> bool:
@@ -189,10 +201,16 @@ class ModelTrainer:
         self._on_log = on_log
 
     def _log(self, message: str, level: str = "INFO") -> None:
-        """Log message and notify callback."""
+        """Log message and notify via Qt signal (v4.3.1-k0024: Thread-safe)."""
         log(message, level)
+
+        # v4.3.1-k0024: Emit Qt signal (thread-safe!)
+        formatted_msg = f"[{level}] {message}"
+        self.log_message.emit(formatted_msg)
+
+        # v4.3.1-k0024: Keep old callback for backward compatibility
         if self._on_log:
-            self._on_log(f"[{level}] {message}")
+            self._on_log(formatted_msg)
 
     def _update_progress(
         self,
@@ -201,7 +219,7 @@ class ModelTrainer:
         current_step: Optional[str] = None,
         **kwargs
     ) -> None:
-        """Update progress and notify callback."""
+        """Update progress and notify via Qt signal (v4.3.1-k0024: Thread-safe)."""
         with self._lock:
             if status is not None:
                 self._progress.status = status
@@ -213,6 +231,10 @@ class ModelTrainer:
                 if hasattr(self._progress, key):
                     setattr(self._progress, key, value)
 
+        # v4.3.1-k0024: Emit Qt signal (thread-safe!)
+        self.progress_updated.emit(self.progress)
+
+        # v4.3.1-k0024: Keep old callback for backward compatibility
         if self._on_progress:
             self._on_progress(self.progress)
 
@@ -325,6 +347,10 @@ class ModelTrainer:
             self._log(f"Training failed: {e}", "ERROR")
 
         finally:
+            # v4.3.1-k0024: Emit Qt signal (thread-safe!)
+            self.training_complete.emit(result)
+
+            # v4.3.1-k0024: Keep old callback for backward compatibility
             if self._on_complete:
                 self._on_complete(result)
 

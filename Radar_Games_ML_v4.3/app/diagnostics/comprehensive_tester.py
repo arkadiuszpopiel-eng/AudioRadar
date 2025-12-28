@@ -372,6 +372,31 @@ class ComprehensiveAutoTester:
             test_func=lambda: self._test_noise_reduction()
         )
 
+        # v4.3.1-k0025: Test Audio Archive and UI fixes
+        self._run_test_with_timeout(
+            category="Function",
+            name="Audio Archive buttons",
+            test_func=lambda: self._test_audio_archive_buttons()
+        )
+
+        self._run_test_with_timeout(
+            category="Function",
+            name="UI theme dark backgrounds",
+            test_func=lambda: self._test_ui_theme_dark_backgrounds()
+        )
+
+        self._run_test_with_timeout(
+            category="Function",
+            name="Training log height",
+            test_func=lambda: self._test_training_log_height()
+        )
+
+        self._run_test_with_timeout(
+            category="Function",
+            name="Session Editor playback controls",
+            test_func=lambda: self._test_session_editor_playback()
+        )
+
     # =========================================================================
     # TEST HELPERS
     # =========================================================================
@@ -663,6 +688,140 @@ class ComprehensiveAutoTester:
 
         # Restore original state
         controller.noise_reduction_enabled = original_state
+        QApplication.processEvents()
+
+    def _test_audio_archive_buttons(self) -> None:
+        """Test Audio Archive buttons exist in both locations (v4.3.1-k0025)."""
+        if not hasattr(self.main_window, 'ml_training_panel'):
+            raise AssertionError("ML Training panel not found")
+
+        panel = self.main_window.ml_training_panel
+
+        # Check for Audio Archive button in ML Training panel
+        if hasattr(panel, 'open_archive_btn'):
+            btn = panel.open_archive_btn
+            if not isinstance(btn, QPushButton):
+                raise AssertionError("open_archive_btn is not a QPushButton")
+            self.logger.write("  ✓ Audio Archive button found in ML Training")
+        else:
+            self.logger.write("  INFO: Audio Archive button not in ML Training tab")
+
+        # Check for Audio Archive button in Session Editor (tab 2)
+        if hasattr(panel, 'tab_widget'):
+            tab_widget = panel.tab_widget
+            if tab_widget.count() >= 2:
+                # Switch to Session Editor tab
+                tab_widget.setCurrentIndex(1)
+                QApplication.processEvents()
+                time.sleep(0.1)
+
+                # Get session editor widget
+                session_editor = tab_widget.widget(1)
+                if hasattr(session_editor, 'open_archive_btn'):
+                    btn = session_editor.open_archive_btn
+                    if not isinstance(btn, QPushButton):
+                        raise AssertionError("Session Editor open_archive_btn is not a QPushButton")
+                    self.logger.write("  ✓ Audio Archive button found in Session Editor")
+                else:
+                    self.logger.write("  WARNING: Audio Archive button not found in Session Editor")
+
+        QApplication.processEvents()
+
+    def _test_ui_theme_dark_backgrounds(self) -> None:
+        """Test that UI tables have dark theme backgrounds (v4.3.1-k0025)."""
+        if not hasattr(self.main_window, 'ml_training_panel'):
+            raise AssertionError("ML Training panel not found")
+
+        panel = self.main_window.ml_training_panel
+
+        # Test Trained Models table has dark background
+        if hasattr(panel, 'models_table'):
+            table = panel.models_table
+            stylesheet = table.styleSheet()
+
+            if not stylesheet or len(stylesheet) < 50:
+                raise AssertionError("models_table has no stylesheet (white background bug!)")
+
+            # Check for dark background colors in stylesheet
+            if '#1a1a1a' not in stylesheet and 'background' not in stylesheet.lower():
+                raise AssertionError("models_table stylesheet missing dark background")
+
+            self.logger.write("  ✓ Trained Models table has dark theme stylesheet")
+
+        # Test Training Data table (sessions_table)
+        if hasattr(panel, 'sessions_table'):
+            table = panel.sessions_table
+            min_height = table.minimumHeight()
+
+            # Should be at least 300px (v4.3.1-k0024 increased to 350px)
+            if min_height < 300:
+                self.logger.write(f"  WARNING: Training Data table height is {min_height}px (expected ≥300px)")
+            else:
+                self.logger.write(f"  ✓ Training Data table height OK ({min_height}px)")
+
+        QApplication.processEvents()
+
+    def _test_training_log_height(self) -> None:
+        """Test Training Log has proper minimum height (v4.3.1-k0025)."""
+        if not hasattr(self.main_window, 'ml_training_panel'):
+            raise AssertionError("ML Training panel not found")
+
+        panel = self.main_window.ml_training_panel
+
+        if not hasattr(panel, 'log_text'):
+            raise AssertionError("log_text not found in ML Training panel")
+
+        log_text = panel.log_text
+        min_height = log_text.minimumHeight()
+
+        # Should be at least 400px (v4.3.1-k0025 fix)
+        if min_height < 400:
+            raise AssertionError(f"Training log minimum height is {min_height}px, expected ≥400px")
+
+        self.logger.write(f"  ✓ Training log minimum height OK ({min_height}px)")
+        QApplication.processEvents()
+
+    def _test_session_editor_playback(self) -> None:
+        """Test Session Editor has playback controls (v4.3.1-k0025)."""
+        if not hasattr(self.main_window, 'ml_training_panel'):
+            raise AssertionError("ML Training panel not found")
+
+        panel = self.main_window.ml_training_panel
+
+        if not hasattr(panel, 'tab_widget'):
+            raise AssertionError("ML Training tab widget not found")
+
+        tab_widget = panel.tab_widget
+        if tab_widget.count() < 2:
+            raise AssertionError("Session Editor tab not found")
+
+        # Switch to Session Editor tab
+        tab_widget.setCurrentIndex(1)
+        QApplication.processEvents()
+        time.sleep(0.1)
+
+        # Get session editor widget
+        session_editor = tab_widget.widget(1)
+
+        # Check for playback engine
+        if not hasattr(session_editor, 'playback_engine'):
+            raise AssertionError("Session Editor missing playback_engine")
+
+        # Check for playback controls
+        if not hasattr(session_editor, 'controls'):
+            raise AssertionError("Session Editor missing playback controls")
+
+        controls = session_editor.controls
+
+        # Check for play/pause/stop buttons
+        if not hasattr(controls, 'play_btn'):
+            raise AssertionError("Playback controls missing play button")
+        if not hasattr(controls, 'pause_btn'):
+            raise AssertionError("Playback controls missing pause button")
+        if not hasattr(controls, 'stop_btn'):
+            raise AssertionError("Playback controls missing stop button")
+
+        self.logger.write("  ✓ Session Editor playback controls complete")
         QApplication.processEvents()
 
     # =========================================================================

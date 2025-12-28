@@ -1,5 +1,5 @@
 ================================================================================
-RADAR GAMES ML v4.3.1-k0024 - KOMPLEKSOWE PODSUMOWANIE PROJEKTU (POLSKI)
+RADAR GAMES ML v4.3.1-k0025 - KOMPLEKSOWE PODSUMOWANIE PROJEKTU (POLSKI)
 ================================================================================
 Wygenerowano: 2025-12-28
 Autor: Claude (Asystent AI Anthropic)
@@ -10,7 +10,7 @@ Dla: arkadiuszpopiel-eng/AudioRadar
 ================================================================================
 
 Nazwa: Radar Games ML
-Wersja: 4.3.1-k0024
+Wersja: 4.3.1-k0025
 Typ: Aplikacja do analizy dźwięku w czasie rzeczywistym dla graczy
 Platforma: Windows (aplikacja desktopowa PyQt5, kompilowana do .exe)
 Język programowania: Python 3.11
@@ -257,6 +257,214 @@ WYNIKI k0024:
 ✅ Wszystkie przyciski jednakowej wielkości
 ✅ Kompletny przepływ pracy: nagraj z redukcją szumów → pause/resume →
    zapisz → edytuj sesję → dodaj 13 typów etykiet → trenuj model
+
+
+✓ k0025 - KRYTYCZNE NAPRAWY UI: Motywy + Audio Archive + Playback
+-------------------------------------------------------------------
+Użytkownik zgłosił 3 krytyczne błędy UI ze zrzutami ekranu + prośbę o
+aktualizację wersji!
+
+PROBLEM 1: Training Log - Mały Obszar Roboczy (duże okno a mały fragment)
+--------------------------------------------------------------------------
+Zgłoszenie: "duże okno a mały fragment roboczy popraw to sensownie!"
+
+Przyczyna główna:
+- Training log miał setMaximumHeight(150px)
+- Tylko 150px na wszystkie komunikaty logów - całkowicie niewystarczające!
+
+Rozwiązanie:
+- Zmieniono na setMinimumHeight(400px)
+- Wzrost o 266% w wysokości
+- Teraz widoczne dużo więcej logów bez przewijania
+
+Plik: ml_training_panel.py linia 834
+
+
+PROBLEM 2: Trained Models - Białe Napisy na Białym Tle (niewidoczne!!!)
+------------------------------------------------------------------------
+Zgłoszenie: "Okno Trained Models białe napisy na białym tle niewidoczne!!!"
+
+Przyczyna główna:
+- models_table NIE MIAŁA żadnego stylesheet
+- Używała domyślnych kolorów systemowych (białe tło + biały tekst)
+- Tekst całkowicie niewidoczny!
+
+Rozwiązanie:
+- Dodano kompletny dark theme stylesheet do models_table:
+  * Tło: #1a1a1a (ciemny szary)
+  * Tekst: #DDDDDD (jasny szary)
+  * Zaznaczenie: #0066AA (niebieski highlight)
+  * Nagłówki: #2a2a2a z tekstem #DDDDDD
+  * Linie siatki: #333333 (subtelne ciemne linie)
+
+- Zwiększono wysokość z 120px na 200px (+67%)
+
+Plik: ml_training_panel.py linie 780-803
+
+
+PROBLEM 3: UI Białe Po Przełączaniu Zakładek (cały program się wysypuje!)
+--------------------------------------------------------------------------
+Zgłoszenie: "po kilku zmianach zakładek cały program wysypuje się pod
+            względem UI daje zdjęcie całe jest białe!"
+
+Przyczyna główna:
+- Globalny stylesheet nie miał specyficznych reguł dla QTabWidget,
+  QStackedWidget, tabele
+- Podczas przełączania zakładek Qt resetował tła widgetów do systemowych
+  domyślnych
+- Widgety bez jawnych stylów wracały do QPalette domyślnych = białe tła
+- Dziedziczenie stylesheet łamało się podczas dynamicznego tworzenia widgetów
+
+Rozwiązanie - Rozszerzenie Globalnego Stylesheet (main.py linie 291-333):
+
+1. Dodano jawne reguły QTabWidget:
+   - QTabWidget { background-color: #191923; }
+   - QTabWidget::pane { background-color: #191923; border: 1px solid #2A82DA; }
+   - Zapobiega białym tłom w obszarach zawartości zakładek
+
+2. Dodano kompleksowe reguły QTabBar:
+   - QTabBar { background-color: #191923; }
+   - QTabBar::tab { background: #2D2D37; color: #DCDCE6; }
+   - QTabBar::tab:selected { background: #2A82DA; color: white; }
+   - QTabBar::tab:hover { background: #3D3D47; }
+   - Zapewnia że zakładki zawsze utrzymują ciemny motyw
+
+3. Dodano globalne domyślne QTableWidget:
+   - Tło: #1a1a1a
+   - Tekst: #DCDCE6
+   - Tła itemów: #1a1a1a
+   - Zaznaczenie: #2A82DA
+   - Nagłówki: #2D2D37 z tekstem #DCDCE6
+   - Fallback dla tabel bez jawnych stylów
+
+4. Dodano reguły QStackedWidget:
+   - Tło: #191923
+   - Zapewnia że kontenery widgetów stosu pozostają ciemne
+
+5. Ulepszone reguły QHeaderView:
+   - Spójne kolory nagłówków we wszystkich tabelach
+   - Zapobiega białym nagłówkom
+
+Szczegóły techniczne:
+Bug występował ponieważ:
+- Dziedziczenie Qt stylesheet może się łamać podczas dynamicznego tworzenia widgetów
+- Przełączanie zakładek może odtwarzać widgety lub resetować ich konteksty stylu
+- Widgety bez jawnych stylów wracają do QPalette/domyślnych systemowych
+- Paleta systemowa może nadpisać paletę aplikacji w pewnych sytuacjach
+
+Naprawa zapewnia:
+- Każdy typ widgetu ma jawne reguły ciemnego motywu
+- TabWidget i jego dzieci utrzymują style podczas przełączania
+- Tabele zawsze otrzymują ciemne tła jako fallback
+- Stacked widgets (używane dla zawartości zakładek) pozostają ciemne
+- Brak możliwości przecieku domyślnych systemowych
+
+
+DODATKOWE ULEPSZENIA (z k0024):
+--------------------------------
+
+Audio Archive Feature (commit ae4694e):
+- SessionManager automatycznie eksportuje WAV równolegle z NumPy
+- Utworzono katalog Data/AudioArchive
+- scipy.io.wavfile obsługa
+- Normalizacja float32 → int16 (clipping -1.0 do 1.0)
+- export_session_to_wav() i export_all_sessions_to_wav()
+
+Plik: session_manager.py
+
+AudioArchive Shortcuts (commit e9e13ce):
+- Przyciski "🎵 Open Audio Archive" w 2 lokalizacjach:
+  * Recording & Editing
+  * Saved Sessions
+- Otwiera folder w eksploratorze plików
+- Cross-platform: subprocess.Popen
+  * Windows: explorer
+  * macOS: open
+  * Linux: xdg-open
+
+Pliki: ml_training_panel.py, session_editor.py
+
+UI Readability Improvements (commit e9e13ce):
+- Zwiększone wysokości tabel:
+  * Saved Sessions: 150 → 250px
+  * Session Labels: 200 → 300px
+  * Training Data: 200 → 350px
+  * Training Log: 150 → 400px (+266%)
+  * Trained Models: 120 → 200px (+67%)
+- Zwiększona wysokość waveform do 250px (szerokość bez zmian jak użytkownik prosił)
+
+Pause/Stop Button Fixes (commits b3adc43, 0ddf107):
+- Timer pozycji nie był zatrzymywany gdy playback się kończy
+- Stan nie był ustawiany na STOPPED po zakończeniu pauzy
+- Naprawa:
+  * Zatrzymanie position timer w pause(), po zakończeniu playback i przy błędzie
+  * Zawsze czyszczenie pause event i ustawienie STOPPED w finally block
+  * Restart timera przy wznawianiu z pauzy
+
+Plik: playback_engine.py
+
+Thread-Safe ModelTrainer (commit b3adc43 - KRYTYCZNY!):
+- ModelTrainer wywoływał UI callback bezpośrednio z wątku szkolenia w tle
+- Naruszenie thread-safety Qt powodowało crashe i zamykanie całego programu
+- Naprawa:
+  * Przekonwertowano ModelTrainer na QObject
+  * Dodano Qt signals: progress_updated, training_complete, log_message
+  * Qt automatycznie przekazuje sygnały do głównego wątku (thread-safe!)
+
+Plik: trainer.py linie 40-60
+
+
+PLIKI ZMODYFIKOWANE W k0025:
+-----------------------------
+- app/widgets/ml_training_panel.py
+  * Linia 834: Training log height 150 → 400px
+  * Linie 780-803: Trained Models dark theme stylesheet
+  * AudioArchive button
+
+- app/main.py
+  * Linie 291-333: Globalny stylesheet rozszerzony
+  * QTabWidget, QTabBar, QTableWidget, QStackedWidget, QHeaderView
+
+- app/audio/playback_engine.py
+  * Timer lifecycle fixes
+  * Pause/Stop button state management
+
+- app/ml/training/trainer.py
+  * Qt signals dla thread-safety
+  * QObject dziedziczenie
+
+- app/ml/training/session_manager.py
+  * WAV export functionality
+  * AudioArchive katalog
+
+- app/widgets/session_editor.py
+  * AudioArchive button
+  * Zwiększone wysokości tabel
+
+- app/diagnostics/comprehensive_tester.py (+150 linii)
+  * _test_audio_archive_buttons()
+  * _test_ui_theme_dark_backgrounds()
+  * _test_training_log_height()
+  * _test_session_editor_playback()
+
+- app/version.py
+  * k0024 → k0025
+  * Kompleksowy changelog
+
+
+WYNIKI k0025:
+-------------
+✅ Training log pełni czytelny z dużym obszarem przeglądania (400px)
+✅ Models table perfekcyjnie widoczna z dobrym kontrastem
+✅ UI pozostaje ciemne i spójne przy przełączaniu zakładek
+✅ Brak więcej białych bugów tła
+✅ Audio Archive z automatycznym eksportem WAV
+✅ Skróty do AudioArchive w 2 lokalizacjach
+✅ Wszystkie tabele zwiększone dla lepszej czytelności
+✅ Przyciski Pause/Stop działają poprawnie
+✅ Train Model nie crashuje programu (thread-safe)
+✅ Profesjonalny, stabilny wygląd
+✅ Comprehensive Test zaktualizowany o nowe funkcje
 
 
 ## 4. WCZEŚNIEJSZE NAPRAWY (k0019-k0022)

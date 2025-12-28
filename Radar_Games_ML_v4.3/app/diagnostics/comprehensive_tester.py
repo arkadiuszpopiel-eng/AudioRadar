@@ -706,24 +706,19 @@ class ComprehensiveAutoTester:
         else:
             self.logger.write("  INFO: Audio Archive button not in ML Training tab")
 
-        # Check for Audio Archive button in Session Editor (tab 2)
-        if hasattr(panel, 'tab_widget'):
-            tab_widget = panel.tab_widget
-            if tab_widget.count() >= 2:
-                # Switch to Session Editor tab
-                tab_widget.setCurrentIndex(1)
-                QApplication.processEvents()
-                time.sleep(0.1)
-
-                # Get session editor widget
-                session_editor = tab_widget.widget(1)
-                if hasattr(session_editor, 'open_archive_btn'):
-                    btn = session_editor.open_archive_btn
-                    if not isinstance(btn, QPushButton):
-                        raise AssertionError("Session Editor open_archive_btn is not a QPushButton")
-                    self.logger.write("  ✓ Audio Archive button found in Session Editor")
-                else:
-                    self.logger.write("  WARNING: Audio Archive button not found in Session Editor")
+        # Check for Audio Archive button in Session Editor
+        # v4.3.1-k0025: SessionEditorWidget is accessible as panel.session_editor
+        if hasattr(panel, 'session_editor'):
+            session_editor = panel.session_editor
+            if hasattr(session_editor, 'open_archive_btn'):
+                btn = session_editor.open_archive_btn
+                if not isinstance(btn, QPushButton):
+                    raise AssertionError("Session Editor open_archive_btn is not a QPushButton")
+                self.logger.write("  ✓ Audio Archive button found in Session Editor")
+            else:
+                self.logger.write("  WARNING: Audio Archive button not found in Session Editor")
+        else:
+            self.logger.write("  INFO: Session Editor not available in ML Training panel")
 
         QApplication.processEvents()
 
@@ -788,20 +783,12 @@ class ComprehensiveAutoTester:
 
         panel = self.main_window.ml_training_panel
 
-        if not hasattr(panel, 'tab_widget'):
-            raise AssertionError("ML Training tab widget not found")
+        # v4.3.1-k0025: SessionEditorWidget is accessible as panel.session_editor
+        # (it's embedded in mode_stack inside Recording & Editing tab)
+        if not hasattr(panel, 'session_editor'):
+            raise AssertionError("ML Training panel missing session_editor attribute")
 
-        tab_widget = panel.tab_widget
-        if tab_widget.count() < 2:
-            raise AssertionError("Session Editor tab not found")
-
-        # Switch to Session Editor tab
-        tab_widget.setCurrentIndex(1)
-        QApplication.processEvents()
-        time.sleep(0.1)
-
-        # Get session editor widget
-        session_editor = tab_widget.widget(1)
+        session_editor = panel.session_editor
 
         # Check for playback engine
         if not hasattr(session_editor, 'playback_engine'):

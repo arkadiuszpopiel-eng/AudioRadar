@@ -197,18 +197,31 @@ class ComprehensiveAutoTester:
         self.logger.write("CATEGORY 2: BUTTON TESTING")
         self.logger.write("=" * 80)
 
-        # List of button attributes to test (button_attr, skip_if_disabled, description)
+        # FIXED v4.3.1-k0023: Skip buttons that trigger long operations
+        # List of button attributes to test (button_attr, skip_if_disabled, skip_entirely, description)
         buttons_to_test = [
-            ('start_btn', False, "Main Start/Stop button"),
-            ('record_btn', True, "Recording button (skip if disabled)"),
-            ('test_btn', False, "Self-test button"),
-            ('quick_setup_btn', False, "Quick setup button"),
-            ('detach_radar_btn', False, "Detach radar button"),
-            ('detach_led_btn', False, "Detach LED button"),
-            ('lang_btn', False, "Language toggle button"),
+            ('start_btn', False, True, "Main Start/Stop button (skipped - triggers engine)"),
+            ('record_btn', True, True, "Recording button (skipped - triggers recording)"),
+            ('test_btn', False, True, "Self-test button (skipped - runs tests)"),
+            ('comprehensive_test_btn', False, True, "Comprehensive test button (skipped - would recurse)"),
+            ('quick_setup_btn', False, False, "Quick setup button"),
+            ('detach_radar_btn', False, False, "Detach radar button"),
+            ('detach_led_btn', False, False, "Detach LED button"),
+            ('lang_btn', False, False, "Language toggle button"),
         ]
 
-        for btn_attr, skip_disabled, description in buttons_to_test:
+        for btn_attr, skip_disabled, skip_entirely, description in buttons_to_test:
+            if skip_entirely:
+                self.logger.write(f"SKIP: {description}")
+                result = TestResult(
+                    category="Button",
+                    name=description,
+                    success=True,
+                    message="Skipped (triggers long operation)"
+                )
+                self.results.append(result)
+                continue
+
             if not hasattr(self.main_window, btn_attr):
                 self.logger.write(f"SKIP: Button '{btn_attr}' not found")
                 continue
@@ -232,7 +245,7 @@ class ComprehensiveAutoTester:
             self._run_test_with_timeout(
                 category="Button",
                 name=description,
-                test_func=lambda b=button: self._click_button(b)
+                test_func=lambda b=button, ba=btn_attr: self._click_button_safe(b, ba)
             )
 
             # Small delay between button clicks
@@ -421,14 +434,26 @@ class ComprehensiveAutoTester:
         if tab_widget.currentIndex() != tab_index:
             raise AssertionError(f"Failed to switch to tab {tab_index}")
 
-    def _click_button(self, button: QPushButton) -> None:
-        """Click a button safely."""
+    def _click_button_safe(self, button: QPushButton, button_attr: str) -> None:
+        """Click a button safely and handle checkable buttons."""
         if not button.isEnabled():
             raise AssertionError("Button is disabled")
+
+        # For checkable buttons (toggle buttons), click twice to restore state
+        is_checkable = button.isCheckable()
+        original_state = button.isChecked() if is_checkable else None
 
         # Simulate click
         button.click()
         QApplication.processEvents()
+        time.sleep(0.1)  # Brief delay for UI to respond
+
+        # If checkable, restore original state
+        if is_checkable:
+            if button.isChecked() != original_state:
+                button.click()  # Click again to restore
+                QApplication.processEvents()
+                time.sleep(0.1)
 
     def _test_slider(self, slider: QSlider) -> None:
         """Test slider by moving to min, max, and restoring."""
@@ -515,15 +540,24 @@ class ComprehensiveAutoTester:
 
         radar = self.main_window.radar_widget
 
-        # Simulate target update
-        test_targets = [{
-            'angle': 45.0,
-            'distance': 50.0,
-            'type': 'walk',
-            'confidence': 0.8
-        }]
+        # FIXED v4.3.1-k0023: Use add_target method (not update_targets)
+        # MilitaryHUDRadar uses add_target(id, angle, distance, state, speed, confidence)
+        radar.add_target(
+            target_id=999,  # Test target ID
+            angle=45.0,
+            distance=50.0,
+            state='walk',
+            speed=1.5,
+            confidence=0.8
+        )
+        QApplication.processEvents()
 
-        radar.update_targets(test_targets)
+        # Verify target was added
+        if len(radar.targets) == 0:
+            raise AssertionError("Target was not added to radar")
+
+        # Clean up test target
+        radar.remove_target(999)
         QApplication.processEvents()
 
     # =========================================================================

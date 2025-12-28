@@ -117,19 +117,23 @@ class SelfTestRunner:
         radar = MilitaryHUDRadar()
         radar.hide()  # Don't actually show window
 
-        # Simulate target update
-        test_targets = [{
-            'angle': 45.0,
-            'distance': 50.0,
-            'type': 'walk',
-            'confidence': 0.8
-        }]
-
-        # Verify radar can process targets without crashing
+        # FIXED v4.3.1-k0023: Use add_target method (not update_targets)
+        # MilitaryHUDRadar uses add_target(id, angle, distance, state, speed, confidence)
         try:
-            radar.update_targets(test_targets)
+            radar.add_target(
+                target_id=1,
+                angle=45.0,
+                distance=50.0,
+                state='walk',
+                speed=1.5,
+                confidence=0.8
+            )
         except Exception as e:
-            raise AssertionError(f"Radar failed to update targets: {e}")
+            raise AssertionError(f"Radar failed to add target: {e}")
+
+        # Verify target was added
+        if len(radar.targets) == 0:
+            raise AssertionError("Target was not added to radar")
 
         radar.close()
         if owned_app:

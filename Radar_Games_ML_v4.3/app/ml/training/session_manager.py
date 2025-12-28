@@ -1,6 +1,8 @@
 """
-Radar Games ML v4.2.0 - Session Manager for Labeled Audio Data
+Radar Games ML v4.3.1-k0024 - Session Manager for Labeled Audio Data
 Manages storage and retrieval of labeled recording sessions
+
+ENHANCED v4.3.1-k0024: Audio archive with WAV export for easy access
 
 Storage structure:
     Data/LabeledSessions/
@@ -12,6 +14,10 @@ Storage structure:
         ├── metadata.json
         ├── audio.npy
         └── labels.json
+
+    Data/AudioArchive/           (v4.3.1-k0024: WAV archive for easy access)
+    ├── session_2025-12-05_21-15-00.wav
+    └── session_2025-12-05_22-30-00.wav
 """
 
 import json
@@ -23,6 +29,14 @@ from typing import List, Optional, Dict, Any, Callable
 import threading
 
 from app.core.logger import log
+
+# v4.3.1-k0024: WAV export support
+try:
+    from scipy.io import wavfile
+    WAVFILE_AVAILABLE = True
+except ImportError:
+    WAVFILE_AVAILABLE = False
+    log("scipy.io.wavfile not available - WAV export disabled", "WARNING")
 from app.core.constants import VERSION
 
 
@@ -196,7 +210,7 @@ class SessionManager:
 
     def __init__(self, base_path: Optional[Path] = None, use_async: bool = True):
         """
-        Initialize session manager.
+        Initialize session manager (v4.3.1-k0024: Audio archive support).
 
         Args:
             base_path: Base directory for sessions (default: Data/LabeledSessions)
@@ -210,6 +224,12 @@ class SessionManager:
         self.base_path = Path(base_path)
         self._lock = threading.Lock()
         self.use_async = use_async
+
+        # v4.3.1-k0024: Audio archive directory for WAV exports
+        app_root = Path(__file__).parent.parent.parent.parent
+        self.audio_archive_path = app_root / "Data" / "AudioArchive"
+        self.audio_archive_path.mkdir(parents=True, exist_ok=True)
+        log(f"Audio archive directory: {self.audio_archive_path}", "INFO")
 
         # FIXED v4.2.1-k0009: Lazy-load async worker to avoid import cycles
         self._async_worker = None
@@ -371,9 +391,13 @@ class SessionManager:
 
                     # Save audio data if provided
                     if audio_data is not None:
+                        # Save as .npy for ML training
                         audio_path = session_dir / "audio.npy"
                         np.save(audio_path, audio_data)
                         log(f"Saved audio: {audio_data.shape} samples", "INFO")
+
+                        # v4.3.1-k0024: Also save as WAV to audio archive
+                        self._save_audio_to_archive(session.session_id, audio_data, session.sample_rate)
 
                     log(f"Session saved: {session.session_id} ({len(session.labels)} labels)", "INFO")
 
@@ -386,6 +410,54 @@ class SessionManager:
                 if callback:
                     callback(False, str(e))
                 return False
+
+    def _save_audio_to_archive(
+        self,
+        session_id: str,
+        audio_data: np.ndarray,
+        sample_rate: int
+    ) -> bool:
+        """
+        Save audio to archive as WAV file (v4.3.1-k0024).
+
+        Args:
+            session_id: Session identifier
+            audio_data: Audio samples (mono or stereo)
+            sample_rate: Sample rate in Hz
+
+        Returns:
+            True if saved successfully, False otherwise
+        """
+        if not WAVFILE_AVAILABLE:
+            log("WAV export skipped - scipy.io.wavfile not available", "WARNING")
+            return False
+
+        try:
+            # Ensure archive directory exists
+            self.audio_archive_path.mkdir(parents=True, exist_ok=True)
+
+            # WAV file path
+            wav_path = self.audio_archive_path / f"{session_id}.wav"
+
+            # Normalize audio to int16 range for WAV
+            # audio_data is in float32 range [-1.0, 1.0]
+            if audio_data.dtype == np.float32 or audio_data.dtype == np.float64:
+                # Clip to prevent overflow
+                audio_clipped = np.clip(audio_data, -1.0, 1.0)
+                # Scale to int16 range
+                audio_int16 = (audio_clipped * 32767).astype(np.int16)
+            else:
+                audio_int16 = audio_data.astype(np.int16)
+
+            # Save WAV file
+            wavfile.write(str(wav_path), sample_rate, audio_int16)
+
+            log(f"Audio archived: {wav_path.name} ({audio_data.shape} samples, {sample_rate}Hz)", "INFO")
+            return True
+
+        except Exception as e:
+            log(f"Failed to save audio archive for {session_id}: {e}", "ERROR")
+            return False
 
     def load_session(self, session_id: str) -> Optional[LabeledSession]:
         """
@@ -522,6 +594,64 @@ class SessionManager:
         except Exception as e:
             log(f"Error deleting session {session_id}: {e}", "ERROR")
             return False
+
+    def export_session_to_wav(self, session_id: str) -> bool:
+        """
+        Export a session's audio to WAV format in archive (v4.3.1-k0024).
+
+        Useful for exporting old sessions that were saved before WAV export was added.
+
+        Args:
+            session_id: Session to export
+
+        Returns:
+            True if successful
+        """
+        try:
+            # Load session metadata
+            session = self.load_session(session_id)
+            if not session:
+                log(f"Session not found: {session_id}", "WARNING")
+                return False
+
+            # Load audio
+            audio_data = self.load_audio(session_id)
+            if audio_data is None:
+                log(f"No audio data for session: {session_id}", "WARNING")
+                return False
+
+            # Export to WAV
+            return self._save_audio_to_archive(session_id, audio_data, session.sample_rate)
+
+        except Exception as e:
+            log(f"Error exporting session {session_id} to WAV: {e}", "ERROR")
+            return False
+
+    def export_all_sessions_to_wav(self) -> Dict[str, bool]:
+        """
+        Export all sessions to WAV format (v4.3.1-k0024).
+
+        Returns:
+            Dictionary mapping session_id to success status
+        """
+        results = {}
+        sessions = self.list_sessions()
+
+        log(f"Exporting {len(sessions)} sessions to WAV archive...", "INFO")
+
+        for session_info in sessions:
+            session_id = session_info["session_id"]
+            if session_info.get("has_audio", False):
+                success = self.export_session_to_wav(session_id)
+                results[session_id] = success
+            else:
+                log(f"Skipping {session_id} - no audio", "WARNING")
+                results[session_id] = False
+
+        success_count = sum(1 for v in results.values() if v)
+        log(f"Exported {success_count}/{len(sessions)} sessions to WAV", "INFO")
+
+        return results
 
     def get_total_labeled_duration(self) -> float:
         """Get total duration of all labeled sessions in seconds."""

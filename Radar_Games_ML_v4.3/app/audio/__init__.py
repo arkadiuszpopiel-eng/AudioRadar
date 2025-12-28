@@ -11,6 +11,7 @@ from .classifier import SoundClassifier
 from .recorder import AudioRecorder
 from .voice_detector import HumanVoiceDetector
 from .processor import AudioProcessor, get_audio_processor
+from .playback_engine import AudioPlaybackEngine, PlaybackState
 
 __all__ = [
     'AudioProcessingCache',
@@ -20,4 +21,6 @@ __all__ = [
     'HumanVoiceDetector',
     'AudioProcessor',
     'get_audio_processor',
+    'AudioPlaybackEngine',
+    'PlaybackState',
 ]

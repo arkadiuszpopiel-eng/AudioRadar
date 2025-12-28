@@ -177,16 +177,21 @@ class SessionManager:
     - Listing available sessions
     """
 
-    # Default label classes for the UI
+    # Default label classes for the UI (v4.3.1-k0023: Extended classes per user request)
     DEFAULT_LABEL_CLASSES = [
-        "footstep_walk",
-        "footstep_run",
-        "gunshot",
-        "explosion",
-        "vehicle",
-        "voice",
-        "ambient",
-        "other",
+        "Walk",           # Chodzenie
+        "Run",            # Bieg
+        "Shot",           # Strzał
+        "Crouch",         # Skradanie
+        "Explosion",      # Wybuch
+        "NPC",            # NPC
+        "NPC_Arc",        # NPC Arc
+        "Jump",           # Skok
+        "Doors",          # Drzwi
+        "Vehicle",        # Pojazd
+        "Voice",          # Głos
+        "Ambient",        # Otoczenie
+        "Other",          # Inne
     ]
 
     def __init__(self, base_path: Optional[Path] = None, use_async: bool = True):

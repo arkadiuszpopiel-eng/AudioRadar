@@ -19,7 +19,7 @@ from PyQt5.QtWidgets import (
     QGroupBox, QTableWidget, QTableWidgetItem, QTextEdit,
     QComboBox, QLineEdit, QProgressBar, QHeaderView,
     QMessageBox, QDialog, QFormLayout, QDialogButtonBox,
-    QSplitter, QFrame, QTabWidget
+    QSplitter, QFrame, QTabWidget, QStackedWidget
 )
 from PyQt5.QtCore import Qt, QTimer, pyqtSignal
 from PyQt5.QtGui import QColor, QKeyEvent
@@ -141,7 +141,7 @@ class MLTrainingPanel(QWidget):
         self._update_sessions_table()
 
     def _build_ui(self):
-        """Build the complete UI with tabbed interface."""
+        """Build the complete UI with reorganized tabs (v4.3.1-k0023)."""
         main_layout = QVBoxLayout()
         main_layout.setContentsMargins(10, 10, 10, 10)
 
@@ -150,7 +150,8 @@ class MLTrainingPanel(QWidget):
         title.setStyleSheet("font-size: 16pt; font-weight: bold; color: #00DDFF; margin-bottom: 10px;")
         main_layout.addWidget(title)
 
-        # Create tab widget (v4.3.1: Separate Recording and Session Editor)
+        # Create tab widget
+        # v4.3.1-k0023: Reorganized - Tab A (Training), Tab B (Recording + Editing)
         self.tab_widget = QTabWidget()
         self.tab_widget.setStyleSheet("""
             QTabWidget::pane {
@@ -176,20 +177,20 @@ class MLTrainingPanel(QWidget):
             }
         """)
 
-        # Tab 1: Recording (existing functionality)
-        recording_tab = self._build_recording_tab()
-        self.tab_widget.addTab(recording_tab, "🎙️ Recording")
+        # Tab A: ML Training (training ONLY - no recording)
+        training_tab = self._build_training_tab()
+        self.tab_widget.addTab(training_tab, "🎓 ML Training")
 
-        # Tab 2: Session Editor (NEW - audio playback and editing)
-        self.session_editor = SessionEditorWidget(self.session_manager, parent=self)
-        self.tab_widget.addTab(self.session_editor, "✏️ Session Editor")
+        # Tab B: Recording & Editing (unified recording + editing)
+        recording_editing_tab = self._build_recording_editing_tab()
+        self.tab_widget.addTab(recording_editing_tab, "🎙️ Recording & Editing")
 
         main_layout.addWidget(self.tab_widget)
 
         self.setLayout(main_layout)
 
-    def _build_recording_tab(self) -> QWidget:
-        """Build the recording tab (original ML Training panel content)."""
+    def _build_training_tab(self) -> QWidget:
+        """Build Tab A: ML Training (training ONLY - v4.3.1-k0023)."""
         tab_widget = QWidget()
         tab_layout = QVBoxLayout()
         tab_layout.setContentsMargins(5, 5, 5, 5)
@@ -197,42 +198,146 @@ class MLTrainingPanel(QWidget):
         # Create splitter for two columns
         splitter = QSplitter(Qt.Horizontal)
 
-        # Left column: Recording
+        # Left column: Training data selection
+        left_widget = QWidget()
+        left_layout = QVBoxLayout(left_widget)
+        left_layout.setContentsMargins(0, 0, 5, 0)
+
+        # Sessions selector (read-only for training selection)
+        sessions_group = self._build_sessions_group()
+        sessions_group.setTitle("📁 Training Data (Select Sessions)")
+        left_layout.addWidget(sessions_group)
+
+        # Future: Import audio files section
+        import_label = QLabel("💡 Tip: Use Recording & Editing tab to create and edit training sessions")
+        import_label.setStyleSheet("font-size: 9pt; color: #888888; padding: 10px;")
+        import_label.setWordWrap(True)
+        left_layout.addWidget(import_label)
+
+        left_layout.addStretch()
+
+        splitter.addWidget(left_widget)
+
+        # Right column: Training controls, models, logs
+        right_widget = QWidget()
+        right_layout = QVBoxLayout(right_widget)
+        right_layout.setContentsMargins(5, 0, 0, 0)
+
+        right_layout.addWidget(self._build_training_group())
+        right_layout.addWidget(self._build_model_management_group())
+        right_layout.addWidget(self._build_log_group())
+
+        splitter.addWidget(right_widget)
+
+        # Set splitter sizes
+        splitter.setSizes([300, 500])
+
+        tab_layout.addWidget(splitter)
+
+        tab_widget.setLayout(tab_layout)
+        return tab_widget
+
+    def _build_recording_editing_tab(self) -> QWidget:
+        """Build Tab B: Recording & Editing (unified - v4.3.1-k0023)."""
+        tab_widget = QWidget()
+        tab_layout = QVBoxLayout()
+        tab_layout.setContentsMargins(5, 5, 5, 5)
+
+        # Mode selector
+        mode_row = QHBoxLayout()
+        mode_label = QLabel("Mode:")
+        mode_label.setStyleSheet("font-size: 11pt; font-weight: bold; color: #DDDDDD;")
+        mode_row.addWidget(mode_label)
+
+        self.mode_selector = QComboBox()
+        self.mode_selector.addItems(["🎙️ New Recording", "✏️ Edit Existing Session"])
+        self.mode_selector.setStyleSheet("""
+            QComboBox {
+                background: #2a2a2a;
+                color: #DDDDDD;
+                padding: 8px 12px;
+                border: 2px solid #00AA66;
+                border-radius: 4px;
+                font-size: 11pt;
+                font-weight: bold;
+            }
+            QComboBox:hover {
+                border: 2px solid #00DD88;
+                background: #3a3a3a;
+            }
+            QComboBox::drop-down {
+                border: none;
+            }
+            QComboBox::down-arrow {
+                image: none;
+                border: none;
+            }
+        """)
+        mode_row.addWidget(self.mode_selector)
+        mode_row.addStretch()
+
+        tab_layout.addLayout(mode_row)
+
+        # Stacked widget for mode switching
+        self.mode_stack = QStackedWidget()
+
+        # Mode 1: Recording
+        recording_widget = self._build_recording_mode_widget()
+        self.mode_stack.addWidget(recording_widget)
+
+        # Mode 2: Editing (embed SessionEditorWidget)
+        self.session_editor = SessionEditorWidget(self.session_manager, parent=self)
+        self.mode_stack.addWidget(self.session_editor)
+
+        # Connect mode selector
+        self.mode_selector.currentIndexChanged.connect(self.mode_stack.setCurrentIndex)
+
+        tab_layout.addWidget(self.mode_stack)
+
+        tab_widget.setLayout(tab_layout)
+        return tab_widget
+
+    def _build_recording_mode_widget(self) -> QWidget:
+        """Build recording mode widget for Tab B."""
+        widget = QWidget()
+        layout = QVBoxLayout()
+        layout.setContentsMargins(0, 0, 0, 0)
+
+        # Create splitter for two columns
+        splitter = QSplitter(Qt.Horizontal)
+
+        # Left column: Recording controls
         left_widget = QWidget()
         left_layout = QVBoxLayout(left_widget)
         left_layout.setContentsMargins(0, 0, 5, 0)
 
         left_layout.addWidget(self._build_recording_group())
         left_layout.addWidget(self._build_labeling_group())
-        left_layout.addWidget(self._build_waveform_timeline_group())  # v4.2.1: Timeline editor
-        left_layout.addWidget(self._build_labels_table_group())
+        left_layout.addWidget(self._build_waveform_timeline_group())
 
         splitter.addWidget(left_widget)
 
-        # Right column: Training
+        # Right column: Current session labels
         right_widget = QWidget()
         right_layout = QVBoxLayout(right_widget)
         right_layout.setContentsMargins(5, 0, 0, 0)
 
-        right_layout.addWidget(self._build_sessions_group())
-        right_layout.addWidget(self._build_training_group())
-        right_layout.addWidget(self._build_model_management_group())  # v4.3.0-k0001: Model management UI
-        right_layout.addWidget(self._build_log_group())
+        right_layout.addWidget(self._build_labels_table_group())
 
         splitter.addWidget(right_widget)
 
         # Set splitter sizes
-        splitter.setSizes([400, 400])
+        splitter.setSizes([500, 300])
 
-        tab_layout.addWidget(splitter)
+        layout.addWidget(splitter)
 
         # Hotkey hint
         hotkey_hint = QLabel("💡 Tip: Press 1-8 during recording to quickly add labels")
         hotkey_hint.setStyleSheet("font-size: 9pt; color: #888888; margin-top: 5px;")
-        tab_layout.addWidget(hotkey_hint)
+        layout.addWidget(hotkey_hint)
 
-        tab_widget.setLayout(tab_layout)
-        return tab_widget
+        widget.setLayout(layout)
+        return widget
 
     def _build_recording_group(self) -> QGroupBox:
         """Build recording controls group."""

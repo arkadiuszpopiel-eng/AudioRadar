@@ -18,7 +18,7 @@ from pathlib import Path
 from PyQt5.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QGroupBox, QTableWidget,
     QPushButton, QLabel, QHeaderView, QTableWidgetItem, QMessageBox,
-    QFileDialog
+    QFileDialog, QInputDialog
 )
 from PyQt5.QtCore import Qt, pyqtSignal
 from PyQt5.QtGui import QColor
@@ -533,19 +533,30 @@ class SessionEditorWidget(QWidget):
     # ========================================================================
 
     def _add_label_at_playback_position(self):
-        """Add label at current playback position."""
+        """Add label at current playback position (v4.3.1-k0023: With class selector)."""
         if not self.current_session:
             return
 
-        # Simple implementation - just add a WALK label for now
-        # In Phase 4, we'll add a dialog to choose label class
         current_pos = self.playback_engine.position
+
+        # Show dialog to choose label class
+        label_class, ok = QInputDialog.getItem(
+            self,
+            "Add Label",
+            f"Select label class for position {current_pos:.2f}s:",
+            SessionManager.DEFAULT_LABEL_CLASSES,
+            0,  # Default to first item
+            False  # Not editable
+        )
+
+        if not ok:
+            return  # User cancelled
 
         # Create new label
         label = AudioLabel(
             id=len(self.current_session.labels),
             timestamp_sec=current_pos,
-            label_class="WALK",  # TODO: Dialog to choose class
+            label_class=label_class,
             description=f"Added at {current_pos:.2f}s"
         )
 
@@ -557,7 +568,7 @@ class SessionEditorWidget(QWidget):
         markers = [(lbl.timestamp_sec, lbl.label_class) for lbl in self.current_session.labels]
         self.waveform.set_markers(markers)
 
-        log(f"Label added at {current_pos:.2f}s", "INFO")
+        log(f"Label '{label_class}' added at {current_pos:.2f}s", "INFO")
 
     def _delete_selected_label(self):
         """Delete selected label from session."""

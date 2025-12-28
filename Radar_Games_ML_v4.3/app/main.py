@@ -192,7 +192,7 @@ from app.widgets import (
 # ENHANCED v4.3.1: EventHandlers extraction from MainWindow
 # ============================================================================
 from app.ui import UIBuilder, EventHandlers
-from app.diagnostics import SelfTestRunner
+from app.diagnostics import SelfTestRunner, ComprehensiveAutoTester
 
 # ============================================================================
 # CONFIG MANAGER - Imported from core module
@@ -553,6 +553,96 @@ class MainWindow(QMainWindow):
                     QMessageBox.warning(self, tr('self_test_title'), detailed_msg)
                 else:
                     QMessageBox.information(self, tr('self_test_title'), detailed_msg)
+
+            QTimer.singleShot(0, finish)
+
+        threading.Thread(target=worker, daemon=True).start()
+
+    def launch_comprehensive_test(self):
+        """Run comprehensive auto-test and open HTML report (v4.3.1 - User request)."""
+        if hasattr(self, 'comprehensive_test_btn'):
+            self.comprehensive_test_btn.setEnabled(False)
+
+        # Show progress message
+        from PyQt5.QtWidgets import QProgressDialog
+        progress = QProgressDialog("Running comprehensive auto-test...\nTesting all buttons, sliders, tabs, and functions...", None, 0, 0, self)
+        progress.setWindowTitle("Comprehensive Auto-Test")
+        progress.setWindowModality(Qt.WindowModal)
+        progress.setMinimumDuration(0)
+        progress.setValue(0)
+        progress.show()
+
+        def worker():
+            error: Optional[Exception] = None
+            results = []
+            log_path = None
+            report_path = None
+            try:
+                tester = ComprehensiveAutoTester(main_window=self)
+                results, log_path, report_path = tester.run_all_tests()
+            except Exception as exc:
+                error = exc
+                import traceback
+                log(f"Comprehensive test error: {exc}", "ERROR")
+                log(traceback.format_exc(), "DEBUG")
+
+            def finish():
+                progress.close()
+
+                if hasattr(self, 'comprehensive_test_btn'):
+                    self.comprehensive_test_btn.setEnabled(True)
+
+                if error:
+                    QMessageBox.critical(self, "Comprehensive Auto-Test", f"Test failed with error:\n\n{error}")
+                    return
+
+                # Calculate statistics
+                total = len(results)
+                passed = sum(1 for r in results if r.success)
+                failed = total - passed
+                pass_rate = (passed / total * 100) if total > 0 else 0
+
+                # Build summary message
+                msg_lines = []
+                msg_lines.append(f"✅ PASSED: {passed}/{total} ({pass_rate:.1f}%)")
+                msg_lines.append(f"❌ FAILED: {failed}/{total} ({100-pass_rate:.1f}%)")
+                msg_lines.append("")
+
+                # Category breakdown
+                from collections import defaultdict
+                categories = defaultdict(lambda: {'total': 0, 'passed': 0})
+                for r in results:
+                    categories[r.category]['total'] += 1
+                    if r.success:
+                        categories[r.category]['passed'] += 1
+
+                msg_lines.append("CATEGORY BREAKDOWN:")
+                for cat, stats in sorted(categories.items()):
+                    cat_pass_rate = (stats['passed'] / stats['total'] * 100) if stats['total'] > 0 else 0
+                    msg_lines.append(f"  {cat}: {stats['passed']}/{stats['total']} ({cat_pass_rate:.1f}%)")
+
+                msg_lines.append("")
+                msg_lines.append(f"📄 Text Log: {log_path}")
+                msg_lines.append(f"📊 HTML Report: {report_path}")
+                msg_lines.append("")
+                msg_lines.append("Opening HTML report in browser...")
+
+                detailed_msg = "\n".join(msg_lines)
+
+                # Show summary
+                if failed > 0:
+                    QMessageBox.warning(self, "Comprehensive Auto-Test", detailed_msg)
+                else:
+                    QMessageBox.information(self, "Comprehensive Auto-Test", detailed_msg)
+
+                # Open HTML report in browser
+                if report_path and report_path.exists():
+                    import webbrowser
+                    try:
+                        webbrowser.open(str(report_path.absolute()))
+                        log(f"Opened comprehensive test report: {report_path}", "INFO")
+                    except Exception as e:
+                        log(f"Failed to open report in browser: {e}", "WARNING")
 
             QTimer.singleShot(0, finish)
 

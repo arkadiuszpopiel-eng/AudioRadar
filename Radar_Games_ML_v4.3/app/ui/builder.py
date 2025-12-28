@@ -717,6 +717,31 @@ class UIBuilder:
         self.main.test_btn.clicked.connect(self.main.launch_self_test)
         toolbar.addWidget(self.main.test_btn)
 
+        # Comprehensive auto-test trigger (v4.3.1 - User request)
+        self.main.comprehensive_test_btn = QPushButton("🧪 Full Test")
+        self.main.comprehensive_test_btn.setToolTip("Run comprehensive auto-test (tests every button, slider, tab, function)")
+        self.main.comprehensive_test_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #2D3E50;
+                color: #FFE66D;
+                font-weight: bold;
+                padding: 5px 10px;
+                border-radius: 3px;
+                border: 1px solid #FFE66D;
+            }
+            QPushButton:hover {
+                background-color: #34495E;
+                border: 2px solid #FFE66D;
+            }
+            QPushButton:disabled {
+                background-color: #1A1A1A;
+                color: #666666;
+                border: 1px solid #444444;
+            }
+        """)
+        self.main.comprehensive_test_btn.clicked.connect(self.main.launch_comprehensive_test)
+        toolbar.addWidget(self.main.comprehensive_test_btn)
+
         toolbar.addSeparator()
 
         # Quick stats

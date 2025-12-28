@@ -738,8 +738,15 @@ class MLTrainingPanel(QWidget):
         label_id = int(self.labels_table.item(row, 0).text())
 
         if self.recorder.current_session:
-            self.recorder.current_session.remove_label(label_id)
-            self.labels_table.removeRow(row)
+            # Remove label from session
+            if self.recorder.current_session.remove_label(label_id):
+                # CRITICAL: Save session to disk to persist the deletion
+                self.session_manager.save_session(self.recorder.current_session)
+                # Update UI
+                self.labels_table.removeRow(row)
+                log(f"Label {label_id} deleted and saved for session {self.recorder.current_session.session_id}", "INFO")
+            else:
+                log(f"Failed to remove label {label_id} - not found in session", "WARNING")
 
     # ========================================================================
     # WAVEFORM TIMELINE HANDLERS (v4.2.1)

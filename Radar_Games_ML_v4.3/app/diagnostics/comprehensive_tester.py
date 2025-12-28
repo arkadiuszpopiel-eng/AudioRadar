@@ -28,7 +28,7 @@ except Exception:
     QT_AVAILABLE = False
 
 from app.core.logger import log
-from app.core import get_logs_directory
+from app.core import LOG_DIR
 
 if TYPE_CHECKING:
     from app.main import MainWindow
@@ -111,7 +111,7 @@ class ComprehensiveAutoTester:
 
         # Setup logging
         if log_directory is None:
-            log_directory = get_logs_directory()
+            log_directory = LOG_DIR
 
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         log_path = log_directory / f"comprehensive_test_{timestamp}.log"

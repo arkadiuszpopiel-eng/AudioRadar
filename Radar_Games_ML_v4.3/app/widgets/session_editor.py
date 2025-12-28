@@ -101,9 +101,10 @@ class SessionEditorWidget(QWidget):
         controls_group.setLayout(controls_layout)
         main_layout.addWidget(controls_group)
 
-        # Waveform display
+        # Waveform display (v4.3.1-k0024: Increased height for better visibility)
         waveform_group = QGroupBox("📈 Audio Waveform & Timeline")
         waveform_layout = QVBoxLayout()
+        self.waveform.setMinimumHeight(250)  # v4.3.1-k0024: Better visibility
         waveform_layout.addWidget(self.waveform)
         waveform_group.setLayout(waveform_layout)
         main_layout.addWidget(waveform_group)
@@ -112,13 +113,13 @@ class SessionEditorWidget(QWidget):
         labels_group = QGroupBox("🏷️ Session Labels")
         labels_layout = QVBoxLayout()
 
-        # Simple labels table for now
+        # Simple labels table (v4.3.1-k0024: Increased height for better readability)
         self.labels_table = QTableWidget()
         self.labels_table.setColumnCount(4)
         self.labels_table.setHorizontalHeaderLabels(["Time", "Class", "Description", "Duration"])
         self.labels_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
         self.labels_table.setSelectionBehavior(QTableWidget.SelectRows)
-        self.labels_table.setMaximumHeight(200)
+        self.labels_table.setMinimumHeight(300)  # v4.3.1-k0024: Increased from 200 for better visibility
         self.labels_table.setStyleSheet("""
             QTableWidget {
                 background: #1a1a1a;
@@ -203,14 +204,14 @@ class SessionEditorWidget(QWidget):
         group = QGroupBox("📁 Saved Sessions")
         layout = QVBoxLayout()
 
-        # Sessions table
+        # Sessions table (v4.3.1-k0024: Increased height for better readability)
         self.sessions_table = QTableWidget()
         self.sessions_table.setColumnCount(4)
         self.sessions_table.setHorizontalHeaderLabels(["Session ID", "Duration", "Labels", "Audio"])
         self.sessions_table.horizontalHeader().setSectionResizeMode(0, QHeaderView.Stretch)
         self.sessions_table.setSelectionBehavior(QTableWidget.SelectRows)
         self.sessions_table.setSelectionMode(QTableWidget.SingleSelection)
-        self.sessions_table.setMaximumHeight(150)
+        self.sessions_table.setMinimumHeight(250)  # v4.3.1-k0024: Increased from 150 for better visibility
         self.sessions_table.setStyleSheet("""
             QTableWidget {
                 background: #1a1a1a;
@@ -262,6 +263,22 @@ class SessionEditorWidget(QWidget):
         self.refresh_btn.clicked.connect(self._refresh_sessions_table)
         self.refresh_btn.setToolTip("Refresh sessions list from disk")
         buttons_row.addWidget(self.refresh_btn)
+
+        # v4.3.1-k0024: Button to open audio archive folder
+        self.open_archive_btn = QPushButton("🎵 Open Audio Archive")
+        self.open_archive_btn.setStyleSheet("""
+            QPushButton {
+                background: #0066AA;
+                color: white;
+                font-weight: bold;
+                padding: 8px 16px;
+                border-radius: 4px;
+            }
+            QPushButton:hover { background: #0088CC; }
+        """)
+        self.open_archive_btn.clicked.connect(self._open_audio_archive_folder)
+        self.open_archive_btn.setToolTip("Open AudioArchive folder with WAV files")
+        buttons_row.addWidget(self.open_archive_btn)
 
         buttons_row.addStretch()
         layout.addLayout(buttons_row)
@@ -656,6 +673,38 @@ class SessionEditorWidget(QWidget):
         except Exception as e:
             log(f"Save session error: {e}", "ERROR")
             QMessageBox.critical(self, "Save Error", f"Failed to save session:\n{e}")
+
+    def _open_audio_archive_folder(self):
+        """Open the AudioArchive folder in file manager (v4.3.1-k0024)."""
+        import subprocess
+        import platform
+        from pathlib import Path
+
+        try:
+            # Get archive path from session manager
+            archive_path = self.session_manager.audio_archive_path
+
+            # Create if doesn't exist
+            archive_path.mkdir(parents=True, exist_ok=True)
+
+            # Open folder based on OS
+            system = platform.system()
+            if system == "Windows":
+                subprocess.Popen(f'explorer "{archive_path}"')
+            elif system == "Darwin":  # macOS
+                subprocess.Popen(['open', str(archive_path)])
+            else:  # Linux
+                subprocess.Popen(['xdg-open', str(archive_path)])
+
+            log(f"Opened audio archive folder: {archive_path}", "INFO")
+
+        except Exception as e:
+            log(f"Failed to open audio archive folder: {e}", "ERROR")
+            QMessageBox.warning(
+                self,
+                "Open Folder Error",
+                f"Could not open AudioArchive folder:\n{e}"
+            )
 
     def cleanup(self):
         """Cleanup resources before closing."""

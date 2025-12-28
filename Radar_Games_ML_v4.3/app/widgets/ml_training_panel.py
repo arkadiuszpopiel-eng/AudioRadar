@@ -284,6 +284,24 @@ class MLTrainingPanel(QWidget):
             }
         """)
         mode_row.addWidget(self.mode_selector)
+
+        # v4.3.1-k0024: Button to open audio archive
+        open_archive_btn = QPushButton("🎵 Open Audio Archive")
+        open_archive_btn.setStyleSheet("""
+            QPushButton {
+                background: #0066AA;
+                color: white;
+                font-weight: bold;
+                padding: 8px 16px;
+                border-radius: 4px;
+                font-size: 10pt;
+            }
+            QPushButton:hover { background: #0088CC; }
+        """)
+        open_archive_btn.clicked.connect(self._open_audio_archive_folder)
+        open_archive_btn.setToolTip("Open AudioArchive folder with WAV files")
+        mode_row.addWidget(open_archive_btn)
+
         mode_row.addStretch()
 
         tab_layout.addLayout(mode_row)
@@ -636,7 +654,7 @@ class MLTrainingPanel(QWidget):
         header.setSectionResizeMode(4, QHeaderView.ResizeToContents)  # Audio
 
         self.sessions_table.setSelectionBehavior(QTableWidget.SelectRows)
-        self.sessions_table.setMaximumHeight(200)  # v4.3.1-k0023: Increased from 150
+        self.sessions_table.setMinimumHeight(350)  # v4.3.1-k0024: Increased for better readability
 
         # v4.3.1-k0023: Enhanced styling for better readability
         self.sessions_table.setStyleSheet("""
@@ -1370,6 +1388,38 @@ class MLTrainingPanel(QWidget):
         if self.toast:
             models_count = self.models_table.rowCount()
             self.toast.show_toast(f"Refreshed: {models_count} models found", "info", duration=2000)
+
+    def _open_audio_archive_folder(self):
+        """Open the AudioArchive folder in file manager (v4.3.1-k0024)."""
+        import subprocess
+        import platform
+
+        try:
+            # Get archive path from session manager
+            archive_path = self.session_manager.audio_archive_path
+
+            # Create if doesn't exist
+            archive_path.mkdir(parents=True, exist_ok=True)
+
+            # Open folder based on OS
+            system = platform.system()
+            if system == "Windows":
+                subprocess.Popen(f'explorer "{archive_path}"')
+            elif system == "Darwin":  # macOS
+                subprocess.Popen(['open', str(archive_path)])
+            else:  # Linux
+                subprocess.Popen(['xdg-open', str(archive_path)])
+
+            log(f"Opened audio archive folder: {archive_path}", "INFO")
+
+            # Show toast
+            if self.toast:
+                self.toast.show_toast("Audio Archive opened", "info", duration=2000)
+
+        except Exception as e:
+            log(f"Failed to open audio archive folder: {e}", "ERROR")
+            if self.toast:
+                self.toast.show_toast("Failed to open folder", "error", duration=3000)
 
     # ========================================================================
     # KEYBOARD SHORTCUTS

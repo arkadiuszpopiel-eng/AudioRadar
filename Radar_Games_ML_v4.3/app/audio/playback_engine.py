@@ -157,6 +157,10 @@ class AudioPlaybackEngine(QObject):
         # If paused, resume
         if self.state == PlaybackState.PAUSED:
             self._pause_event.clear()
+
+            # Restart position timer (v4.3.1-k0024: Fix resume from pause)
+            self._position_timer.start(100)
+
             self._set_state(PlaybackState.PLAYING)
             return
 
@@ -190,6 +194,10 @@ class AudioPlaybackEngine(QObject):
             return
 
         self._pause_event.set()
+
+        # Stop position timer while paused (v4.3.1-k0024: Fix pause button)
+        self._position_timer.stop()
+
         self._set_state(PlaybackState.PAUSED)
         log("Playback paused", "INFO")
 
@@ -295,9 +303,10 @@ class AudioPlaybackEngine(QObject):
                 if self._stop_event.is_set():
                     raise sd.CallbackStop
 
-                # Handle pause
+                # Handle pause (v4.3.1-k0024: Fix pause - don't advance position)
                 if self._pause_event.is_set():
                     outdata[:] = 0  # Output silence
+                    # Don't update current_sample - stay at same position
                     return
 
                 # Calculate end sample

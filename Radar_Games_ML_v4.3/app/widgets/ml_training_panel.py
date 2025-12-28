@@ -397,6 +397,24 @@ class MLTrainingPanel(QWidget):
         self.start_btn.clicked.connect(self._on_start_recording)
         btn_row.addWidget(self.start_btn)
 
+        # v4.3.1-k0023: Pause button
+        self.pause_btn = QPushButton("⏸ Pause")
+        self.pause_btn.setStyleSheet("""
+            QPushButton {
+                background: #DDAA00;
+                color: white;
+                font-weight: bold;
+                padding: 10px 20px;
+                border-radius: 5px;
+                font-size: 11pt;
+            }
+            QPushButton:hover { background: #FFCC00; }
+            QPushButton:disabled { background: #555555; color: #888888; }
+        """)
+        self.pause_btn.setEnabled(False)
+        self.pause_btn.clicked.connect(self._on_pause_recording)
+        btn_row.addWidget(self.pause_btn)
+
         self.stop_btn = QPushButton(f"⏹ {tr('stop')}" if callable(tr) else "⏹ Stop Recording")
         self.stop_btn.setStyleSheet("""
             QPushButton {
@@ -574,24 +592,47 @@ class MLTrainingPanel(QWidget):
         return group
 
     def _build_sessions_group(self) -> QGroupBox:
-        """Build saved sessions group."""
+        """Build saved sessions group (v4.3.1-k0023: Enhanced clarity)."""
         group = QGroupBox("📁 Saved Sessions")
         layout = QVBoxLayout()
 
         self.sessions_table = QTableWidget()
-        self.sessions_table.setColumnCount(4)
-        self.sessions_table.setHorizontalHeaderLabels(["Session", "Duration", "Labels", "Audio"])
-        self.sessions_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+        # v4.3.1-k0023: Added "Created" column for better clarity
+        self.sessions_table.setColumnCount(5)
+        self.sessions_table.setHorizontalHeaderLabels(["Session ID", "Created", "Duration", "Labels", "Audio"])
+
+        # v4.3.1-k0023: Better column sizing - Session ID gets more space
+        header = self.sessions_table.horizontalHeader()
+        header.setSectionResizeMode(0, QHeaderView.Stretch)  # Session ID
+        header.setSectionResizeMode(1, QHeaderView.ResizeToContents)  # Created
+        header.setSectionResizeMode(2, QHeaderView.ResizeToContents)  # Duration
+        header.setSectionResizeMode(3, QHeaderView.ResizeToContents)  # Labels
+        header.setSectionResizeMode(4, QHeaderView.ResizeToContents)  # Audio
+
         self.sessions_table.setSelectionBehavior(QTableWidget.SelectRows)
-        self.sessions_table.setMaximumHeight(150)
+        self.sessions_table.setMaximumHeight(200)  # v4.3.1-k0023: Increased from 150
+
+        # v4.3.1-k0023: Enhanced styling for better readability
         self.sessions_table.setStyleSheet("""
             QTableWidget {
                 background: #1a1a1a;
                 color: #DDDDDD;
-                gridline-color: #333333;
+                gridline-color: #444444;
+                font-size: 9pt;
+            }
+            QTableWidget::item {
+                padding: 5px;
             }
             QTableWidget::item:selected {
-                background: #004466;
+                background: #00558B;
+                color: white;
+            }
+            QHeaderView::section {
+                background: #2a2a2a;
+                color: #00DDFF;
+                font-weight: bold;
+                padding: 6px;
+                border: 1px solid #444;
             }
         """)
         layout.addWidget(self.sessions_table)
@@ -740,9 +781,10 @@ class MLTrainingPanel(QWidget):
     # ========================================================================
 
     def _on_start_recording(self):
-        """Handle start recording button."""
+        """Handle start recording button (v4.3.1-k0023: Enable pause button)."""
         if self.recording_controller.start_recording():
             self.start_btn.setEnabled(False)
+            self.pause_btn.setEnabled(True)  # v4.3.1-k0023: Enable pause
             self.stop_btn.setEnabled(True)
             self._timer.start(100)  # Update every 100ms
             self._clear_labels_table()
@@ -753,6 +795,7 @@ class MLTrainingPanel(QWidget):
         if session:
             self._timer.stop()
             self.start_btn.setEnabled(True)
+            self.pause_btn.setEnabled(False)
             self.stop_btn.setEnabled(False)
             self._update_sessions_table()
 
@@ -764,6 +807,43 @@ class MLTrainingPanel(QWidget):
                 f"Labels: {len(session.labels)}"
             )
 
+    def _on_pause_recording(self):
+        """Handle pause/resume recording button (v4.3.1-k0023)."""
+        state = self.recording_controller.state
+
+        if state.fsm_state == RecordingStateEnum.RECORDING:
+            # Pause the recording
+            if self.recording_controller.pause_recording():
+                self.pause_btn.setText("▶ Resume")
+                self.pause_btn.setStyleSheet("""
+                    QPushButton {
+                        background: #00AA00;
+                        color: white;
+                        font-weight: bold;
+                        padding: 10px 20px;
+                        border-radius: 5px;
+                        font-size: 11pt;
+                    }
+                    QPushButton:hover { background: #00CC00; }
+                    QPushButton:disabled { background: #555555; color: #888888; }
+                """)
+        elif state.fsm_state == RecordingStateEnum.PAUSED:
+            # Resume the recording
+            if self.recording_controller.resume_recording():
+                self.pause_btn.setText("⏸ Pause")
+                self.pause_btn.setStyleSheet("""
+                    QPushButton {
+                        background: #DDAA00;
+                        color: white;
+                        font-weight: bold;
+                        padding: 10px 20px;
+                        border-radius: 5px;
+                        font-size: 11pt;
+                    }
+                    QPushButton:hover { background: #FFCC00; }
+                    QPushButton:disabled { background: #555555; color: #888888; }
+                """)
+
     def _launch_overlay(self):
         """Open the quick recording overlay if available."""
         if callable(self._overlay_launcher):
@@ -772,21 +852,25 @@ class MLTrainingPanel(QWidget):
             log("Overlay launcher not configured", "WARNING")
 
     def _on_recording_state_change(self, state):
-        """Handle recording state changes (v4.3.0-k0001: FSM + Toast)."""
+        """Handle recording state changes (v4.3.1-k0023: Added PAUSED state)."""
         # Update legacy status label
-        if state.is_recording:
+        if state.fsm_state == RecordingStateEnum.PAUSED:
+            self.status_label.setText("⏸ Paused")
+            self.status_label.setStyleSheet("font-size: 12pt; font-weight: bold; color: #DDAA00;")
+        elif state.is_recording:
             self.status_label.setText("🔴 Recording")
             self.status_label.setStyleSheet("font-size: 12pt; font-weight: bold; color: #FF4444;")
         else:
             self.status_label.setText("⚪ Ready")
             self.status_label.setStyleSheet("font-size: 12pt; font-weight: bold; color: #888888;")
 
-        # v4.3.0-k0001: Update FSM indicator with color-coded states
+        # v4.3.1-k0023: Update FSM indicator with color-coded states (added PAUSED)
         fsm_state = state.fsm_state
         fsm_styles = {
             RecordingStateEnum.IDLE: ("IDLE", "#555555", "#AAAAAA"),
             RecordingStateEnum.STARTING: ("STARTING", "#F39C12", "#2C2C2C"),  # Orange
             RecordingStateEnum.RECORDING: ("RECORDING", "#E74C3C", "#FFFFFF"),  # Red
+            RecordingStateEnum.PAUSED: ("PAUSED", "#DDAA00", "#FFFFFF"),  # Yellow (v4.3.1-k0023)
             RecordingStateEnum.STOPPING: ("STOPPING", "#E67E22", "#FFFFFF"),  # Dark orange
             RecordingStateEnum.ERROR: ("ERROR", "#C0392B", "#FFFFFF"),  # Dark red
         }
@@ -1092,7 +1176,7 @@ class MLTrainingPanel(QWidget):
     # ========================================================================
 
     def _update_sessions_table(self):
-        """Update the saved sessions table."""
+        """Update the saved sessions table (v4.3.1-k0023: Enhanced with creation time)."""
         sessions = self.session_manager.list_sessions()
 
         self.sessions_table.setRowCount(len(sessions))
@@ -1101,20 +1185,56 @@ class MLTrainingPanel(QWidget):
         total_labels = 0
 
         for row, session_info in enumerate(sessions):
-            self.sessions_table.setItem(row, 0, QTableWidgetItem(session_info["session_id"]))
+            # Column 0: Session ID
+            session_id_item = QTableWidgetItem(session_info["session_id"])
+            session_id_item.setToolTip(f"Session: {session_info['session_id']}")
+            self.sessions_table.setItem(row, 0, session_id_item)
 
+            # Column 1: Created time (v4.3.1-k0023: NEW)
+            # Extract timestamp from session_id (format: session_YYYYMMDD_HHMMSS)
+            session_id = session_info["session_id"]
+            if session_id.startswith("session_"):
+                try:
+                    date_part = session_id[8:16]  # YYYYMMDD
+                    time_part = session_id[17:23]  # HHMMSS
+                    created_str = f"{date_part[6:8]}/{date_part[4:6]} {time_part[0:2]}:{time_part[2:4]}"
+                except:
+                    created_str = "N/A"
+            else:
+                created_str = "N/A"
+
+            created_item = QTableWidgetItem(created_str)
+            created_item.setToolTip(f"Created: {created_str}")
+            self.sessions_table.setItem(row, 1, created_item)
+
+            # Column 2: Duration
             duration = session_info["duration_sec"]
             total_duration += duration
             mins = int(duration // 60)
             secs = int(duration % 60)
-            self.sessions_table.setItem(row, 1, QTableWidgetItem(f"{mins}:{secs:02d}"))
+            duration_item = QTableWidgetItem(f"{mins}:{secs:02d}")
+            duration_item.setToolTip(f"Duration: {mins}m {secs}s")
+            self.sessions_table.setItem(row, 2, duration_item)
 
+            # Column 3: Labels
             labels = session_info["label_count"]
             total_labels += labels
-            self.sessions_table.setItem(row, 2, QTableWidgetItem(str(labels)))
+            labels_item = QTableWidgetItem(str(labels))
+            labels_item.setToolTip(f"{labels} labels")
+            # v4.3.1-k0023: Color-code based on label count
+            if labels == 0:
+                labels_item.setForeground(QColor("#FF4444"))  # Red if no labels
+            elif labels < 5:
+                labels_item.setForeground(QColor("#FFAA00"))  # Orange if few labels
+            else:
+                labels_item.setForeground(QColor("#00DD00"))  # Green if good labels
+            self.sessions_table.setItem(row, 3, labels_item)
 
+            # Column 4: Audio status
             has_audio = "✅" if session_info["has_audio"] else "❌"
-            self.sessions_table.setItem(row, 3, QTableWidgetItem(has_audio))
+            audio_item = QTableWidgetItem(has_audio)
+            audio_item.setToolTip("Audio file present" if session_info["has_audio"] else "No audio file")
+            self.sessions_table.setItem(row, 4, audio_item)
 
         # Update stats
         mins = int(total_duration // 60)

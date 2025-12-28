@@ -24,16 +24,18 @@ from .session_manager import SessionManager, LabeledSession, AudioLabel
 
 class RecordingStateEnum(Enum):
     """
-    Finite State Machine states for recording lifecycle (v4.2.1-k0009).
+    Finite State Machine states for recording lifecycle (v4.3.1-k0023: Added PAUSED).
 
     State transitions:
     - IDLE -> STARTING -> RECORDING
-    - RECORDING -> STOPPING -> IDLE
+    - RECORDING -> PAUSED -> RECORDING (resume)
+    - RECORDING/PAUSED -> STOPPING -> IDLE
     - Any -> ERROR (on exception)
     """
     IDLE = auto()        # Not recording, ready to start
     STARTING = auto()    # Initializing session, creating directories
     RECORDING = auto()   # Actively recording audio
+    PAUSED = auto()      # Recording paused (v4.3.1-k0023)
     STOPPING = auto()    # Saving session, finalizing
     ERROR = auto()       # Error state, requires reset
 
@@ -302,9 +304,55 @@ class LabeledRecorder:
                 self._transition_state(RecordingStateEnum.ERROR, str(e))
                 return None
 
+    def pause_recording(self) -> bool:
+        """
+        Pause the current recording session (v4.3.1-k0023).
+
+        Returns:
+            True if paused successfully
+        """
+        with self._lock:
+            # FSM: Only allow pause from RECORDING state
+            if self._state.fsm_state != RecordingStateEnum.RECORDING:
+                log(f"Cannot pause recording from state {self._state.fsm_state.name}", "WARNING")
+                return False
+
+            try:
+                # Transition to PAUSED
+                self._transition_state(RecordingStateEnum.PAUSED)
+                log("Recording paused", "INFO")
+                return True
+
+            except Exception as e:
+                log(f"Error pausing recording: {e}", "ERROR")
+                return False
+
+    def resume_recording(self) -> bool:
+        """
+        Resume a paused recording session (v4.3.1-k0023).
+
+        Returns:
+            True if resumed successfully
+        """
+        with self._lock:
+            # FSM: Only allow resume from PAUSED state
+            if self._state.fsm_state != RecordingStateEnum.PAUSED:
+                log(f"Cannot resume recording from state {self._state.fsm_state.name}", "WARNING")
+                return False
+
+            try:
+                # Transition back to RECORDING
+                self._transition_state(RecordingStateEnum.RECORDING)
+                log("Recording resumed", "INFO")
+                return True
+
+            except Exception as e:
+                log(f"Error resuming recording: {e}", "ERROR")
+                return False
+
     def add_audio_block(self, block: np.ndarray) -> None:
         """
-        Add an audio block to the recording buffer.
+        Add an audio block to the recording buffer (v4.3.1-k0023: Skip if paused).
 
         Called by the main audio processing loop.
 
@@ -315,6 +363,9 @@ class LabeledRecorder:
             return
 
         with self._lock:
+            # v4.3.1-k0023: Skip recording if paused
+            if self._state.fsm_state == RecordingStateEnum.PAUSED:
+                return
             # Check max duration
             elapsed = time.time() - self._state.start_time
             if elapsed >= self.MAX_DURATION_SEC:

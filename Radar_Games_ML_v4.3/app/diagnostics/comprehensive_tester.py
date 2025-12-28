@@ -353,6 +353,25 @@ class ComprehensiveAutoTester:
             test_func=lambda: self._test_radar_update()
         )
 
+        # v4.3.1-k0023: Test ML Training panel features
+        self._run_test_with_timeout(
+            category="Function",
+            name="ML Training panel tab switching",
+            test_func=lambda: self._test_ml_training_tabs()
+        )
+
+        self._run_test_with_timeout(
+            category="Function",
+            name="ML Training pause button",
+            test_func=lambda: self._test_ml_training_pause_button()
+        )
+
+        self._run_test_with_timeout(
+            category="Function",
+            name="Noise reduction toggle",
+            test_func=lambda: self._test_noise_reduction()
+        )
+
     # =========================================================================
     # TEST HELPERS
     # =========================================================================
@@ -558,6 +577,92 @@ class ComprehensiveAutoTester:
 
         # Clean up test target
         radar.remove_target(999)
+        QApplication.processEvents()
+
+    def _test_ml_training_tabs(self) -> None:
+        """Test ML Training panel tab switching (v4.3.1-k0023)."""
+        if not hasattr(self.main_window, 'ml_training_panel'):
+            raise AssertionError("ML Training panel not found")
+
+        panel = self.main_window.ml_training_panel
+
+        if not hasattr(panel, 'tab_widget'):
+            raise AssertionError("ML Training tab widget not found")
+
+        tab_widget = panel.tab_widget
+        tab_count = tab_widget.count()
+
+        # Should have 2 tabs: "ML Training" and "Recording & Editing"
+        if tab_count < 2:
+            raise AssertionError(f"Expected at least 2 tabs, found {tab_count}")
+
+        # Test switching to each tab
+        for i in range(tab_count):
+            tab_widget.setCurrentIndex(i)
+            QApplication.processEvents()
+            time.sleep(0.1)
+
+            if tab_widget.currentIndex() != i:
+                raise AssertionError(f"Failed to switch to tab {i}")
+
+    def _test_ml_training_pause_button(self) -> None:
+        """Test ML Training pause button exists and is configured (v4.3.1-k0023)."""
+        if not hasattr(self.main_window, 'ml_training_panel'):
+            raise AssertionError("ML Training panel not found")
+
+        panel = self.main_window.ml_training_panel
+
+        if not hasattr(panel, 'pause_btn'):
+            raise AssertionError("Pause button not found in ML Training panel")
+
+        pause_btn = panel.pause_btn
+
+        # Verify it's a QPushButton
+        if not isinstance(pause_btn, QPushButton):
+            raise AssertionError("pause_btn is not a QPushButton")
+
+        # Should be disabled initially (no recording in progress)
+        if pause_btn.isEnabled():
+            self.logger.write("  WARNING: Pause button is enabled when not recording")
+
+        # Verify it has a click handler connected
+        # (Can't directly test this, but we can verify the button exists and is properly set up)
+        QApplication.processEvents()
+
+    def _test_noise_reduction(self) -> None:
+        """Test noise reduction toggle in recording controller (v4.3.1-k0023)."""
+        if not hasattr(self.main_window, 'ml_training_panel'):
+            raise AssertionError("ML Training panel not found")
+
+        panel = self.main_window.ml_training_panel
+
+        if not hasattr(panel, 'recording_controller'):
+            raise AssertionError("Recording controller not found")
+
+        controller = panel.recording_controller
+
+        if not hasattr(controller, 'noise_reduction_enabled'):
+            raise AssertionError("Noise reduction not found in recording controller")
+
+        # Test toggling noise reduction
+        original_state = controller.noise_reduction_enabled
+
+        # Toggle off
+        controller.noise_reduction_enabled = False
+        QApplication.processEvents()
+
+        if controller.noise_reduction_enabled:
+            raise AssertionError("Failed to disable noise reduction")
+
+        # Toggle on
+        controller.noise_reduction_enabled = True
+        QApplication.processEvents()
+
+        if not controller.noise_reduction_enabled:
+            raise AssertionError("Failed to enable noise reduction")
+
+        # Restore original state
+        controller.noise_reduction_enabled = original_state
         QApplication.processEvents()
 
     # =========================================================================

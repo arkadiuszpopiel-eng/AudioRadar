@@ -3,6 +3,8 @@ Recording controller shared between ML Training panel and quick overlay.
 
 Provides a single source of truth for recording state, level monitoring and
 label operations so multiple widgets stay in sync.
+
+ENHANCED v4.3.1-k0023: Added noise reduction and audio enhancement for cleaner recordings
 """
 from __future__ import annotations
 
@@ -11,6 +13,7 @@ from pathlib import Path
 from typing import Callable, List, Optional
 
 import numpy as np
+from scipy import signal
 
 from app.core.logger import log
 
@@ -35,9 +38,9 @@ class InMemorySessionManager(SessionManager):
 
 
 class RecordingController:
-    """Shared controller coordinating labeled recordings."""
+    """Shared controller coordinating labeled recordings (v4.3.1-k0023: With noise reduction)."""
 
-    def __init__(self, session_manager: Optional[SessionManager] = None, test_mode: bool = False):
+    def __init__(self, session_manager: Optional[SessionManager] = None, test_mode: bool = False, sample_rate: int = 48000):
         self._test_mode = test_mode
         if session_manager is None:
             session_manager = InMemorySessionManager() if test_mode else SessionManager()
@@ -50,6 +53,15 @@ class RecordingController:
         self._last_session: Optional[LabeledSession] = None
         self._level_lock = threading.Lock()
         self._smoothed_level = 0.0
+
+        # v4.3.1-k0023: Noise reduction settings
+        self.noise_reduction_enabled = True  # Enable by default for better quality
+        self.noise_gate_threshold = 0.01     # RMS threshold for noise gate
+        self.sample_rate = sample_rate
+
+        # v4.3.1-k0023: High-pass filter for low-frequency noise removal
+        # Remove frequencies below 80 Hz (rumble, electrical hum)
+        self._highpass_filter = self._create_highpass_filter(cutoff=80, order=4)
 
         self.recorder.set_callbacks(
             on_state_change=self._emit_state_change,
@@ -83,6 +95,14 @@ class RecordingController:
             self._last_session = session
         return session
 
+    def pause_recording(self) -> bool:
+        """Pause the current recording (v4.3.1-k0023)."""
+        return self.recorder.pause_recording()
+
+    def resume_recording(self) -> bool:
+        """Resume a paused recording (v4.3.1-k0023)."""
+        return self.recorder.resume_recording()
+
     def discard_recording(self) -> None:
         self.recorder.discard_recording()
         self._last_session = None
@@ -103,11 +123,14 @@ class RecordingController:
     # Audio feeding & metering
     # ------------------------------------------------------------------
     def feed_audio(self, block: np.ndarray) -> None:
-        """Feed an audio block to the recorder and update level meters."""
+        """Feed an audio block to the recorder and update level meters (v4.3.1-k0023: With noise reduction)."""
         if block is None or block.size == 0:
             return
 
+        # v4.3.1-k0023: Apply noise reduction if enabled and recording
         if self.recorder.is_recording:
+            if self.noise_reduction_enabled:
+                block = self._apply_noise_reduction(block)
             self.recorder.add_audio_block(block)
 
         # Lightweight RMS level with smoothing for overlays/visualizations
@@ -170,3 +193,73 @@ class RecordingController:
                 callback(label)
             except Exception as exc:  # pragma: no cover - UI callbacks
                 log(f"RecordingController label listener error: {exc}", "WARNING")
+
+    # ------------------------------------------------------------------
+    # v4.3.1-k0023: Noise Reduction & Audio Enhancement
+    # ------------------------------------------------------------------
+    def _create_highpass_filter(self, cutoff: float = 80, order: int = 4):
+        """
+        Create a high-pass Butterworth filter to remove low-frequency noise.
+
+        Args:
+            cutoff: Cutoff frequency in Hz
+            order: Filter order
+
+        Returns:
+            Filter coefficients (b, a)
+        """
+        try:
+            nyquist = self.sample_rate / 2
+            normal_cutoff = cutoff / nyquist
+            b, a = signal.butter(order, normal_cutoff, btype='high', analog=False)
+            return (b, a)
+        except Exception as e:
+            log(f"Error creating high-pass filter: {e}", "ERROR")
+            return None
+
+    def _apply_noise_reduction(self, block: np.ndarray) -> np.ndarray:
+        """
+        Apply noise reduction to audio block.
+
+        Techniques:
+        1. High-pass filter to remove low-frequency rumble/hum
+        2. Noise gate to reduce background noise
+        3. Soft clipping to prevent distortion
+
+        Args:
+            block: Input audio block
+
+        Returns:
+            Filtered audio block
+        """
+        try:
+            # Handle mono/stereo
+            if block.ndim == 1:
+                filtered = block.copy()
+            else:
+                filtered = block.copy()
+
+            # 1. Apply high-pass filter (remove low-frequency noise < 80 Hz)
+            if self._highpass_filter is not None:
+                b, a = self._highpass_filter
+                if filtered.ndim == 1:
+                    filtered = signal.filtfilt(b, a, filtered)
+                else:
+                    # Apply to each channel
+                    for ch in range(filtered.shape[1]):
+                        filtered[:, ch] = signal.filtfilt(b, a, filtered[:, ch])
+
+            # 2. Noise gate - reduce low-level background noise
+            rms = np.sqrt(np.mean(np.square(filtered)))
+            if rms < self.noise_gate_threshold:
+                # Attenuate by 50% instead of complete silence for natural sound
+                filtered *= 0.5
+
+            # 3. Soft clipping to prevent distortion
+            filtered = np.clip(filtered, -0.95, 0.95)
+
+            return filtered
+
+        except Exception as e:
+            log(f"Error applying noise reduction: {e}", "WARNING")
+            return block  # Return original if filtering fails

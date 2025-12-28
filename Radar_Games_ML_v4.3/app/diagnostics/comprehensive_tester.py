@@ -29,6 +29,7 @@ except Exception:
 
 from app.core.logger import log
 from app.core import LOG_DIR
+from app.widgets.target_state import TargetState
 
 if TYPE_CHECKING:
     from app.main import MainWindow
@@ -528,9 +529,8 @@ class ComprehensiveAutoTester:
 
         panel = self.main_window.det_panel
 
-        # Simulate detection update
-        test_events = {'walk': True, 'run': False, 'shot': False}
-        panel.update_detections(test_events)
+        # Test detection panel UI update (reset detection state)
+        panel.reset_detection()
         QApplication.processEvents()
 
     def _test_radar_update(self) -> None:
@@ -541,14 +541,14 @@ class ComprehensiveAutoTester:
         radar = self.main_window.radar_widget
 
         # FIXED v4.3.1-k0023: Use add_target method (not update_targets)
-        # MilitaryHUDRadar uses add_target(id, angle, distance, state, speed, confidence)
+        # MilitaryHUDRadar.add_target(id, angle, distance, state, speed, label)
         radar.add_target(
             target_id=999,  # Test target ID
             angle=45.0,
             distance=50.0,
-            state='walk',
+            state=TargetState.WALK,
             speed=1.5,
-            confidence=0.8
+            label="TEST"
         )
         QApplication.processEvents()
 

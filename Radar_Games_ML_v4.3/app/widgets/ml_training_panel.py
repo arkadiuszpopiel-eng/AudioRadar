@@ -1083,41 +1083,63 @@ class MLTrainingPanel(QWidget):
     # ========================================================================
 
     def _on_start_training(self):
-        """Handle start training button."""
-        sessions = self.session_manager.list_sessions()
-        sessions_with_audio = [s for s in sessions if s["has_audio"]]
+        """Handle start training button (v4.3.1-k0024: Enhanced error handling)."""
+        # v4.3.1-k0024: Wrap in try-except to prevent crashes
+        try:
+            sessions = self.session_manager.list_sessions()
+            sessions_with_audio = [s for s in sessions if s["has_audio"]]
 
-        if not sessions_with_audio:
-            QMessageBox.warning(
+            if not sessions_with_audio:
+                QMessageBox.warning(
+                    self,
+                    "No Data",
+                    "No sessions with audio found.\n"
+                    "Record some sessions with labels first."
+                )
+                return
+
+            total_labels = sum(s["label_count"] for s in sessions_with_audio)
+            if total_labels < 10:
+                QMessageBox.warning(
+                    self,
+                    "Insufficient Data",
+                    f"Only {total_labels} labels found.\n"
+                    "Please add at least 10 labels across sessions."
+                )
+                return
+
+            self.log_text.clear()
+            self._log_message("Starting training...")
+            self._log_message(f"Sessions: {len(sessions_with_audio)}, Labels: {total_labels}")
+
+            self.train_btn.setEnabled(False)
+            self.cancel_train_btn.show()
+
+            # v4.3.0-k0001: Toast notification
+            if self.toast:
+                self.toast.show_toast(f"Training started with {total_labels} labels", "info", duration=3000)
+
+            self.trainer.start_training()
+
+        except Exception as e:
+            # v4.3.1-k0024: Handle any exceptions to prevent program crash
+            error_msg = f"Failed to start training: {str(e)}"
+            log(error_msg, "ERROR")
+
+            # Re-enable UI
+            self.train_btn.setEnabled(True)
+            self.cancel_train_btn.hide()
+
+            # Show error to user
+            QMessageBox.critical(
                 self,
-                "No Data",
-                "No sessions with audio found.\n"
-                "Record some sessions with labels first."
+                "Training Error",
+                f"Cannot start training:\n\n{str(e)}\n\n"
+                "Please check the log for details."
             )
-            return
 
-        total_labels = sum(s["label_count"] for s in sessions_with_audio)
-        if total_labels < 10:
-            QMessageBox.warning(
-                self,
-                "Insufficient Data",
-                f"Only {total_labels} labels found.\n"
-                "Please add at least 10 labels across sessions."
-            )
-            return
-
-        self.log_text.clear()
-        self._log_message("Starting training...")
-        self._log_message(f"Sessions: {len(sessions_with_audio)}, Labels: {total_labels}")
-
-        self.train_btn.setEnabled(False)
-        self.cancel_train_btn.show()
-
-        # v4.3.0-k0001: Toast notification
-        if self.toast:
-            self.toast.show_toast(f"Training started with {total_labels} labels", "info", duration=3000)
-
-        self.trainer.start_training()
+            if self.toast:
+                self.toast.show_toast("Training start failed", "error", duration=4000)
 
     def _on_cancel_training(self):
         """Handle cancel training button."""
@@ -1134,9 +1156,13 @@ class MLTrainingPanel(QWidget):
             self._log_message(f"Accuracy: {progress.accuracy:.1%}")
 
     def _on_training_complete(self, result):
-        """Handle training completion (v4.3.0-k0001: Toast)."""
-        self.train_btn.setEnabled(True)
-        self.cancel_train_btn.hide()
+        """Handle training completion (v4.3.1-k0024: Enhanced error handling)."""
+        # v4.3.1-k0024: Wrap in try-except to prevent UI crashes
+        try:
+            self.train_btn.setEnabled(True)
+            self.cancel_train_btn.hide()
+        except Exception as e:
+            log(f"Error resetting training UI state: {e}", "ERROR")
 
         if result.success:
             self.progress_bar.setFormat("100% - Complete!")

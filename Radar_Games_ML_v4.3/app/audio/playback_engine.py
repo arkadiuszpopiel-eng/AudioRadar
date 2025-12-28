@@ -358,12 +358,20 @@ class AudioPlaybackEngine(QObject):
                     time.sleep(0.1)
 
         except sd.CallbackStop:
-            # Normal end of playback
+            # Normal end of playback (v4.3.1-k0024: Stop timer on finish)
             log("Playback finished", "INFO")
+
+            # Stop position timer
+            self._position_timer.stop()
+
             self.playback_finished.emit()
 
         except Exception as e:
             log(f"Playback error: {e}", "ERROR")
+
+            # Stop position timer on error (v4.3.1-k0024)
+            self._position_timer.stop()
+
             self.error_occurred.emit(str(e))
 
         finally:
@@ -375,7 +383,7 @@ class AudioPlaybackEngine(QObject):
                     pass
                 self._stream = None
 
-            # Update state
+            # Update state (v4.3.1-k0024: Always set to STOPPED after playback ends)
             if not self._pause_event.is_set():
                 self._set_state(PlaybackState.STOPPED)
 

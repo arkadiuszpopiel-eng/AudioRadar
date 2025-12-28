@@ -369,12 +369,19 @@ class ModelTrainer:
             if self._cancel_requested:
                 return None, None, []
 
-            session = self.session_manager.load_session(session_id)
-            if not session:
-                continue
+            # v4.3.1-k0024: Better error handling to prevent crashes
+            try:
+                session = self.session_manager.load_session(session_id)
+                if not session:
+                    self._log(f"Skipping session {session_id}: failed to load metadata", "WARNING")
+                    continue
 
-            audio = self.session_manager.load_audio(session_id)
-            if audio is None:
+                audio = self.session_manager.load_audio(session_id)
+                if audio is None:
+                    self._log(f"Skipping session {session_id}: no audio data", "WARNING")
+                    continue
+            except Exception as e:
+                self._log(f"Error loading session {session_id}: {e}", "ERROR")
                 continue
 
             feature_extractor = FeatureExtractor(session.sample_rate)
@@ -470,9 +477,18 @@ class ModelTrainer:
 
         Uses sklearn RandomForest as it's reliable and doesn't require TensorFlow.
         """
-        from sklearn.model_selection import train_test_split
-        from sklearn.ensemble import RandomForestClassifier
-        from sklearn.metrics import accuracy_score, classification_report
+        # v4.3.1-k0024: Better error handling for missing dependencies
+        try:
+            from sklearn.model_selection import train_test_split
+            from sklearn.ensemble import RandomForestClassifier
+            from sklearn.metrics import accuracy_score, classification_report
+        except ImportError as e:
+            error_msg = (
+                "scikit-learn library is not installed.\n"
+                "Please install it using: pip install scikit-learn"
+            )
+            self._log(error_msg, "ERROR")
+            raise RuntimeError(error_msg) from e
 
         # Flatten features for sklearn
         X_flat = X.reshape(X.shape[0], -1)
@@ -531,7 +547,16 @@ class ModelTrainer:
         result: TrainingResult
     ) -> Path:
         """Save trained model and metadata."""
-        import joblib
+        # v4.3.1-k0024: Better error handling for missing dependencies
+        try:
+            import joblib
+        except ImportError as e:
+            error_msg = (
+                "joblib library is not installed.\n"
+                "Please install it using: pip install joblib"
+            )
+            self._log(error_msg, "ERROR")
+            raise RuntimeError(error_msg) from e
 
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         model_dir = self.output_dir / f"{self.config.model_name}_{timestamp}"

@@ -1,11 +1,12 @@
 """
-Radar Games ML v4.2.1 - ML Training Panel
+Radar Games ML v4.3.1-k0023 - ML Training Panel
 User-friendly UI for recording, labeling, and training custom audio models
 
-ENHANCED v4.2.1: Added waveform timeline editor for segment labeling
+ENHANCED v4.3.1-k0023: Extended to 13 label classes with full hotkey support
 Features:
-- One-click recording start/stop
-- Real-time labeling with hotkeys (1-8)
+- One-click recording start/stop with pause/resume
+- Real-time labeling with hotkeys (1-9, 0, -, =, [) for 13 classes
+- Noise reduction for cleaner recordings
 - Label list with edit/delete
 - Training progress display
 - Waveform timeline with zoom/scroll
@@ -88,8 +89,9 @@ class MLTrainingPanel(QWidget):
     ML Training Panel - main widget for recording and training.
 
     Provides:
-    - Recording controls (Start/Stop)
-    - Real-time labeling (buttons + hotkeys 1-8)
+    - Recording controls (Start/Stop/Pause)
+    - Real-time labeling (buttons + hotkeys 1-9, 0, -, =, [ for 13 classes)
+    - Noise reduction for cleaner recordings
     - Label list with timestamps
     - Training controls and progress
     - Session management
@@ -332,7 +334,7 @@ class MLTrainingPanel(QWidget):
         layout.addWidget(splitter)
 
         # Hotkey hint
-        hotkey_hint = QLabel("💡 Tip: Press 1-8 during recording to quickly add labels")
+        hotkey_hint = QLabel("💡 Tip: Press 1-9, 0, -, =, [ during recording to quickly add labels")
         hotkey_hint.setStyleSheet("font-size: 9pt; color: #888888; margin-top: 5px;")
         layout.addWidget(hotkey_hint)
 
@@ -445,19 +447,27 @@ class MLTrainingPanel(QWidget):
         return group
 
     def _build_labeling_group(self) -> QGroupBox:
-        """Build labeling controls group."""
-        group = QGroupBox("🏷️ Add Labels (Hotkeys 1-8)")
+        """Build labeling controls group (v4.3.1-k0023: Extended to 13 classes)."""
+        group = QGroupBox("🏷️ Add Labels (Hotkeys 1-9, 0, -, =, [)")
         layout = QVBoxLayout()
 
-        # Label class buttons grid (2 rows x 4 columns)
-        for row_idx in range(2):
+        # v4.3.1-k0023: Label class buttons grid (3 rows x 5 columns for 13 classes)
+        # Layout: Row 1: 5 buttons, Row 2: 5 buttons, Row 3: 3 buttons
+        buttons_per_row = [5, 5, 3]  # 5 + 5 + 3 = 13
+        button_idx = 0
+
+        for row_idx, num_buttons in enumerate(buttons_per_row):
             row = QHBoxLayout()
-            for col_idx in range(4):
-                idx = row_idx * 4 + col_idx
-                if idx < len(SessionManager.DEFAULT_LABEL_CLASSES):
-                    label_class = SessionManager.DEFAULT_LABEL_CLASSES[idx]
-                    btn = QPushButton(f"{idx+1}: {label_class[:10]}")
-                    btn.setToolTip(f"Add '{label_class}' label (Hotkey: {idx+1})")
+            for col_idx in range(num_buttons):
+                if button_idx < len(SessionManager.DEFAULT_LABEL_CLASSES):
+                    label_class = SessionManager.DEFAULT_LABEL_CLASSES[button_idx]
+
+                    # v4.3.1-k0023: Hotkey mapping for 13 classes
+                    hotkey_map = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '-', '=', '[']
+                    hotkey = hotkey_map[button_idx] if button_idx < len(hotkey_map) else '?'
+
+                    btn = QPushButton(f"{hotkey}: {label_class[:10]}")
+                    btn.setToolTip(f"Add '{label_class}' label (Hotkey: {hotkey})")
                     btn.setStyleSheet("""
                         QPushButton {
                             background: #2a2a2a;
@@ -469,8 +479,14 @@ class MLTrainingPanel(QWidget):
                         QPushButton:hover { background: #3a3a3a; border-color: #00DDFF; }
                         QPushButton:disabled { color: #666666; }
                     """)
-                    btn.clicked.connect(lambda checked, i=idx: self._add_label_by_index(i))
+                    btn.clicked.connect(lambda checked, i=button_idx: self._add_label_by_index(i))
                     row.addWidget(btn)
+                    button_idx += 1
+
+            # Add stretch to center buttons in row 3 (only 3 buttons)
+            if row_idx == 2:
+                row.addStretch()
+
             layout.addLayout(row)
 
         # Custom label button
@@ -1324,18 +1340,36 @@ class MLTrainingPanel(QWidget):
     # ========================================================================
 
     def keyPressEvent(self, event: QKeyEvent):
-        """Handle keyboard shortcuts for quick labeling."""
+        """Handle keyboard shortcuts for quick labeling (v4.3.1-k0023: Extended to 13 classes)."""
         if not self.recording_controller.state.is_recording:
             super().keyPressEvent(event)
             return
 
         key = event.key()
 
-        # Number keys 1-8 for quick labeling
-        if Qt.Key_1 <= key <= Qt.Key_8:
-            index = key - Qt.Key_1
-            self._add_label_by_index(index)
-            return
+        # v4.3.1-k0023: Extended hotkeys for 13 classes: 1-9, 0, -, =, [
+        # Mapping: 1→0, 2→1, 3→2, 4→3, 5→4, 6→5, 7→6, 8→7, 9→8, 0→9, -→10, =→11, [→12
+        key_to_index = {
+            Qt.Key_1: 0,   # Walk
+            Qt.Key_2: 1,   # Run
+            Qt.Key_3: 2,   # Shot
+            Qt.Key_4: 3,   # Crouch
+            Qt.Key_5: 4,   # Explosion
+            Qt.Key_6: 5,   # NPC
+            Qt.Key_7: 6,   # NPC_Arc
+            Qt.Key_8: 7,   # Jump
+            Qt.Key_9: 8,   # Doors
+            Qt.Key_0: 9,   # Vehicle
+            Qt.Key_Minus: 10,      # Voice
+            Qt.Key_Equal: 11,      # Ambient
+            Qt.Key_BracketLeft: 12 # Other
+        }
+
+        if key in key_to_index:
+            index = key_to_index[key]
+            if index < len(SessionManager.DEFAULT_LABEL_CLASSES):
+                self._add_label_by_index(index)
+                return
 
         # Backspace to remove last label
         if key == Qt.Key_Backspace:

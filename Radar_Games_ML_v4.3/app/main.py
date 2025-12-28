@@ -235,6 +235,7 @@ def apply_dark_theme(app: QApplication):
 
     app.setPalette(palette)
 
+    # v4.3.1-k0024: Enhanced stylesheet to prevent white background bugs
     stylesheet = """
         QMainWindow { background-color: #191923; }
         QWidget { background-color: #191923; color: #DCDCE6; }
@@ -286,9 +287,48 @@ def apply_dark_theme(app: QApplication):
         }
         QCheckBox { color: #DCDCE6; }
         QScrollArea { background-color: #191923; }
-        QTabWidget::pane { background-color: #191923; border: 1px solid #2A82DA; }
-        QTabBar::tab { background-color: #2D2D37; color: #DCDCE6; padding: 8px 16px; }
-        QTabBar::tab:selected { background-color: #2A82DA; }
+
+        /* v4.3.1-k0024: CRITICAL - Enhanced TabWidget styling to prevent white backgrounds */
+        QTabWidget { background-color: #191923; }
+        QTabWidget::pane {
+            background-color: #191923;
+            border: 1px solid #2A82DA;
+        }
+        QTabBar { background-color: #191923; }
+        QTabBar::tab {
+            background-color: #2D2D37;
+            color: #DCDCE6;
+            padding: 8px 16px;
+            border: 1px solid #444444;
+        }
+        QTabBar::tab:selected {
+            background-color: #2A82DA;
+            color: white;
+            font-weight: bold;
+        }
+        QTabBar::tab:hover { background-color: #3D3D47; }
+
+        /* v4.3.1-k0024: CRITICAL - Ensure tables always have dark backgrounds */
+        QTableWidget {
+            background-color: #1a1a1a;
+            color: #DCDCE6;
+            gridline-color: #333333;
+            selection-background-color: #2A82DA;
+        }
+        QTableWidget::item {
+            color: #DCDCE6;
+            background-color: #1a1a1a;
+        }
+        QHeaderView::section {
+            background-color: #2D2D37;
+            color: #DCDCE6;
+            padding: 5px;
+            border: 1px solid #444444;
+        }
+
+        /* v4.3.1-k0024: Ensure stacked widgets maintain dark theme */
+        QStackedWidget { background-color: #191923; }
+
         QFrame { background-color: #191923; }
     """
     app.setStyleSheet(stylesheet)

@@ -769,13 +769,39 @@ class MLTrainingPanel(QWidget):
         status_layout.addStretch()
         layout.addLayout(status_layout)
 
-        # Model list
+        # Model list (v4.3.1-k0024: Added dark theme styling)
         self.models_table = QTableWidget()
         self.models_table.setColumnCount(3)
         self.models_table.setHorizontalHeaderLabels(["Model", "Accuracy", "Samples"])
         self.models_table.setSelectionBehavior(QTableWidget.SelectRows)
-        self.models_table.setMaximumHeight(120)
+        self.models_table.setMinimumHeight(200)  # v4.3.1-k0024: Increased from 120
         self.models_table.horizontalHeader().setStretchLastSection(True)
+
+        # v4.3.1-k0024: CRITICAL FIX - Add dark theme styling (was white text on white background!)
+        self.models_table.setStyleSheet("""
+            QTableWidget {
+                background: #1a1a1a;
+                color: #DDDDDD;
+                gridline-color: #333333;
+                border: 1px solid #444444;
+            }
+            QTableWidget::item {
+                color: #DDDDDD;
+                padding: 5px;
+            }
+            QTableWidget::item:selected {
+                background: #0066AA;
+                color: white;
+            }
+            QHeaderView::section {
+                background: #2a2a2a;
+                color: #DDDDDD;
+                padding: 5px;
+                border: 1px solid #444444;
+                font-weight: bold;
+            }
+        """)
+
         layout.addWidget(self.models_table)
 
         # Action buttons
@@ -799,13 +825,13 @@ class MLTrainingPanel(QWidget):
         return group
 
     def _build_log_group(self) -> QGroupBox:
-        """Build training log group."""
+        """Build training log group (v4.3.1-k0024: Increased height for better readability)."""
         group = QGroupBox("📜 Training Log")
         layout = QVBoxLayout()
 
         self.log_text = QTextEdit()
         self.log_text.setReadOnly(True)
-        self.log_text.setMaximumHeight(150)
+        self.log_text.setMinimumHeight(400)  # v4.3.1-k0024: Increased from 150 for much better visibility
         self.log_text.setStyleSheet("""
             QTextEdit {
                 background: #0a0a0a;

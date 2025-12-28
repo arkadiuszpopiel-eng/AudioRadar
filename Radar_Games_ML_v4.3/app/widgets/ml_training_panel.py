@@ -19,7 +19,7 @@ from PyQt5.QtWidgets import (
     QGroupBox, QTableWidget, QTableWidgetItem, QTextEdit,
     QComboBox, QLineEdit, QProgressBar, QHeaderView,
     QMessageBox, QDialog, QFormLayout, QDialogButtonBox,
-    QSplitter, QFrame
+    QSplitter, QFrame, QTabWidget
 )
 from PyQt5.QtCore import Qt, QTimer, pyqtSignal
 from PyQt5.QtGui import QColor, QKeyEvent
@@ -34,6 +34,7 @@ from app.ml.training import (
 from app.ml import ModelRegistry, MLFootstepDetector, get_model_registry
 from app.widgets.waveform_timeline import WaveformTimelineWidget
 from app.widgets.toast import ToastNotification
+from app.widgets.session_editor import SessionEditorWidget
 
 
 class AddLabelDialog(QDialog):
@@ -140,7 +141,7 @@ class MLTrainingPanel(QWidget):
         self._update_sessions_table()
 
     def _build_ui(self):
-        """Build the complete UI."""
+        """Build the complete UI with tabbed interface."""
         main_layout = QVBoxLayout()
         main_layout.setContentsMargins(10, 10, 10, 10)
 
@@ -148,6 +149,50 @@ class MLTrainingPanel(QWidget):
         title = QLabel("🧠 ML Training Studio")
         title.setStyleSheet("font-size: 16pt; font-weight: bold; color: #00DDFF; margin-bottom: 10px;")
         main_layout.addWidget(title)
+
+        # Create tab widget (v4.3.1: Separate Recording and Session Editor)
+        self.tab_widget = QTabWidget()
+        self.tab_widget.setStyleSheet("""
+            QTabWidget::pane {
+                border: 1px solid #444;
+                background: #1a1a1a;
+                border-radius: 3px;
+            }
+            QTabBar::tab {
+                background: #2a2a2a;
+                color: #DDDDDD;
+                padding: 10px 20px;
+                margin-right: 2px;
+                border-top-left-radius: 4px;
+                border-top-right-radius: 4px;
+            }
+            QTabBar::tab:selected {
+                background: #00AA66;
+                color: white;
+                font-weight: bold;
+            }
+            QTabBar::tab:hover {
+                background: #3a3a3a;
+            }
+        """)
+
+        # Tab 1: Recording (existing functionality)
+        recording_tab = self._build_recording_tab()
+        self.tab_widget.addTab(recording_tab, "🎙️ Recording")
+
+        # Tab 2: Session Editor (NEW - audio playback and editing)
+        self.session_editor = SessionEditorWidget(self.session_manager, parent=self)
+        self.tab_widget.addTab(self.session_editor, "✏️ Session Editor")
+
+        main_layout.addWidget(self.tab_widget)
+
+        self.setLayout(main_layout)
+
+    def _build_recording_tab(self) -> QWidget:
+        """Build the recording tab (original ML Training panel content)."""
+        tab_widget = QWidget()
+        tab_layout = QVBoxLayout()
+        tab_layout.setContentsMargins(5, 5, 5, 5)
 
         # Create splitter for two columns
         splitter = QSplitter(Qt.Horizontal)
@@ -179,14 +224,15 @@ class MLTrainingPanel(QWidget):
         # Set splitter sizes
         splitter.setSizes([400, 400])
 
-        main_layout.addWidget(splitter)
+        tab_layout.addWidget(splitter)
 
         # Hotkey hint
         hotkey_hint = QLabel("💡 Tip: Press 1-8 during recording to quickly add labels")
         hotkey_hint.setStyleSheet("font-size: 9pt; color: #888888; margin-top: 5px;")
-        main_layout.addWidget(hotkey_hint)
+        tab_layout.addWidget(hotkey_hint)
 
-        self.setLayout(main_layout)
+        tab_widget.setLayout(tab_layout)
+        return tab_widget
 
     def _build_recording_group(self) -> QGroupBox:
         """Build recording controls group."""

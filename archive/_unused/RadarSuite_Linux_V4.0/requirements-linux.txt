@@ -1,0 +1,49 @@
+# RadarSuite Linux V4 - Requirements
+# Python 3.11 required
+# Platform: Linux x64
+
+# GUI Framework
+PyQt5>=5.15.0
+
+# Visualization
+pyqtgraph>=0.13.0
+
+# 3D Graphics (for 3D radar mode)
+PyOpenGL>=3.1.0
+PyOpenGL_accelerate>=3.1.0
+
+# Numerical computing
+numpy>=1.21.0
+scipy>=1.7.0
+
+# Audio capture
+sounddevice>=0.4.0
+soundcard>=0.4.0
+
+# System info
+psutil>=5.9.0
+
+# Build tool - UPDATED to 6.0+ for better support
+pyinstaller>=6.0.0
+
+# ============================================================================
+# LINUX SYSTEM DEPENDENCIES
+# ============================================================================
+# These must be installed via system package manager before running:
+#
+# Ubuntu/Debian:
+#   sudo apt install libpulse0 portaudio19-dev libxcb-xinerama0 \
+#                    libxcb-image0 libxcb-icccm4 libxcb-keysyms1 \
+#                    libxkbcommon-x11-0 libxcb-render-util0 \
+#                    libxcb-xkb1 libxcb-shape0 libopengl0
+#
+# Fedora/RHEL:
+#   sudo dnf install pulseaudio-libs portaudio-devel libxcb \
+#                    xcb-util-image xcb-util-wm xcb-util-keysyms \
+#                    libxkbcommon-x11 xcb-util-renderutil libglvnd-opengl
+#
+# Arch Linux:
+#   sudo pacman -S libpulse portaudio libxcb xcb-util-image \
+#                  xcb-util-wm xcb-util-keysyms libxkbcommon-x11 \
+#                  xcb-util-renderutil libglvnd
+# ============================================================================

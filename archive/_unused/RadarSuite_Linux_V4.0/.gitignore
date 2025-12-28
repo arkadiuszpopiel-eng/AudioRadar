@@ -1,0 +1,4 @@
+# Backup Files
+*.backup
+
+__pycache__/

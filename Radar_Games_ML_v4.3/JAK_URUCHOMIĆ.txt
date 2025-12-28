@@ -1,0 +1,81 @@
+═══════════════════════════════════════════════════════════════
+  RADAR GAMES ML v4.3.1 - JAK URUCHOMIĆ (DLA KAŻDEGO!)
+═══════════════════════════════════════════════════════════════
+
+⚠️ NIE UŻYWAJ PLIKU .EXE! (Może być zepsuty)
+
+📌 NAJPROŚCIEJ - 2 KLIKNIĘCIA:
+
+1. Kliknij 2 razy na plik: START_RADAR.bat
+2. Gotowe! Program się uruchomi!
+
+(Jeśli widzisz plik Radar_Games_ML.exe - IGNORUJ GO!)
+(START_RADAR.bat jest lepszy i zawsze działa!)
+
+───────────────────────────────────────────────────────────────
+
+⚠️ PRZY PIERWSZYM URUCHOMIENIU:
+
+• Skrypt automatycznie zainstaluje potrzebne biblioteki
+• To zajmie 1-2 minuty (tylko raz!)
+• Potem program wystartuje normalnie
+
+───────────────────────────────────────────────────────────────
+
+✅ CO ROBI START_RADAR.bat:
+
+1. Sprawdza czy masz Python (jeśli nie - powie Ci)
+2. Sprawdza czy masz wszystkie biblioteki
+3. Jeśli czegoś brakuje - instaluje automatycznie
+4. Uruchamia program
+
+ŻADNYCH KOMEND! ŻADNEGO TERMINALA! TYLKO KLIKNIJ!
+
+───────────────────────────────────────────────────────────────
+
+🔧 JEŚLI NIE DZIAŁA:
+
+1. Upewnij się że masz Python 3.11 zainstalowany:
+   https://www.python.org/downloads/
+
+2. Podczas instalacji Python zaznacz:
+   ☑️ "Add Python to PATH"
+
+3. Uruchom ponownie START_RADAR.bat
+
+───────────────────────────────────────────────────────────────
+
+📁 PLIKI:
+
+START_RADAR.bat     ← KLIKNIJ TEN PLIK!
+JAK_URUCHOMIĆ.txt   ← Ten plik (instrukcje)
+app\                ← Kod programu (nie ruszaj)
+
+───────────────────────────────────────────────────────────────
+
+💡 SKRÓT NA PULPICIE:
+
+1. Prawy klik na START_RADAR.bat
+2. "Wyślij do" → "Pulpit (utwórz skrót)"
+3. Zmień nazwę skrótu na "Radar Games ML"
+4. Gotowe! Masz ikonę na pulpicie!
+
+───────────────────────────────────────────────────────────────
+
+🎯 ML TRAINING - JAK UŻYWAĆ:
+
+1. Otwórz program (START_RADAR.bat)
+2. Kliknij zakładkę "ML Training" na górze
+3. Wszystko działa! Wszystkie funkcje dostępne!
+
+───────────────────────────────────────────────────────────────
+
+✨ WERSJA: 4.3.1-k0010 (2025-12-22)
+
+• Radar 50% większy
+• Przyciski 50% większe
+• ML Training w pełni działa
+• Detach Radar naprawiony
+• Wszystko dla amatora!
+
+═══════════════════════════════════════════════════════════════

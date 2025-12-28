@@ -452,14 +452,17 @@ class MLTrainingPanel(QWidget):
         layout = QVBoxLayout()
 
         # v4.3.1-k0023: Label class buttons grid (3 rows x 5 columns for 13 classes)
-        # Layout: Row 1: 5 buttons, Row 2: 5 buttons, Row 3: 3 buttons
+        # Layout: Row 1: 5 buttons, Row 2: 5 buttons, Row 3: 3 buttons + 2 spacers
         buttons_per_row = [5, 5, 3]  # 5 + 5 + 3 = 13
         button_idx = 0
 
         for row_idx, num_buttons in enumerate(buttons_per_row):
             row = QHBoxLayout()
-            for col_idx in range(num_buttons):
-                if button_idx < len(SessionManager.DEFAULT_LABEL_CLASSES):
+
+            # Always create 5 columns for uniform button sizing
+            for col_idx in range(5):
+                if col_idx < num_buttons and button_idx < len(SessionManager.DEFAULT_LABEL_CLASSES):
+                    # Create button
                     label_class = SessionManager.DEFAULT_LABEL_CLASSES[button_idx]
 
                     # v4.3.1-k0023: Hotkey mapping for 13 classes
@@ -480,12 +483,11 @@ class MLTrainingPanel(QWidget):
                         QPushButton:disabled { color: #666666; }
                     """)
                     btn.clicked.connect(lambda checked, i=button_idx: self._add_label_by_index(i))
-                    row.addWidget(btn)
+                    row.addWidget(btn, 1)  # Stretch factor = 1
                     button_idx += 1
-
-            # Add stretch to center buttons in row 3 (only 3 buttons)
-            if row_idx == 2:
-                row.addStretch()
+                else:
+                    # Empty slot - add spacer for uniform sizing
+                    row.addStretch(1)  # Stretch factor = 1
 
             layout.addLayout(row)
 
